@@ -2,6 +2,9 @@
 This is a repo for semantic robot programing with multiple goal demonstrations.
 
 ## Software Design
+Design principles:
+* Modularity - so that I can publish code pieces
+
 Major components:
 * Perception
 * Planning
