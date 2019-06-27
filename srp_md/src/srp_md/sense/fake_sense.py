@@ -1,6 +1,12 @@
 from srp_md.sense import sense
 
 
-class sensor(sense.base_sensor):
+class Sensor(sense.BaseSensor):
     def __init__(self):
-        print "Init a fake_sensor"
+        pass
+
+    def accept_data(self, data):
+        pass
+
+    def process_data(self):
+        return {'a': 1, 'b': 2, 'c': 3}
