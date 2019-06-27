@@ -15,8 +15,8 @@ def main():
     srp = srp_md.SrpMd()
 
     # Make a learner and sensor
-    srp.set_learner(fake_learn.Learner())
-    srp.set_sensor(fake_sense.Sensor())
+    srp.set_learner('fake_learner')
+    srp.set_sensor('fake_sensor')
 
     # Get observations
     for i in xrange(10):

@@ -9,6 +9,10 @@ class BaseSensor():
         pass
 
     @abstractmethod
+    def get_name(cls):
+        return "base_sensor"
+
+    @abstractmethod
     def process_data(self, data):
         """ Process data.
 

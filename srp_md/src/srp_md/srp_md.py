@@ -3,6 +3,8 @@
 Defines a class that encapsulates all functionality.
 
 """
+from learn import fake_learn
+from sense import fake_sense
 
 
 class SrpMd:
@@ -13,6 +15,13 @@ class SrpMd:
     python package for avaliable algorithms.
 
     """
+    learners = {
+        fake_learn.Learner.get_name(): fake_learn.Learner,
+    }
+    sensors = {
+        fake_sense.Sensor.get_name(): fake_sense.Sensor,
+    }
+
     def __init__(self):
         # Set the default srp_md strategies
         # TODO(Kevin): Set these to defaults when they exist
@@ -30,7 +39,7 @@ class SrpMd:
 
     """
     def set_learner(self, learner):
-        self._learner = learner
+        self._learner = self.learners[learner]()
 
     def learn(self):
         print 'Learning...'
@@ -43,7 +52,7 @@ class SrpMd:
 
     """
     def set_sensor(self, sensor):
-        self._sensor = sensor
+        self._sensor = self.sensors[sensor]()
 
     def accept_data(self, data):
         """ Accept Raw Data.

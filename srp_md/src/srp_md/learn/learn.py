@@ -9,6 +9,10 @@ class BaseLearner:
         pass
 
     @abstractmethod
+    def get_name(cls):
+        return "base_learner"
+
+    @abstractmethod
     def learn(self, obs):
         """ Learn.
 
