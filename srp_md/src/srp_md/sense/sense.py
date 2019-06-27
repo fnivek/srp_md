@@ -9,22 +9,10 @@ class BaseSensor():
         pass
 
     @abstractmethod
-    def accept_data(self, data):
-        """ Accept Raw Data.
-
-        Accept and save new raw data. Processing should be done in process_data
-        function so that accept_data can be used in callbacks that should exit
-        quickly.
-
-        """
-        pass
-
-    @abstractmethod
-    def process_data(self):
+    def process_data(self, data):
         """ Process data.
 
-        Processes data recieved in accept data function. Return the world
-        state.
+        Processes data and return the world state.
 
         """
         pass
