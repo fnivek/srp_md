@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+from srp_md import learn
+
+import rospy
+
+
+def main():
+    rospy.init_node('srp_md')
+    learn.test()
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    main()
