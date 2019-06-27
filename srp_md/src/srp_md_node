@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-from srp_md import learn
-
+from srp_md.learn import learn
+from srp_md.sense import fake_sense
 import rospy
 
 
 def main():
     rospy.init_node('srp_md')
     learn.test()
+    sensor = fake_sense.sensor()
     rospy.spin()
 
 
