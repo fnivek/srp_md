@@ -1,16 +1,17 @@
 import abc
 from abc import ABCMeta, abstractmethod
 
+# List of all learners
+# Each subclass must register itself by adding its name and pointer to class
+# in the dictionary i.e. learners['base_learner'] = BaseLearner
+learners = {}
+
 
 class BaseLearner:
     __metaclass__ = ABCMeta
 
     def __init__(self):
         pass
-
-    @abstractmethod
-    def get_name(cls):
-        return "base_learner"
 
     @abstractmethod
     def learn(self, obs):
