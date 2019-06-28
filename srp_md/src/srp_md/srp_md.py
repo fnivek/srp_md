@@ -15,16 +15,16 @@ class SrpMd:
     python package for avaliable algorithms.
 
     """
-    def __init__(self):
-        # Set the default srp_md strategies
-        # TODO(Kevin): Set these to defaults when they exist
-        self._learner = None
-        self._sensor = None
-
+    # TODO(Kevin): Set defaults when they exist
+    def __init__(self, learner='fake_learner', sensor='fake_sensor'):
         # Vars
         self._obs = []
         self._goal = None
         self._raw_data = None
+
+        # Set the default srp_md strategies
+        self.set_learner(learner)
+        self.set_sensor(sensor)
 
     """ Learner.
 
