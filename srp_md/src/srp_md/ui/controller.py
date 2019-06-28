@@ -18,6 +18,10 @@ class Controller:
     def set_sensor(self, sensor):
         self._model.set_sensor(sensor)
 
+    def snapshot(self):
+        self._model.accept_data([])
+        self._model.process_data()
+
     # TODO(Kevin): I think this doesn't belong here
     def accept_data(self):
         self._model.accept_data([])

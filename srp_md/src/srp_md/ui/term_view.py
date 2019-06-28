@@ -35,6 +35,7 @@ Menu:
   1. Select learner
   2. Select sensor
   3. Learn
+  4. Take snapshot
 
 Input:
 """
@@ -71,6 +72,10 @@ Input:
                 print 'Learning...'
                 self._ctrl.learn()
                 print 'Learned'
+            elif choice == '4':
+                print 'Taking a snapshot'
+                self._ctrl.snapshot()
+                print 'Took snapshot'
             else:
                 print 'Invalid choice'
 
