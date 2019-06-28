@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # In project imports
 import srp_md
-from srp_md.learn import fake_learn
-from srp_md.sense import fake_sense
+import srp_md.ui as ui
 
 # Ros imports
 import rospy
@@ -14,20 +13,15 @@ def main():
     # Define the srp
     srp = srp_md.SrpMd()
 
-    # Make a learner and sensor
-    srp.set_learner('fake_learner')
-    srp.set_sensor('fake_sensor')
+    # Define user interface
+    ctrl = ui.Controller(srp)
+    view = ui.TermView(srp, ctrl)
 
-    # Get observations
-    for i in xrange(10):
-        srp.accept_data(i)
-        srp.process_data()
-
-    # Learn
-    srp.learn()
-
-    # Spin forever
-    rospy.spin()
+    # Run
+    r = rospy.Rate(100)
+    while not rospy.is_shutdown():
+        view.run()
+        r.sleep()
 
 
 if __name__ == '__main__':
