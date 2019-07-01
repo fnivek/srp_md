@@ -6,6 +6,9 @@ Defines a class that encapsulates all functionality.
 import learn
 import sense
 
+# Python imports
+import logging as log
+
 
 class SrpMd:
     """ Semantic Robot Programing Multiple Demonstrations.
@@ -17,6 +20,9 @@ class SrpMd:
     """
     # TODO(Kevin): Set defaults when they exist
     def __init__(self, learner='fake_learner', sensor='fake_sensor'):
+        # Logging
+        self._logger = log.getLogger(__name__)
+
         # Vars
         self._obs = []
         self._goal = None
@@ -35,9 +41,9 @@ class SrpMd:
         self._learner = learn.learners[learner]()
 
     def learn(self):
-        print 'Learning...'
+        self._logger.debug('Learning...')
         self._goal = self._learner.learn(self._obs)
-        print 'Learned:', self._goal
+        self._logger.debug('Learned:', self._goal)
 
     """ Sensor.
 
@@ -55,9 +61,9 @@ class SrpMd:
         quickly.
 
         """
-        print 'Accept data:', data
+        self._logger.debug('Accept data: ' + str(data))
         self._raw_data = data
 
     def process_data(self):
-        print 'Processing:', self._raw_data
+        self._logger.debug('Processing: ' + str(self._raw_data))
         self._obs.append(self._sensor.process_data(self._raw_data))

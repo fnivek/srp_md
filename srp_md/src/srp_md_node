@@ -2,12 +2,16 @@
 # In project imports
 import srp_md
 import srp_md.ui as ui
+from srp_md import srp_md_log
 
 # Ros imports
 import rospy
 
+# Python imports
+
 
 def main():
+    # Setup ros
     rospy.init_node('srp_md')
 
     # Define the srp
