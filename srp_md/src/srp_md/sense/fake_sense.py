@@ -1,4 +1,5 @@
 import sense
+import random
 
 
 class FakeSensor(sense.BaseSensor):
@@ -6,7 +7,11 @@ class FakeSensor(sense.BaseSensor):
         pass
 
     def process_data(self, data):
-        return {'a': 1, 'b': 2, 'c': 3}
+        out = {}
+        out['a'] = random.random()
+        out['b'] = random.random()
+        out['c'] = random.random()
+        return out
 
 
 sense.sensors['fake_sensor'] = FakeSensor
