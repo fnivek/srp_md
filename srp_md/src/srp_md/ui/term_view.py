@@ -3,18 +3,33 @@
 A class for interacting and viewing srp from the terminal.
 
 """
+# SRP_MD imports
 import view
 from srp_md import learn
 from srp_md import sense
 
+# Python imports
 import sys
 import select
+import logging
 
 
 class TermView(view.BaseView):
     def __init__(self, model, ctrl):
         super(TermView, self).__init__(model, ctrl)
+        self._logger = logging.getLogger(__name__)
         self._state = 'print_menu'
+        self._main_menu = (
+            'Semantic Robot Programing with Multiple Demonstrations\n\n'
+            'Menu:\n'
+            '  1. Select learner\n'
+            '  2. Select sensor\n'
+            '  3. Learn\n'
+            '  4. Take snapshot\n\n'
+            'Input:\n'
+        )
+        self._learners = {n: s for n, s in enumerate(learn.learners.keys())}
+        self._sensors = {n: s for n, s in enumerate(sense.sensors.keys())}
 
     def update_from_model(self):
         pass
@@ -28,25 +43,19 @@ class TermView(view.BaseView):
 
     def print_menu(self):
         if self._state == 'print_menu':
-            print """
-Semantic Robot Programing with Multiple Demonstrations
-
-Menu:
-  1. Select learner
-  2. Select sensor
-  3. Learn
-  4. Take snapshot
-
-Input:
-"""
+            print self._main_menu
             self._state = 'wait_for_input'
 
         elif self._state == 'select_learner':
-            print 'options:', learn.learners.keys()
+            print 'options:'
+            for learner in self._learners:
+                print '\t{}\t{}'.format(learner, self._learners[learner])
             self._state = 'wait_for_learner'
 
         elif self._state == 'select_sensor':
-            print 'options:', sense.sensors.keys()
+            print 'options:'
+            for sensor in self._sensors:
+                print '\t{}\t{}'.format(sensor, self._sensors[sensor])
             self._state = 'wait_for_sensor'
 
     def handle_input(self):
@@ -80,11 +89,15 @@ Input:
                 print 'Invalid choice'
 
         elif self._state == 'wait_for_learner':
-            print 'setting learner to', choice
-            self._ctrl.set_learner(choice)
+            choice = int(choice)
+            name = self._learners[int(choice)]
+            self._logger.info('setting learner to %s', name)
+            self._ctrl.set_learner(self._learners[choice])
             self._state = 'print_menu'
 
         elif self._state == 'wait_for_sensor':
-            print 'setting sensor to', choice
-            self._ctrl.set_sensor(choice)
+            choice = int(choice)
+            name = self._sensors[int(choice)]
+            self._logger.info('setting sensor to %s', name)
+            self._ctrl.set_sensor(self._sensors[choice])
             self._state = 'print_menu'
