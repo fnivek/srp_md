@@ -4,7 +4,7 @@ import datetime
 
 # Setup logging
 file_loc = os.path.dirname(os.path.abspath(__file__))
-now = str(datetime.datetime.now().strftime('%y%m%d_%H%M%S'))
+now = str(datetime.datetime.now().strftime('%y%m%d'))
 log_file = file_loc + '/../../../log/log_' + now + '.log'
 
 file_format = log.Formatter(

@@ -8,6 +8,10 @@ from srp_md import srp_md_log
 import rospy
 
 # Python imports
+import logging
+
+# Get a logger
+loger = logging.getLogger('srp_md')
 
 
 def main():
@@ -29,4 +33,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    loger.debug('System starting up...')
+    try:
+        main()
+    finally:
+        loger.debug('System shuting down...')
