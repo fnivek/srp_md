@@ -1,0 +1,3 @@
+[submodule "srp_md/src/srp_md/ui/web_gui/Semantic-UI"]
+	path = srp_md/src/srp_md/ui/web_gui/Semantic-UI
+	url = https://github.com/Semantic-Org/Semantic-UI.git

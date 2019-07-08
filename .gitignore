@@ -255,3 +255,14 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+
+######################################
+# Semantic UI
+######################################
+./srp_md/src/srp_md/ui/web_gui/Semantic-UI/bower_components
+./srp_md/src/srp_md/ui/web_gui/Semantic-UI/node_modules
+./srp_md/src/srp_md/ui/web_gui/Semantic-UI/dist/components
+./srp_md/src/srp_md/ui/web_gui/Semantic-UI/dist/themes/*
+!./srp_md/src/srp_md/ui/web_gui/Semantic-UI/dist/*.js
+!./srp_md/src/srp_md/ui/web_gui/Semantic-UI/dist/*.css
+!./srp_md/src/srp_md/ui/web_gui/Semantic-UI/dist/themes/default/
