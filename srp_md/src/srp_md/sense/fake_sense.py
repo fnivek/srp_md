@@ -7,11 +7,8 @@ class FakeSensor(sense.BaseSensor):
         pass
 
     def process_data(self, data):
-        out = {}
-        out['a'] = random.random()
-        out['b'] = random.random()
-        out['c'] = random.random()
-        return out
+        return ([random.choice([True, False]) for _ in xrange(10)],
+                random.choice([True, False]))
 
 
 sense.sensors['fake_sensor'] = FakeSensor

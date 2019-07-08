@@ -43,7 +43,7 @@ class SrpMd:
     def learn(self):
         self._logger.debug('Learning...')
         self._goal = self._learner.learn(self._obs)
-        self._logger.debug('Learned:', self._goal)
+        self._logger.debug('Learned: %s', self._goal)
 
     """ Sensor.
 
