@@ -33,8 +33,8 @@ def main():
 
 
 if __name__ == '__main__':
-    loger.debug('System starting up...')
+    loger.debug('System starting up... #BOLD')
     try:
         main()
     finally:
-        loger.debug('System shuting down...')
+        loger.debug('System shuting down... #BOLD')
