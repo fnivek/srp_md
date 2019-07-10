@@ -81,13 +81,7 @@ class CustomFormat(log.Formatter):
 
 
 # Setup formats
-file_format = log.Formatter(
-    '%(asctime)s [%(module)s:%(funcName)s():%(lineno)d] [%(levelname)s] '
-    '%(message)s'
-)
-stream_format = log.Formatter(
-    '[%(module)s:%(lineno)d] [%(levelname)s] %(message)s'
-)
+file_format = log.Formatter('%(asctime)s [%(module)s:%(funcName)s():%(lineno)d] [%(levelname)s] %(message)s')
 stream_format = CustomFormat()
 
 # Make loggers
