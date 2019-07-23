@@ -12,9 +12,22 @@ class BaseView:
     def __init__(self, model, ctrl):
         self._model = model
         self._ctrl = ctrl
+        self._running = False
+
+    @property
+    def running(self):
+        return self._running
+
+    @running.setter
+    def running(self, value):
+        self._running = value
 
     @abstractmethod
     def update_from_model(self):
+        pass
+
+    @abstractmethod
+    def run_once(self):
         pass
 
     @abstractmethod

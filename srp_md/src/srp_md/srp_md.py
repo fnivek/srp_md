@@ -27,17 +27,25 @@ class SrpMd:
         self._obs = []
         self._goal = None
         self._raw_data = None
+        self._num_snapshots = 0
 
         # Set the default srp_md strategies
         self.set_learner(learner)
         self.set_sensor(sensor)
+
+    def get_num_snapshots(self):
+        return self._num_snapshots
 
     """ Learner.
 
     Functions to interact with the learner.
 
     """
+    def get_learner(self):
+        return self._learner_name
+
     def set_learner(self, learner):
+        self._learner_name = learner
         self._learner = learn.learners[learner]()
 
     def learn(self):
@@ -50,7 +58,11 @@ class SrpMd:
     Functions to interact with the sensor.
 
     """
+    def get_sensor(self):
+        return self._sensor_name
+
     def set_sensor(self, sensor):
+        self._sensor_name = sensor
         self._sensor = sense.sensors[sensor]()
 
     def accept_data(self, data):
@@ -63,6 +75,7 @@ class SrpMd:
         """
         self._logger.debug('Accept data: ' + str(data))
         self._raw_data = data
+        self._num_snapshots += 1
 
     def process_data(self):
         self._logger.debug('Processing: ' + str(self._raw_data))

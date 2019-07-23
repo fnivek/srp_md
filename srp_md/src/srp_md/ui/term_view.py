@@ -12,6 +12,7 @@ from srp_md import sense
 import sys
 import select
 import logging
+import time
 
 
 class TermView(view.BaseView):
@@ -21,7 +22,12 @@ class TermView(view.BaseView):
         self._state = 'print_menu'
         self._main_menu = (
             'Semantic Robot Programing with Multiple Demonstrations\n\n'
+            'Current State:\n'
+            '  Learner: {}\n'
+            '  Sensor: {}\n'
+            '  Number of snapshots: {}\n\n'
             'Menu:\n'
+            '  0. Exit\n'
             '  1. Select learner\n'
             '  2. Select sensor\n'
             '  3. Learn\n'
@@ -30,20 +36,29 @@ class TermView(view.BaseView):
         )
         self._learners = {n: s for n, s in enumerate(learn.learners.keys())}
         self._sensors = {n: s for n, s in enumerate(sense.sensors.keys())}
+        self.running = True
 
     def update_from_model(self):
-        pass
+        self._srp_state = [
+          self._model.get_learner(),
+          self._model.get_sensor(),
+          self._model.get_num_snapshots()]
 
-    def run(self):
+    def run_once(self):
+        # Update
+        self.update_from_model()
         # Render
         self.print_menu()
-
         # Handle input
         self.handle_input()
 
+    def run(self):
+        self.run_once()
+        time.sleep(0.01)
+
     def print_menu(self):
         if self._state == 'print_menu':
-            print self._main_menu
+            print self._main_menu.format(*self._srp_state)
             self._state = 'wait_for_input'
 
         elif self._state == 'select_learner':
@@ -73,7 +88,10 @@ class TermView(view.BaseView):
         # Hanle user input
         if self._state == 'wait_for_input':
             self._state = 'print_menu'
-            if choice == '1':
+            if choice == '0':
+                self.running = False
+                self._state = 'end'
+            elif choice == '1':
                 self._state = 'select_learner'
             elif choice == '2':
                 self._state = 'select_sensor'
