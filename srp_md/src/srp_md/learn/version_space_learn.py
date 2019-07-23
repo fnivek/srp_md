@@ -24,7 +24,7 @@ class VersionSpaceLearner(learn.BaseLearner):
           * There is a consistent conjunctive hypothesis with the examples
 
         Algorithmic Notes:
-          * Convergence is fater if the hypotheses are ordered s.t. examples
+          * Convergence is faster if the hypotheses are ordered s.t. examples
             that satisfy closses to half the hypotheses in the current version
             space are used first
           * If Null set returned the examples are not consistent
