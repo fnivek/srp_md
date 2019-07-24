@@ -25,13 +25,13 @@ class TermView(view.BaseView):
             'Current State:\n'
             '  Learner: {}\n'
             '  Sensor: {}\n'
-            '  Number of snapshots: {}\n\n'
+            '  Number of demos: {}\n\n'
             'Menu:\n'
             '  0. Exit\n'
             '  1. Select learner\n'
             '  2. Select sensor\n'
             '  3. Learn\n'
-            '  4. Take snapshot\n'
+            '  4. Take demo\n'
             '  5. Actions\n\n'
             'Input:\n'
         )
@@ -43,7 +43,7 @@ class TermView(view.BaseView):
     def update_from_model(self):
         self._srp_state = [self._model.get_learner(),
                            self._model.get_sensor(),
-                           self._model.get_num_snapshots()]
+                           self._model.get_num_demos()]
 
     def run_once(self):
         # Update
@@ -107,9 +107,9 @@ class TermView(view.BaseView):
                 self._ctrl.learn()
                 print 'Learned'
             elif choice == '4':
-                print 'Taking a snapshot'
-                self._ctrl.snapshot()
-                print 'Took snapshot'
+                print 'Generate a demo'
+                self._ctrl.generate_demo()
+                print 'Got demo'
             elif choice == '5':
                 self._state = 'select_action'
             else:

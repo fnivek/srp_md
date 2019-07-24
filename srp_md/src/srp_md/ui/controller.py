@@ -18,7 +18,7 @@ class Controller:
     def set_sensor(self, sensor):
         self._model.set_sensor(sensor)
 
-    def snapshot(self):
+    def generate_demo(self):
         self._model.accept_data([])
         self._model.process_data()
 

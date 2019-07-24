@@ -28,7 +28,7 @@ class SrpMd:
         self._obs = []
         self._goal = None
         self._raw_data = None
-        self._num_snapshots = 0
+        self._num_demos = 0
         self._actions = {0: 'write_demos', 1: 'load_demos', 2: 'undo_demo',
                          3: 'redo_demo', 4: 'clear_demos'}
         self._undoed = []
@@ -37,8 +37,8 @@ class SrpMd:
         self.set_learner(learner)
         self.set_sensor(sensor)
 
-    def get_num_snapshots(self):
-        return self._num_snapshots
+    def get_num_demos(self):
+        return self._num_demos
 
     """ Learner.
 
@@ -79,7 +79,7 @@ class SrpMd:
         """
         self._logger.debug('Accept data: ' + str(data))
         self._raw_data = data
-        self._num_snapshots += 1
+        self._num_demos += 1
 
     def process_data(self):
         self._logger.debug('Processing: ' + str(self._raw_data))
