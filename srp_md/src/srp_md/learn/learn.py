@@ -1,5 +1,7 @@
+from builtins import object
 import abc
 from abc import ABCMeta, abstractmethod
+from future.utils import with_metaclass
 
 # List of all learners
 # Each subclass must register itself by adding its name and pointer to class
@@ -7,9 +9,7 @@ from abc import ABCMeta, abstractmethod
 learners = {}
 
 
-class BaseLearner:
-    __metaclass__ = ABCMeta
-
+class BaseLearner(with_metaclass(ABCMeta, object)):
     def __init__(self):
         pass
 

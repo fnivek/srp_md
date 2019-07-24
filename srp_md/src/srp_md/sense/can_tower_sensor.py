@@ -1,4 +1,7 @@
-import sense
+from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from . import sense
 import srp_md
 
 import logging
@@ -18,9 +21,9 @@ class CanTowerSensor(sense.BaseSensor):
         super(CanTowerSensor, self).__init__()
         self._logger = logging.getLogger(__name__)
         self._goal_height = goal_height
-        self._cans = ['c' + str(x) for x in xrange(num_cans)]
-        self._locs = ['l' + str(x) for x in xrange(num_locations)]
-        self._distractor_objs = ['d' + str(x) for x in xrange(num_distractor_objs)]
+        self._cans = ['c' + str(x) for x in range(num_cans)]
+        self._locs = ['l' + str(x) for x in range(num_locations)]
+        self._distractor_objs = ['d' + str(x) for x in range(num_distractor_objs)]
 
     def process_data(self, data):
         to_place = []

@@ -3,15 +3,19 @@
 Defines a class that encapsulates all functionality.
 
 """
-import learn
-import sense
+from __future__ import absolute_import
+from __future__ import print_function
+from builtins import str
+from builtins import object
+from . import learn
+from . import sense
 
 # Python imports
 import logging as log
 import pickle
 
 
-class SrpMd:
+class SrpMd(object):
     """ Semantic Robot Programing Multiple Demonstrations.
 
     Implements a semantic robot programing with multiple demonstrations. The
@@ -92,27 +96,27 @@ class SrpMd:
     """
     def write_demos(self, filename):
         pickle.dump(self._obs, open(filename, 'wb'))
-        print 'Success in writing demos to file {}'.format(filename)
+        print('Success in writing demos to file {}'.format(filename))
         # print 'Demos: {}'.format(self._obs)
 
     def load_demos(self, filename):
         self._obs = pickle.load(open(filename, 'rb'))
-        print 'Success in loading demos from file {}'.format(filename)
+        print('Success in loading demos from file {}'.format(filename))
         # print 'Demos: {}'.format(self._obs)
 
     def undo_demo(self):
         last_demo = self._obs.pop()
         self._undoed.append(last_demo)
-        print 'Success in undoing last demo'
+        print('Success in undoing last demo')
         # print 'Demos: {}'.format(self._obs)
 
     def redo_demo(self):
         last_demo = self._undoed.pop()
         self._obs.append(last_demo)
-        print 'Success in redoing last demo'
+        print('Success in redoing last demo')
         # print 'Demos: {}'.format(self._obs)
 
     def clear_demos(self):
         self._obs = []
-        print 'Success in clearing demos'
+        print('Success in clearing demos')
         # print 'Demos: {}'.format(self._obs)

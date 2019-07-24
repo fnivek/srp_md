@@ -1,5 +1,7 @@
+from __future__ import absolute_import
 # SRP MD imports
-import learn
+from builtins import range
+from . import learn
 
 # Python imports
 import logging
@@ -69,7 +71,7 @@ class VersionSpaceLearner(learn.BaseLearner):
                         h_s.remove(h)
                         # Generalize h with None's
                         h_new = list(h)
-                        for i in xrange(len(h)):
+                        for i in range(len(h)):
                             if h[i] != ex[0][i]:
                                 h_new[i] = None
                         # Add to h_s if some member of h_g is more general than h_new
@@ -102,7 +104,7 @@ class VersionSpaceLearner(learn.BaseLearner):
                         # Remove h from h_g
                         h_g.remove(h)
                         # For each minimal specification of h, do
-                        for i in xrange(len(h)):
+                        for i in range(len(h)):
                             if h[i] is None:
                                 h_new = list(h)
                                 h_new[i] = not ex[0][i]
@@ -137,12 +139,12 @@ class VersionSpaceLearner(learn.BaseLearner):
         for ex in examples:
             # Positive example all features not None must match
             if ex[1]:
-                consistent = all([h[i] == ex[0][i] for i in xrange(len(h))
+                consistent = all([h[i] == ex[0][i] for i in range(len(h))
                                  if h[i] is not None])
 
             # Negative example
             else:
-                consistent = any([h[i] != ex[0][i] for i in xrange(len(h))
+                consistent = any([h[i] != ex[0][i] for i in range(len(h))
                                  if h[i] is not None])
             if not consistent:
                 if color == 'b':
@@ -159,7 +161,7 @@ class VersionSpaceLearner(learn.BaseLearner):
 
     def generality(self, h_1, h_2):
         """ Check if h_1 is more general than or equal to h_2 """
-        general = all([h_1[i] == h_2[i] for i in xrange(len(h_1)) if h_1[i] is not None])
+        general = all([h_1[i] == h_2[i] for i in range(len(h_1)) if h_1[i] is not None])
         return general
 
 

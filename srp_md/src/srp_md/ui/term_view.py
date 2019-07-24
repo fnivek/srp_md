@@ -3,8 +3,10 @@
 A class for interacting and viewing srp from the terminal.
 
 """
+from __future__ import print_function
+from __future__ import absolute_import
 # SRP_MD imports
-import view
+from . import view
 from srp_md import learn
 from srp_md import sense
 
@@ -59,25 +61,25 @@ class TermView(view.BaseView):
 
     def print_menu(self):
         if self._state == 'print_menu':
-            print self._main_menu.format(*self._srp_state)
+            print(self._main_menu.format(*self._srp_state))
             self._state = 'wait_for_input'
 
         elif self._state == 'select_learner':
-            print 'options:'
+            print('options:')
             for learner in self._learners:
-                print '\t{}\t{}'.format(learner, self._learners[learner])
+                print('\t{}\t{}'.format(learner, self._learners[learner]))
             self._state = 'wait_for_learner'
 
         elif self._state == 'select_sensor':
-            print 'options:'
+            print('options:')
             for sensor in self._sensors:
-                print '\t{}\t{}'.format(sensor, self._sensors[sensor])
+                print('\t{}\t{}'.format(sensor, self._sensors[sensor]))
             self._state = 'wait_for_sensor'
 
         elif self._state == 'select_action':
-            print 'options:'
+            print('options:')
             for action in self._model._actions:
-                print '\t{}\t{}'.format(action, self._model._actions[action])
+                print('\t{}\t{}'.format(action, self._model._actions[action]))
             self._state = 'wait_for_action'
 
     def handle_input(self):
@@ -103,17 +105,17 @@ class TermView(view.BaseView):
             elif choice == '2':
                 self._state = 'select_sensor'
             elif choice == '3':
-                print 'Learning...'
+                print('Learning...')
                 self._ctrl.learn()
-                print 'Learned'
+                print('Learned')
             elif choice == '4':
-                print 'Generate a demo'
+                print('Generate a demo')
                 self._ctrl.generate_demo()
-                print 'Got demo'
+                print('Got demo')
             elif choice == '5':
                 self._state = 'select_action'
             else:
-                print 'Invalid choice'
+                print('Invalid choice')
 
         elif self._state == 'wait_for_learner':
             choice = int(choice)

@@ -1,4 +1,6 @@
-import sense
+from __future__ import absolute_import
+from builtins import range
+from . import sense
 import random
 
 
@@ -7,7 +9,7 @@ class FakeSensor(sense.BaseSensor):
         pass
 
     def process_data(self, data):
-        return ([random.choice([True, False]) for _ in xrange(4)],
+        return ([random.choice([True, False]) for _ in range(4)],
                 random.choice([True, False]))
 
 

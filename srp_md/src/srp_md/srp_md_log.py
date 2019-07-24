@@ -1,3 +1,4 @@
+from builtins import str
 import logging as log
 import os
 import datetime
@@ -49,9 +50,9 @@ class CustomFormat(log.Formatter):
         log.Formatter.__init__(self, fmt)
 
     def format(self, record):
-        format_origin = self._fmt
+        format_origin = self._style._fmt
         # Get the index of message
-        msg_index = self._fmt.find('%(message)s')
+        msg_index = self._style._fmt.find('%(message)s')
 
         # Change color of message if indicated
         message = '%(message)s'
@@ -61,21 +62,21 @@ class CustomFormat(log.Formatter):
             message = LOG_COLORS[record.message[split_index + 1:]] + \
                 str_format.format(record.message) + LOG_COLORS['RESET']
         # Construct general message
-        self._fmt = self._fmt[:msg_index] + LOG_COLORS['RESET'] + message
+        self._style._fmt = self._style._fmt[:msg_index] + LOG_COLORS['RESET'] + message
 
         # Change the color of prefix message depending on their level
         if record.levelno == log.DEBUG:
-            self._fmt = LOG_COLORS['GREEN'] + self._fmt
+            self._style._fmt = LOG_COLORS['GREEN'] + self._style._fmt
         elif record.levelno == log.WARNING:
-            self._fmt = LOG_COLORS['YELLOW'] + self._fmt
+            self._style._fmt = LOG_COLORS['YELLOW'] + self._style._fmt
         elif record.levelno == log.ERROR:
-            self._fmt = LOG_COLORS['ORANGE'] + self._fmt
+            self._style._fmt = LOG_COLORS['ORANGE'] + self._style._fmt
         elif record.levelno == log.CRITICAL:
-            self._fmt = LOG_COLORS['RED'] + self._fmt
+            self._style._fmt = LOG_COLORS['RED'] + self._style._fmt
 
         # Call the original formatter class to do the grunt work
         result = log.Formatter.format(self, record)
-        self._fmt = format_origin
+        self._style._fmt = format_origin
 
         return result
 

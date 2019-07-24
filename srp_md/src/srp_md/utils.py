@@ -1,3 +1,4 @@
+from builtins import range
 from random import choice, shuffle, random, randint
 import logging
 
@@ -21,7 +22,7 @@ def reservoir_sample(items, k):
     """
     samples = list(items[:k])
     n = k
-    for i in xrange(k, len(items)):
+    for i in range(k, len(items)):
         n += 1
         index = randint(0, n)
         if index < k:

@@ -3,12 +3,12 @@
 An abstract base class for views.
 
 """
+from builtins import object
 from abc import ABCMeta, abstractmethod
+from future.utils import with_metaclass
 
 
-class BaseView:
-    __metaclass__ = ABCMeta
-
+class BaseView(with_metaclass(ABCMeta, object)):
     def __init__(self, model, ctrl):
         self._model = model
         self._ctrl = ctrl

@@ -5,7 +5,8 @@ Handles interactions between a view and the model.
 """
 
 
-class Controller:
+from builtins import object
+class Controller(object):
     def __init__(self, model):
         self._model = model
 
