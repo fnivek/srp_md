@@ -29,3 +29,19 @@ class Controller:
     # TODO(Kevin): I think this doesn't belong here
     def process_data(self):
         self._model.process_data()
+
+    # Actions added
+    def write_demos(self, filename):
+        self._model.write_demos(filename)
+
+    def load_demos(self, filename):
+        self._model.load_demos(filename)
+
+    def undo_demo(self):
+        self._model.undo_demo()
+
+    def redo_demo(self):
+        self._model.redo_demo()
+
+    def clear_demos(self):
+        self._model.clear_demos()

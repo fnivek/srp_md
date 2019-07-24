@@ -8,6 +8,7 @@ import sense
 
 # Python imports
 import logging as log
+import pickle
 
 
 class SrpMd:
@@ -28,6 +29,9 @@ class SrpMd:
         self._goal = None
         self._raw_data = None
         self._num_snapshots = 0
+        self._actions = {0: 'write_demos', 1: 'load_demos', 2: 'undo_demo',
+                         3: 'redo_demo', 4: 'clear_demos'}
+        self._undoed = []
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -80,3 +84,35 @@ class SrpMd:
     def process_data(self):
         self._logger.debug('Processing: ' + str(self._raw_data))
         self._obs.append(self._sensor.process_data(self._raw_data))
+
+    """ Actions.
+
+    Functions to execute actions.
+
+    """
+    def write_demos(self, filename):
+        pickle.dump(self._obs, open(filename, 'wb'))
+        print 'Success in writing demos to file {}'.format(filename)
+        # print 'Demos: {}'.format(self._obs)
+
+    def load_demos(self, filename):
+        self._obs = pickle.load(open(filename, 'rb'))
+        print 'Success in loading demos from file {}'.format(filename)
+        # print 'Demos: {}'.format(self._obs)
+
+    def undo_demo(self):
+        last_demo = self._obs.pop()
+        self._undoed.append(last_demo)
+        print 'Success in undoing last demo'
+        # print 'Demos: {}'.format(self._obs)
+
+    def redo_demo(self):
+        last_demo = self._undoed.pop()
+        self._obs.append(last_demo)
+        print 'Success in redoing last demo'
+        # print 'Demos: {}'.format(self._obs)
+
+    def clear_demos(self):
+        self._obs = []
+        print 'Success in clearing demos'
+        # print 'Demos: {}'.format(self._obs)
