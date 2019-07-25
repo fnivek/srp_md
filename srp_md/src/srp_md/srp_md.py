@@ -32,7 +32,6 @@ class SrpMd(object):
         self._obs = []
         self._goal = None
         self._raw_data = None
-        self._num_demos = 0
         self._actions = {1: 'write_demos', 2: 'load_demos', 3: 'undo_demo',
                          4: 'redo_demo', 5: 'clear_demos'}
         self._undoed = []
@@ -42,7 +41,7 @@ class SrpMd(object):
         self.set_sensor(sensor)
 
     def get_num_demos(self):
-        return self._num_demos
+        return len(self._obs)
 
     """ Learner.
 
@@ -83,7 +82,6 @@ class SrpMd(object):
         """
         self._logger.debug('Accept data: ' + str(data))
         self._raw_data = data
-        self._num_demos += 1
 
     def process_data(self):
         self._logger.debug('Processing: ' + str(self._raw_data))
