@@ -156,14 +156,34 @@ class TermView(view.BaseView):
             else:
                 name = self._model._actions[int(choice)]
                 self._logger.info('choosing action: %s', name)
+                self._state = 'print_menu'
                 if name == 'write_demos':
-                    self._ctrl.write_demos(self._filename)
+                    print('Input filename:\n')
+                    self._state = 'write_demos'
                 elif name == 'load_demos':
-                    self._ctrl.load_demos(self._filename)
+                    print('Input filename:\n')
+                    self._state = 'load_demos'
                 elif name == 'undo_demo':
                     self._ctrl.undo_demo()
                 elif name == 'redo_demo':
                     self._ctrl.redo_demo()
                 elif name == 'clear_demos':
                     self._ctrl.clear_demos()
-                self._state = 'print_menu'
+
+        elif self._state == 'write_demos':
+            self._state = 'print_menu'
+            try:
+                self._ctrl.write_demos(choice)
+            except IOError:
+                print('Bad filename! Please try another:\n')
+                self._state = 'write_demos'
+
+        elif self._state == 'load_demos':
+            self._state = 'print_menu'
+            try:
+                self._ctrl.load_demos(choice)
+            except IOError:
+                print('File does not exist! Please try another:\n')
+                self._state = 'load_demos'
+
+
