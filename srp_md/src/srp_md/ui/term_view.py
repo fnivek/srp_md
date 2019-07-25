@@ -159,10 +159,10 @@ class TermView(view.BaseView):
                     self._logger.info('choosing action: %s', name)
                     self._state = 'print_menu'
                     if name == 'write_demos':
-                        print('Input filename:\n')
+                        print('Input filename (Type "exit" to go back):\n')
                         self._state = 'write_demos'
                     elif name == 'load_demos':
-                        print('Input filename:\n')
+                        print('Input filename (Type "exit" to go back):\n')
                         self._state = 'load_demos'
                     elif name == 'undo_demo':
                         self._ctrl.undo_demo()
@@ -173,18 +173,22 @@ class TermView(view.BaseView):
 
         elif self._state == 'write_demos':
             self._state = 'print_menu'
-            try:
-                self._ctrl.write_demos(choice)
-            except IOError:
-                print('Bad filename! Please try another:\n')
-                self._state = 'write_demos'
+            if choice == 'exit':
+                self._state = 'select_action'
+            else:
+                try:
+                    self._ctrl.write_demos(choice)
+                except IOError:
+                    print('Bad filename! Please try another (Type "exit" to go back):\n')
+                    self._state = 'write_demos'
 
         elif self._state == 'load_demos':
             self._state = 'print_menu'
-            try:
-                self._ctrl.load_demos(choice)
-            except IOError:
-                print('File does not exist! Please try another:\n')
-                self._state = 'load_demos'
-
-
+            if choice == 'exit':
+                self._state = 'select_action'
+            else:
+                try:
+                    self._ctrl.load_demos(choice)
+                except IOError:
+                    print('File does not exist! Please try another (Type "exit" to go back):\n')
+                    self._state = 'load_demos'
