@@ -130,7 +130,7 @@ class TermView(view.BaseView):
             elif choice == '5':
                 self._state = 'select_action'
             else:
-                print('Invalid choice')
+                print('Invalid choice\n')
 
         elif self._state == 'wait_for_learner':
             choice = int(choice)
@@ -148,27 +148,28 @@ class TermView(view.BaseView):
 
         elif self._state == 'wait_for_action':
             choice = int(choice)
-            # Go back to main menu if input is 0
             if not choice:
                 self._state = 'print_menu'
-
-            # Otherwise, do commanded action
             else:
-                name = self._model._actions[int(choice)]
-                self._logger.info('choosing action: %s', name)
-                self._state = 'print_menu'
-                if name == 'write_demos':
-                    print('Input filename:\n')
-                    self._state = 'write_demos'
-                elif name == 'load_demos':
-                    print('Input filename:\n')
-                    self._state = 'load_demos'
-                elif name == 'undo_demo':
-                    self._ctrl.undo_demo()
-                elif name == 'redo_demo':
-                    self._ctrl.redo_demo()
-                elif name == 'clear_demos':
-                    self._ctrl.clear_demos()
+                if int(choice) not in self._model._actions.keys():
+                    print('Invalid choice\n')
+                    self._state = 'select_action'
+                else:
+                    name = self._model._actions[int(choice)]
+                    self._logger.info('choosing action: %s', name)
+                    self._state = 'print_menu'
+                    if name == 'write_demos':
+                        print('Input filename:\n')
+                        self._state = 'write_demos'
+                    elif name == 'load_demos':
+                        print('Input filename:\n')
+                        self._state = 'load_demos'
+                    elif name == 'undo_demo':
+                        self._ctrl.undo_demo()
+                    elif name == 'redo_demo':
+                        self._ctrl.redo_demo()
+                    elif name == 'clear_demos':
+                        self._ctrl.clear_demos()
 
         elif self._state == 'write_demos':
             self._state = 'print_menu'
