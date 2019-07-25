@@ -22,12 +22,14 @@ class TermView(view.BaseView):
         super(TermView, self).__init__(model, ctrl)
         self._logger = logging.getLogger(__name__)
         self._state = 'print_menu'
-        self._main_menu = (
-            'Semantic Robot Programing with Multiple Demonstrations\n\n'
+        self._title = 'Semantic Robot Programing with Multiple Demonstrations\n\n'
+        self._current_state = (
             'Current State:\n'
             '  Learner: {}\n'
             '  Sensor: {}\n'
             '  Number of demos: {}\n\n'
+        )
+        self._main_menu = (
             'Menu:\n'
             '  0. Exit\n'
             '  1. Select learner\n'
@@ -37,10 +39,21 @@ class TermView(view.BaseView):
             '  5. Actions\n\n'
             'Input:\n'
         )
+        self._action_menu = (
+            'Actions:\n'
+            '  0. Go back\n'
+            '  1. Write demos\n'
+            '  2. Load demos\n'
+            '  3. Undo demo\n'
+            '  4. Redo demo\n'
+            '  5. Clear demo\n\n'
+            'Input:\n'
+        )
         self._learners = {n: s for n, s in enumerate(learn.learners.keys())}
         self._sensors = {n: s for n, s in enumerate(sense.sensors.keys())}
         self._filename = './demos/test.txt'
         self.running = True
+        print(self._title)
 
     def update_from_model(self):
         self._srp_state = [self._model.get_learner(),
@@ -61,25 +74,27 @@ class TermView(view.BaseView):
 
     def print_menu(self):
         if self._state == 'print_menu':
-            print(self._main_menu.format(*self._srp_state))
+            print(self._current_state.format(*self._srp_state))
+            print(self._main_menu)
             self._state = 'wait_for_input'
 
         elif self._state == 'select_learner':
+            print(self._current_state.format(*self._srp_state))
             print('options:')
             for learner in self._learners:
                 print('\t{}\t{}'.format(learner, self._learners[learner]))
             self._state = 'wait_for_learner'
 
         elif self._state == 'select_sensor':
+            print(self._current_state.format(*self._srp_state))
             print('options:')
             for sensor in self._sensors:
                 print('\t{}\t{}'.format(sensor, self._sensors[sensor]))
             self._state = 'wait_for_sensor'
 
         elif self._state == 'select_action':
-            print('options:')
-            for action in self._model._actions:
-                print('\t{}\t{}'.format(action, self._model._actions[action]))
+            print(self._current_state.format(*self._srp_state))
+            print(self._action_menu)
             self._state = 'wait_for_action'
 
     def handle_input(self):
@@ -133,16 +148,22 @@ class TermView(view.BaseView):
 
         elif self._state == 'wait_for_action':
             choice = int(choice)
-            name = self._model._actions[int(choice)]
-            self._logger.info('choosing action: %s', name)
-            if name == 'write_demos':
-                self._ctrl.write_demos(self._filename)
-            elif name == 'load_demos':
-                self._ctrl.load_demos(self._filename)
-            elif name == 'undo_demo':
-                self._ctrl.undo_demo()
-            elif name == 'redo_demo':
-                self._ctrl.redo_demo()
-            elif name == 'clear_demos':
-                self._ctrl.clear_demos()
-            self._state = 'print_menu'
+            # Go back to main menu if input is 0
+            if not choice:
+                self._state = 'print_menu'
+
+            # Otherwise, do commanded action
+            else:
+                name = self._model._actions[int(choice)]
+                self._logger.info('choosing action: %s', name)
+                if name == 'write_demos':
+                    self._ctrl.write_demos(self._filename)
+                elif name == 'load_demos':
+                    self._ctrl.load_demos(self._filename)
+                elif name == 'undo_demo':
+                    self._ctrl.undo_demo()
+                elif name == 'redo_demo':
+                    self._ctrl.redo_demo()
+                elif name == 'clear_demos':
+                    self._ctrl.clear_demos()
+                self._state = 'print_menu'

@@ -33,8 +33,8 @@ class SrpMd(object):
         self._goal = None
         self._raw_data = None
         self._num_demos = 0
-        self._actions = {0: 'write_demos', 1: 'load_demos', 2: 'undo_demo',
-                         3: 'redo_demo', 4: 'clear_demos'}
+        self._actions = {1: 'write_demos', 2: 'load_demos', 3: 'undo_demo',
+                         4: 'redo_demo', 5: 'clear_demos'}
         self._undoed = []
 
         # Set the default srp_md strategies
