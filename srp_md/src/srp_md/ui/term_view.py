@@ -35,7 +35,7 @@ class TermView(view.BaseView):
             '  1. Select learner\n'
             '  2. Select sensor\n'
             '  3. Learn\n'
-            '  4. Take demo\n'
+            '  4. Capture demo\n'
             '  5. Actions\n\n'
             'Input:\n'
         )
