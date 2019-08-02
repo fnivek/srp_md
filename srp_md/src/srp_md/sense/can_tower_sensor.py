@@ -6,6 +6,7 @@ import srp_md
 
 import logging
 from random import choice, shuffle, randint
+import itertools
 
 
 class CanTowerSensor(sense.BaseSensor):
@@ -17,13 +18,24 @@ class CanTowerSensor(sense.BaseSensor):
     cans.
 
     """
-    def __init__(self, num_cans=5, goal_height=3, num_locations=3, num_distractor_objs=5):
+    def __init__(self, num_cans=2, goal_height=2, num_locations=2, num_distractor_objs=0):
         super(CanTowerSensor, self).__init__()
         self._logger = logging.getLogger(__name__)
         self._goal_height = goal_height
         self._cans = ['c' + str(x) for x in range(num_cans)]
         self._locs = ['l' + str(x) for x in range(num_locations)]
         self._distractor_objs = ['d' + str(x) for x in range(num_distractor_objs)]
+
+        # Build the full space of predicates
+        self._predicates = [
+            'ON({}, {})'.format(x, y)
+            for x, y in itertools.permutations(self._cans + self._locs + self._distractor_objs, 2)
+            if x not in self._locs
+        ]
+        self._logger.debug('Predicate space is \n\t%s', str(self._predicates))
+
+    def preds_to_bin_vec(self, preds):
+        return [True if pred in preds else False for pred in self._predicates]
 
     def process_data(self, data):
         to_place = []
@@ -68,7 +80,7 @@ class CanTowerSensor(sense.BaseSensor):
                     tower_height[loc] = 0
 
         self._logger.debug('%s example with predicates %s', str(positive), str(predicates))
-        return [predicates, positive]
+        return [self.preds_to_bin_vec(predicates), positive]
 
 
 sense.sensors['can_tower_sensor'] = CanTowerSensor
