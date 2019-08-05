@@ -22,12 +22,9 @@ def parse_args():
     Parse input arguments
     """
     parser = argparse.ArgumentParser(description='Run SRPMD Program')
-    parser.add_argument('--gui', dest='gui', help='Specify GUI to use',
+    parser.add_argument('--gui', dest='gui', help='Specify GUI to use [pyqt | term]',
                         default='pyqt', type=str)
 
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
     args = parser.parse_args()
     return args
 
@@ -47,7 +44,7 @@ def main():
     view = ui.TermView(srp, ctrl)
 
     # Run
-    if args.gui == 'terminal':
+    if args.gui == 'term':
         r = rospy.Rate(100)
         while not rospy.is_shutdown() and view.running:
             view.run_once()
