@@ -32,8 +32,8 @@ class SrpMd(object):
         self._obs = []
         self._goal = None
         self._raw_data = None
-        self._actions = {1: 'write_demos', 2: 'load_demos', 3: 'undo_demo',
-                         4: 'redo_demo', 5: 'clear_demos'}
+        self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
+                         4: 'Redo demo', 5: 'Clear demos'}
         self._undoed = []
 
         # Set the default srp_md strategies
@@ -92,11 +92,11 @@ class SrpMd(object):
     Functions to execute actions.
 
     """
-    def write_demos(self, filename):
+    def write_demos(self, filename="./demos/test.txt"):
         pickle.dump(self._obs, open(filename, 'wb'))
         print('Success in writing demos to file {}\n'.format(filename))
 
-    def load_demos(self, filename):
+    def load_demos(self, filename="./demos/test.txt"):
         self._obs = pickle.load(open(filename, 'rb'))
         print('Success in loading demos from file {}\n'.format(filename))
 

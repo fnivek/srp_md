@@ -158,17 +158,17 @@ class TermView(view.BaseView):
                     name = self._model._actions[int(choice)]
                     self._logger.info('choosing action: %s', name)
                     self._state = 'print_menu'
-                    if name == 'write_demos':
+                    if name == 'Wrtie demos':
                         print('Input filename (Type "exit" to go back):\n')
                         self._state = 'write_demos'
-                    elif name == 'load_demos':
+                    elif name == 'Load demos':
                         print('Input filename (Type "exit" to go back):\n')
                         self._state = 'load_demos'
-                    elif name == 'undo_demo':
+                    elif name == 'Undo demo':
                         self._ctrl.undo_demo()
-                    elif name == 'redo_demo':
+                    elif name == 'Redo demo':
                         self._ctrl.redo_demo()
-                    elif name == 'clear_demos':
+                    elif name == 'Clear demos':
                         self._ctrl.clear_demos()
 
         elif self._state == 'write_demos':

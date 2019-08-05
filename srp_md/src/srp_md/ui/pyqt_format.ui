@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1556</width>
+    <height>976</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="tabShape">
+   <enum>QTabWidget::Rounded</enum>
+  </property>
+  <widget class="QWidget" name="mainWidget">
+   <layout class="QGridLayout" name="mainLayout" rowstretch="0,0" columnstretch="1,1">
+    <item row="0" column="1">
+     <widget class="QFrame" name="actionsFrame">
+      <property name="frameShape">
+       <enum>QFrame::Box</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>2</number>
+      </property>
+      <layout class="QGridLayout" name="actionsLayout">
+       <item row="0" column="0">
+        <widget class="QPushButton" name="get_demo">
+         <property name="text">
+          <string>Get demo</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="undo_demo">
+         <property name="text">
+          <string>Undo demo</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QPushButton" name="write_demos">
+         <property name="text">
+          <string>Write demos</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QPushButton" name="redo_demo">
+         <property name="text">
+          <string>Redo demo</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="load_demos">
+         <property name="text">
+          <string>Load demos</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="clear_demos">
+         <property name="text">
+          <string>Clear demos</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QFrame" name="slFrame">
+      <property name="frameShape">
+       <enum>QFrame::Box</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>2</number>
+      </property>
+      <layout class="QVBoxLayout" name="slLayout">
+       <item>
+        <widget class="QLabel" name="sensorLabel">
+         <property name="text">
+          <string>Sensor</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="sensorComboBox"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="learnerLabel">
+         <property name="text">
+          <string>Learner</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="learnerComboBox"/>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="learnLayout" stretch="1,2,1">
+         <item>
+          <spacer name="space_1">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>30</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="learnButton">
+           <property name="text">
+            <string>Learn!</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="space_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>30</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="2">
+     <layout class="QVBoxLayout" name="loggerLayout" stretch="0,0">
+      <item>
+       <widget class="QLabel" name="loggerLabel">
+        <property name="text">
+         <string>Logger</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTextEdit" name="loggerText">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1556</width>
+     <height>39</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuGoes">
+    <property name="title">
+     <string>Menu</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuHere">
+    <property name="title">
+     <string>Goes</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuHere_2">
+    <property name="title">
+     <string>Here</string>
+    </property>
+   </widget>
+   <addaction name="menuGoes"/>
+   <addaction name="menuHere"/>
+   <addaction name="menuHere_2"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

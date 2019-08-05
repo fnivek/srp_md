@@ -9,12 +9,33 @@ import rospy
 
 # Python imports
 import logging
+import argparse
+import sys
+from PyQt5.QtWidgets import QApplication
 
 # Get a logger
 loger = logging.getLogger('srp_md')
 
 
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Run SRPMD Program')
+    parser.add_argument('--gui', dest='gui', help='Specify GUI to use',
+                        default='pyqt', type=str)
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+    args = parser.parse_args()
+    return args
+
+
 def main():
+    # Get arguments
+    args = parse_args()
+
     # Setup ros
     rospy.init_node('srp_md')
 
@@ -26,10 +47,15 @@ def main():
     view = ui.TermView(srp, ctrl)
 
     # Run
-    r = rospy.Rate(100)
-    while not rospy.is_shutdown() and view.running:
-        view.run_once()
-        r.sleep()
+    if args.gui == 'terminal':
+        r = rospy.Rate(100)
+        while not rospy.is_shutdown() and view.running:
+            view.run_once()
+            r.sleep()
+    elif args.gui == 'pyqt':
+        app = QApplication([])
+        gui = ui.PyQtView(srp, ctrl)
+        app.exec_()
 
 
 if __name__ == '__main__':
