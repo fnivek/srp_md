@@ -30,31 +30,10 @@
        <number>2</number>
       </property>
       <layout class="QGridLayout" name="actionsLayout">
-       <item row="0" column="0">
-        <widget class="QPushButton" name="get_demo">
+       <item row="2" column="1">
+        <widget class="QPushButton" name="clear_demos">
          <property name="text">
-          <string>Get demo</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QPushButton" name="undo_demo">
-         <property name="text">
-          <string>Undo demo</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QPushButton" name="write_demos">
-         <property name="text">
-          <string>Write demos</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QPushButton" name="redo_demo">
-         <property name="text">
-          <string>Redo demo</string>
+          <string>Clear demos</string>
          </property>
         </widget>
        </item>
@@ -65,49 +44,28 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QPushButton" name="clear_demos">
+       <item row="0" column="0">
+        <widget class="QPushButton" name="get_demo">
          <property name="text">
-          <string>Clear demos</string>
+          <string>Get demo</string>
          </property>
         </widget>
        </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QFrame" name="slFrame">
-      <property name="frameShape">
-       <enum>QFrame::Box</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Plain</enum>
-      </property>
-      <property name="lineWidth">
-       <number>2</number>
-      </property>
-      <layout class="QVBoxLayout" name="slLayout">
-       <item>
-        <widget class="QLabel" name="sensorLabel">
+       <item row="1" column="1">
+        <widget class="QPushButton" name="redo_demo">
          <property name="text">
-          <string>Sensor</string>
+          <string>Redo demo</string>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QComboBox" name="sensorComboBox"/>
-       </item>
-       <item>
-        <widget class="QLabel" name="learnerLabel">
+       <item row="1" column="0">
+        <widget class="QPushButton" name="write_demos">
          <property name="text">
-          <string>Learner</string>
+          <string>Write demos</string>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QComboBox" name="learnerComboBox"/>
-       </item>
-       <item>
+       <item row="3" column="0" colspan="2">
         <layout class="QHBoxLayout" name="learnLayout" stretch="1,2,1">
          <item>
           <spacer name="space_1">
@@ -143,6 +101,88 @@
           </spacer>
          </item>
         </layout>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="undo_demo">
+         <property name="text">
+          <string>Undo demo</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QFrame" name="slFrame">
+      <property name="frameShape">
+       <enum>QFrame::Box</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>2</number>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="9" column="1">
+        <widget class="QComboBox" name="learnerComboBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="num_demos">
+         <property name="text">
+          <string>Number of Demos:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0">
+        <widget class="QLabel" name="learnerLabel">
+         <property name="text">
+          <string>Learner</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QComboBox" name="sensorComboBox"/>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="numLabel">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="sensorLabel">
+         <property name="text">
+          <string>Sensor</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="2">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>

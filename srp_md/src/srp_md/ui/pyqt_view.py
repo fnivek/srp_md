@@ -57,8 +57,8 @@ class PyQtView(view.BaseView):
 
         # Connect the buttons to actions
         self._gui.get_demo.pressed.connect(self._ctrl.generate_demo)
-        self._gui.write_demos.pressed.connect(self._ctrl.write_demos)
-        self._gui.load_demos.pressed.connect(self._ctrl.load_demos)
+        self._gui.write_demos.pressed.connect(self.write_demos)
+        self._gui.load_demos.pressed.connect(self.load_demos)
         self._gui.clear_demos.pressed.connect(self._ctrl.clear_demos)
         self._gui.undo_demo.pressed.connect(self._ctrl.undo_demo)
         self._gui.redo_demo.pressed.connect(self._ctrl.redo_demo)
@@ -89,11 +89,30 @@ class PyQtView(view.BaseView):
             log_message = '[{}:{}] [{}] {}'.format(record.module, record.lineno, record.levelname, message)
             self._gui.loggerText.append(log_message)
 
+        # Update number of demos viewed
+        self._gui.numLabel.setText('{}'.format(self._model.get_num_demos()))
+
     def update_sensor(self):
         self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
 
     def update_learner(self):
         self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
+
+    def write_demos(self):
+        demo_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
+                                                filter='Demos (*.demo);;All files (*.*)')
+        if demo_file[0] == '':
+            pass
+        else:
+            self._ctrl.write_demos(demo_file[0])
+
+    def load_demos(self):
+        demo_file = QFileDialog.getOpenFileName(self._gui, caption='Open File',
+                                                filter='Demos (*.demo);;All files (*.*)')
+        if demo_file[0] == '':
+            pass
+        else:
+            self._ctrl.load_demos(demo_file[0])
 
     def run_once(self):
         self.update_from_model()
