@@ -57,8 +57,11 @@ class SrpMd(object):
 
     def learn(self):
         self._logger.debug('Learning...')
-        self._goal = self._learner.learn(self._obs)
-        self._logger.debug('Learned: %s', self._goal)
+        if len(self._obs) == 0:
+            self._logger.warning('No demo to be learned from!')
+        else:
+            self._goal = self._learner.learn(self._obs)
+            self._logger.debug('Learned: %s', self._goal)
 
     """ Sensor.
 
