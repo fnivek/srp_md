@@ -5,9 +5,6 @@ import logging
 # SRP MD imports
 from . import learn
 
-# Other imports
-import pomegranate
-
 
 class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):

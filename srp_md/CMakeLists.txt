@@ -1,13 +1,24 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(srp_md)
 
+# CXX
+list(APPEND CMAKE_CXX_FLAGS
+  -std=c++11
+)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+list(APPEND CMAKE_MODULE_PATH
+  ${CMAKE_SOURCE_DIR}/cmake_modules
+)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
 )
+find_package(Graphviz REQUIRED)
+find_package(OpenCV REQUIRED)
 
 ## This macro ensures modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -32,12 +43,45 @@ catkin_package(
 ###########
 ## Build ##
 ###########
+# TODO(Kevin): Use a find_package or some other way to get these libraries
+set(DAI_INCLUDE_DIRS /home/user/catkin_ws/src/mobile_manipulation/libDAI/include)
+# Note order is important
+list(APPEND DAI_LIBRARIES
+  /home/user/catkin_ws/src/mobile_manipulation/libDAI/build/libscenegraph.a
+  /home/user/catkin_ws/src/mobile_manipulation/libDAI/lib/libdai.a
+)
+link_directories(/home/user/catkin_ws/src/mobile_manipulation/libDAI/lib)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${DAI_INCLUDE_DIRS}
+  ${GRAPHVIZ_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+)
+
+# Factor Graph Node
+add_executable(factor_graph_node
+  src/factor_graph_node.cpp
+  src/factor_graph_worker.cpp
+)
+# Note order should be if depends on another then must go higher in list
+target_link_libraries(factor_graph_node
+  ${catkin_LIBRARIES}
+  ${GRAPHVIZ_CDT_LIBRARY}
+  ${GRAPHVIZ_GVC_LIBRARY}
+  ${GRAPHVIZ_CGRAPH_LIBRARY}
+  ${GRAPHVIZ_PATHPLAN_LIBRARY}
+  ${OpenCV_LIBS}
+  ${DAI_LIBRARIES}
+  gmpxx
+  gmp
+)
+add_dependencies(factor_graph_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
 )
 
 #############
