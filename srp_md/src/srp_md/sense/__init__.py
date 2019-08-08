@@ -4,3 +4,4 @@ from .fake_sense import FakeSensor
 from .known_example import ExampleSensor
 from .can_tower_sensor import CanTowerSensor
 from .posecnn_sensor import PoseCNNSensor
+from .block_world_sensor import BlockWorldSensor
