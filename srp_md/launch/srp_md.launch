@@ -1,0 +1,3 @@
+<launch>
+  <node pkg = "srp_md" name="srp_md" type="srp_md_node"/>
+</launch>

@@ -24,7 +24,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Run SRPMD Program')
     parser.add_argument('--gui', dest='gui', help='Specify GUI to use [pyqt | term]',
                         default='pyqt', type=str)
-
     args = parser.parse_args()
     return args
 
@@ -57,6 +56,7 @@ def main():
 
 if __name__ == '__main__':
     loger.debug('System starting up... #BOLD')
+    sys.argv = rospy.myargv()
     try:
         main()
     finally:
