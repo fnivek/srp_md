@@ -97,28 +97,28 @@ class SrpMd(object):
     """
     def write_demos(self, filename="./demos/test.txt"):
         pickle.dump(self._obs, open(filename, 'wb'))
-        print('Success in writing demos to file {}\n'.format(filename))
+        self._logger.info('Success writing demos to file {}\n'.format(filename))
 
     def load_demos(self, filename="./demos/test.txt"):
         self._obs = pickle.load(open(filename, 'rb'))
-        print('Success in loading demos from file {}\n'.format(filename))
+        self._logger.info('Success loading demos from file {}\n'.format(filename))
 
     def undo_demo(self):
         if len(self._obs) == 0:
-            print('No demos to undo!\n')
+            self._logger.info('No demos to undo!\n')
         else:
             last_demo = self._obs.pop()
             self._undoed.append(last_demo)
-            print('Success in undoing last demo\n')
+            self._logger.info('Success undoing last demo\n')
 
     def redo_demo(self):
         if len(self._undoed) == 0:
-            print('No undoed demos to redo!\n')
+            self._logger.info('No undoed demos to redo!\n')
         else:
             last_demo = self._undoed.pop()
             self._obs.append(last_demo)
-            print('Success in redoing last demo\n')
+            self._logger.info('Success redoing last demo\n')
 
     def clear_demos(self):
         self._obs = []
-        print('Success in clearing demos\n')
+        self._logger.info('Success clearing demos\n')
