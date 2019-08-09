@@ -1,4 +1,4 @@
 <launch>
-  <node pkg="srp_md" name="srp_md" type="srp_md_node"/>
+  <node pkg="srp_md" name="srp_md" type="srp_md_node" output="screen"/>
   <node pkg="srp_md" name="factor_graph_node" type="factor_graph_node"/>
 </launch>
