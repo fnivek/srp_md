@@ -24,7 +24,7 @@ class FactorGraphLearner(learn.BaseLearner):
         learned together with a dual function to generate the dual factor.
 
         Input:
-          obs - a set of scene graphs in the form TODO(Kevin)
+          obs - list of srp_md.SceneGraph
 
         Returns:
           A dictionary of factor types to dictionaries of variable state to real [0, inf) i.e.:
@@ -34,75 +34,38 @@ class FactorGraphLearner(learn.BaseLearner):
         self._logger.debug('Learn')
 
         for example in obs:
-            self.learn_single_obs(example)
+            print(self.learn_single_obs(example))
 
         return None
 
-    def learn_single_obs(self, obs):
+    def learn_single_obs(self, graph):
         # Determine which factors exist in observation by counting number of objects
-        factors = []
-        num_objs = 3  # TODO(Kevin)
-        num_relations = int(srp_md.ncr(num_objs, 2))
-        # No objects therfor no factors to learn
-        if num_objs == 0:
-            return
-        factor_gen = itertools.product(range(num_objs + 1), range(num_relations + 1))
-        next(factor_gen)  # Remove (0, 0) becuase there is no such factor
-        for x, y in factor_gen:
-            factors.append(Factor(x, y))
-
-        # Increment seen assignments
         # TODO(Kevin): When objects or relations has duplicate objects they are counted as different objects. I need to
         #              think about the assignment of the variable vs the number of variables
-        objs = ['a', 'b', 'c']  # TODO(Kevin): Get actuall objects
-        relations = ['r{}'.format(i) for i in range(num_relations)]  # TODO(Kevin): Get actuall relations
-        obj_combos = {i: list(itertools.combinations(objs, i)) for i in range(1, num_objs + 1)}
-        obj_combos[0] = []
-        relation_combos = {i: list(itertools.combinations(relations, i)) for i in range(1, num_relations + 1)}
-        relation_combos[0] = []
-        for factor in factors:
-            # Get all possible combinations of objects and relations from observations and increment that dictionary key
-            keys = None
-            if factor.num_objs == 0:
-                keys = relation_combos[factor.num_relations]
-            elif factor.num_relations == 0:
-                keys = obj_combos[factor.num_objs]
+        factor_gens = {}
+        for i, factor in enumerate(graph.gen_all_possible_factors()):
+            # Produce the map index for the factor generator
+            var_names = tuple([var.name for var in factor.vars])
+            factor_index = tuple([var.value for var in factor.vars])
+            # Find the appropriate factor to udpate
+            num_relations = 0
+            for i in [1 for name in var_names if name.startswith('R_')]:
+                num_relations += 1
+            num_objs = len(factor_index) - num_relations
+            gen_index = (num_objs, num_relations)
+            gen = {}
+            if gen_index in factor_gens:
+                gen = factor_gens[gen_index]
             else:
-                keys = []
-                prod = itertools.product(obj_combos[factor.num_objs], relation_combos[factor.num_relations])
-                for elem in prod:
-                    keys.append(elem[0] + elem[1])
-            for key in keys:
-                print(key)
-                if key in factor.map:
-                    factor.map[key] += 1
-                else:
-                    factor.map[key] = 1
-            print(factor)
+                factor_gens[gen_index] = gen
 
-        return factors
+            # Increment seen assignments
+            if factor_index in gen:
+                gen[factor_index] += 1
+            else:
+                gen[factor_index] = 1
 
-
-class Factor:
-    def __init__(self, num_objs, num_relations):
-        self.num_objs = num_objs
-        self.num_relations = num_relations
-        self.map = {}
-
-    def __str__(self):
-        return '({}, {})\n{}'.format(self.num_objs, self.num_relations, self.map)
-
-
-class Var:
-    pass
-
-
-class Object:
-    pass
-
-
-class Relation:
-    pass
+        return factor_gens
 
 
 # Register the learner
