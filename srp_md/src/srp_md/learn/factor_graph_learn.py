@@ -33,17 +33,27 @@ class FactorGraphLearner(learn.BaseLearner):
         """
         self._logger.debug('Learn')
 
+        factor_gen = {}
         for example in obs:
-            print(self.learn_single_obs(example))
+            obs_factor_gens = self.learn_single_obs(example)
+            for factor_key in obs_factor_gens:
+                if factor_key in factor_gen:
+                    for value_key in obs_factor_gens[factor_key]:
+                        if value_key in factor_gen[factor_key]:
+                            factor_gen[factor_key][value_key] += obs_factor_gens[factor_key][value_key]
+                        else:
+                            factor_gen[factor_key][value_key] = obs_factor_gens[factor_key][value_key]
+                else:
+                    factor_gen[factor_key] = obs_factor_gens[factor_key]
 
-        return None
+        return factor_gen
 
     def learn_single_obs(self, graph):
         # Determine which factors exist in observation by counting number of objects
         # TODO(Kevin): When objects or relations has duplicate objects they are counted as different objects. I need to
         #              think about the assignment of the variable vs the number of variables
         factor_gens = {}
-        for i, factor in enumerate(graph.gen_all_possible_factors()):
+        for factor in graph.gen_all_possible_factors():
             # Produce the map index for the factor generator
             var_names = tuple([var.name for var in factor.vars])
             factor_index = tuple([var.value for var in factor.vars])
