@@ -27,8 +27,16 @@ This is a repo for semantic robot programing with multiple goal demonstrations.
 ## Install
 TODO (maybe never)
 
+## Dependencies
+* libDAI
+  * libgmp-dev
+  * cimg-dev
+* PyQt5
+* Python3
+* ROS Melodic
+
 ## How to Run
-TODO
+`roslaunch srp_md srp_md.launch`
 
 ## Software Design
 Design principles:
