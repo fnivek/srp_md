@@ -68,6 +68,7 @@ class PyQtView(view.BaseView):
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.learnerComboBox.currentIndexChanged.connect(self.update_learner)
         self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
+        self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
 
         # Display the GUI
         self._gui.show()
