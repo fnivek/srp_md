@@ -56,7 +56,7 @@ class FactorGraphLearner(learn.BaseLearner):
         for factor in graph.gen_all_possible_factors():
             # Produce the map index for the factor generator
             var_names = tuple([var.name for var in factor.vars])
-            factor_index = tuple([var.value for var in factor.vars])
+            factor_index = tuple(sorted([var.value for var in factor.vars]))
             # Find the appropriate factor to udpate
             num_relations = 0
             for i in [1 for name in var_names if name.startswith('R_')]:

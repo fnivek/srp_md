@@ -7,7 +7,7 @@ This is a repo for semantic robot programing with multiple goal demonstrations.
   - [ ] Send back scene graph representation
 - [ ] Use libDAI to perform inference on an observation
 - [ ] Learn factors from block world sensor (factor_graph_learn.py)
-  - [ ] Frequentist
+  - [x] Frequentist
   - [ ] Research other methods (Scikit learn good starting point)
 - [x] Produce logically consistent scenes in block world sensor
 - [ ] Make a PoseCNN sensor (or switch to a different object detector)
