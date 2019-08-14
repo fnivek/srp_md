@@ -9,7 +9,7 @@ This is a repo for semantic robot programing with multiple goal demonstrations.
 - [ ] Learn factors from block world sensor (factor_graph_learn.py)
   - [ ] Frequentist
   - [ ] Research other methods (Scikit learn good starting point)
-- [ ] Produce logically consistent scenes in block world sensor
+- [x] Produce logically consistent scenes in block world sensor
 - [ ] Make a PoseCNN sensor (or switch to a different object detector)
 - [ ] Convert a goal and initial scene to a plan
 - [ ] Use mobile manipulation to execute the plan

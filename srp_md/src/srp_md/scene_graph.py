@@ -25,6 +25,9 @@ class SceneGraph(srp_md.FactorGraph):
     def get_obj_names(self):
         return [obj.name for obj in self.objs]
 
+    def get_obj_values(self):
+        return [obj.value for obj in self.objs]
+
     def get_rel_names(self):
         return [rel.name for rel in self.relations]
 

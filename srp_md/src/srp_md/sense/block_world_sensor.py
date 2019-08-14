@@ -16,17 +16,22 @@ class BlockWorldSensor(sense.BaseSensor):
         self._objs = ["A", "B", "C"]
 
     def process_data(self, data):
+        consistent = False
+
         # Randomly choose objects from object list
         num_objs = random.randint(1, len(self._objs))
         objs = [srp_md.Var(name='X_{}'.format(i + 1), value=v) for i, v in
                 enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
-        # Generate the scene graph
+        # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)
-        for relation in scene_graph.relations:
-            relation.value = random.choice(srp_md.SceneGraph.RELATIONS)
-        consistent = scene_graph.check_consistency()
-        self._logger.info('What are objects? %s', scene_graph.get_obj_names())
+        while not consistent:
+            for relation in scene_graph.relations:
+                relation.value = random.choice(srp_md.SceneGraph.RELATIONS)
+            consistent = scene_graph.check_consistency()
+
+        self._logger.info('What are object names? %s', scene_graph.get_obj_names())
+        self._logger.info('What are object values? %s', scene_graph.get_obj_values())
         self._logger.info('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.info('What are relation values? %s', scene_graph.get_rel_values())
         self._logger.info('Is this scene graph consistent? %s', consistent)
