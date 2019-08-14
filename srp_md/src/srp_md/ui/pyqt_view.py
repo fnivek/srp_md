@@ -8,6 +8,7 @@ from __future__ import absolute_import
 from . import view
 from srp_md import learn
 from srp_md import sense
+from srp_md import goal
 
 # Python imports
 import os
@@ -50,6 +51,7 @@ class PyQtView(view.BaseView):
         self._gui.setWindowTitle("Semantic Robot Programing with Multiple Demonstrations")
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
         self._gui.learnerComboBox.addItems(list(learn.learners.keys()))
+        self._gui.goalGeneratorComboBox.addItems(list(goal.goal_generators.keys()))
 
         # Set initial values for comboboxes
         self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
@@ -65,6 +67,7 @@ class PyQtView(view.BaseView):
         self._gui.learnButton.pressed.connect(self._ctrl.learn)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.learnerComboBox.currentIndexChanged.connect(self.update_learner)
+        self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
 
         # Display the GUI
         self._gui.show()
@@ -97,6 +100,9 @@ class PyQtView(view.BaseView):
 
     def update_learner(self):
         self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
+
+    def update_goal_generator(self):
+        self._ctrl.set_goal_generator(self._gui.learnerComboBox.currentText())
 
     def write_demos(self):
         demo_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1556</width>
-    <height>976</height>
+    <width>613</width>
+    <height>488</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -124,16 +124,6 @@
        <number>2</number>
       </property>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="9" column="1">
-        <widget class="QComboBox" name="learnerComboBox"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="num_demos">
-         <property name="text">
-          <string>Number of Demos:</string>
-         </property>
-        </widget>
-       </item>
        <item row="9" column="0">
         <widget class="QLabel" name="learnerLabel">
          <property name="text">
@@ -141,25 +131,11 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
-        <widget class="QComboBox" name="sensorComboBox"/>
+       <item row="9" column="1">
+        <widget class="QComboBox" name="learnerComboBox"/>
        </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="numLabel">
-         <property name="text">
-          <string>0</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="sensorLabel">
-         <property name="text">
-          <string>Sensor</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0" colspan="2">
-        <spacer name="horizontalSpacer">
+       <item row="10" column="0" colspan="2">
+        <spacer name="horizontalSpacer_3">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
@@ -183,6 +159,53 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="sensorLabel">
+         <property name="text">
+          <string>Sensor</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QComboBox" name="sensorComboBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="num_demos">
+         <property name="text">
+          <string>Number of Demos:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="2">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="numLabel">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="0">
+        <widget class="QLabel" name="goalGeneratorLabel">
+         <property name="text">
+          <string>Goal Generator</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="1">
+        <widget class="QComboBox" name="goalGeneratorComboBox"/>
        </item>
       </layout>
      </widget>
@@ -212,8 +235,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1556</width>
-     <height>39</height>
+     <width>613</width>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuGoes">

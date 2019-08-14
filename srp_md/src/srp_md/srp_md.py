@@ -9,6 +9,7 @@ from builtins import str
 from builtins import object
 from . import learn
 from . import sense
+from . import goal
 
 # Python imports
 import logging as log
@@ -24,7 +25,7 @@ class SrpMd(object):
 
     """
     # TODO(Kevin): Set defaults when they exist
-    def __init__(self, learner='fake_learner', sensor='fake_sensor'):
+    def __init__(self, learner='fake_learner', sensor='fake_sensor', goal_generator='fake_goal_generator'):
         # Logging
         self._logger = log.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class SrpMd(object):
         # Set the default srp_md strategies
         self.set_learner(learner)
         self.set_sensor(sensor)
+        self.set_goal_generator(goal_generator)
 
     def get_num_demos(self):
         return len(self._obs)
@@ -89,6 +91,18 @@ class SrpMd(object):
     def process_data(self):
         self._logger.debug('Processing: ' + str(self._raw_data))
         self._obs.append(self._sensor.process_data(self._raw_data))
+
+    """ Goal Generator.
+
+    Functions to interact with the goal generator.
+
+    """
+    def get_goal_generator(self):
+        return self._goal_generator_name
+
+    def set_goal_generator(self, goal_generator):
+        self._goal_generator_name = goal_generator
+        self._goal_generator = goal.goal_generators[goal_generator]()
 
     """ Actions.
 

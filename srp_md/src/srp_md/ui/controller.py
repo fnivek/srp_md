@@ -23,6 +23,9 @@ class Controller(object):
         self._model.accept_data([])
         self._model.process_data()
 
+    def set_goal_generator(self, goal_generator):
+        self._model.set_goal_generator(goal_generator)
+
     # TODO(Kevin): I think this doesn't belong here
     def accept_data(self):
         self._model.accept_data([])
