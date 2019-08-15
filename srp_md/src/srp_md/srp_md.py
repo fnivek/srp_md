@@ -109,7 +109,10 @@ class SrpMd(object):
         self._goal_generator = goal.goal_generators[goal_generator]()
 
     def generate_goal(self):
-        self._goal_generator.generate_goal()
+        if self.get_learner() == 'factor_graph_learner':
+            self._goal_generator.generate_goal(self._factors)
+        else:
+            self._goal_generator.generate_goal()
 
     """ Actions.
 

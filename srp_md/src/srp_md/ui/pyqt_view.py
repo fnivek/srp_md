@@ -103,7 +103,7 @@ class PyQtView(view.BaseView):
         self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
 
     def update_goal_generator(self):
-        self._ctrl.set_goal_generator(self._gui.learnerComboBox.currentText())
+        self._ctrl.set_goal_generator(self._gui.goalGeneratorComboBox.currentText())
 
     def write_demos(self):
         demo_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
