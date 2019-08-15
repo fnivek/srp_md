@@ -36,6 +36,7 @@ class SrpMd(object):
         self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
                          4: 'Redo demo', 5: 'Clear demos'}
         self._undoed = []
+        self._factors = None
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -61,6 +62,9 @@ class SrpMd(object):
         self._logger.debug('Learning...')
         if len(self._obs) == 0:
             self._logger.warning('No demo to be learned from!')
+        elif self.get_learner() == 'factor_graph_learner':
+            self._factors = self._learner.learn(self._obs)
+            self._logger.debug('Factors learned: %s', self._factors)
         else:
             self._goal = self._learner.learn(self._obs)
             self._logger.debug('Learned: %s', self._goal)
