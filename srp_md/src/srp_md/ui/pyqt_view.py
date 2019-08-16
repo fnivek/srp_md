@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """ PyQt5 Viewer
 """
 from __future__ import print_function
@@ -8,17 +6,17 @@ from __future__ import absolute_import
 from . import view
 from srp_md import learn
 from srp_md import sense
-from srp_md import goal
+import srp_md.goal
 
 # Python imports
 import os
 import logging
-from logging.handlers import QueueHandler
-import queue
+# from logging.handlers import QueueHandler
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.uic import *
+from StringIO import StringIO
 
 
 class PyQtView(view.BaseView):
@@ -28,10 +26,10 @@ class PyQtView(view.BaseView):
         self._logger = logging.getLogger(__name__)
 
         self._global_logger = logging.getLogger("srp_md")
-        self.queue = queue.Queue(-1)
-        queue_handler = QueueHandler(self.queue)
-        queue_handler.setLevel(logging.DEBUG)
-        self._global_logger.addHandler(queue_handler)
+        self._stream = StringIO()
+        self._qt_handler = logging.StreamHandler(self._stream)
+        self._qt_handler.setLevel(logging.DEBUG)
+        self._global_logger.addHandler(self._qt_handler)
 
         # Initialize the GUI
         self.ImportGUI()
@@ -51,7 +49,7 @@ class PyQtView(view.BaseView):
         self._gui.setWindowTitle("Semantic Robot Programing with Multiple Demonstrations")
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
         self._gui.learnerComboBox.addItems(list(learn.learners.keys()))
-        self._gui.goalGeneratorComboBox.addItems(list(goal.goal_generators.keys()))
+        self._gui.goalGeneratorComboBox.addItems(list(srp_md.goal.goal_generators.keys()))
 
         # Set initial values for comboboxes
         self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
@@ -83,17 +81,11 @@ class PyQtView(view.BaseView):
                            self._model.get_sensor(),
                            self._model.get_num_demos()]
 
-        # Print to QTextEdit in GUI
-        while not self.queue.empty():
-            record = self.queue.get()
-            message = record.message
-            if '#' in record.message:
-                split_index = record.message.find('#')
-                message = record.message[:split_index]
-            log_message = '[{}:{}] [{}] {}'.format(record.module, record.lineno, record.levelname, message)
-            self._gui.loggerText.append(log_message)
-
-        # Update number of demos viewed
+        # # Print to QTextEdit in GUI
+        self._qt_handler.flush()
+        if self._stream.len != 0:
+            self._gui.loggerText.append(self._stream.getvalue())
+            self._stream.truncate(0)
         self._gui.numLabel.setText('{}'.format(self._model.get_num_demos()))
 
     def update_sensor(self):

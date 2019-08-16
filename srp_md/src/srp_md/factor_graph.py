@@ -2,7 +2,7 @@ from builtins import range
 import itertools
 
 
-class FactorGraph:
+class FactorGraph(object):
     def __init__(self, variables=None, factors=None):
         if variables is None:
             variables = list()

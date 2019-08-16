@@ -14,7 +14,7 @@ class BaseGoalGenerator(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def generate_goal(self):
+    def generate_goal(self, factors=None):
         """ Generate a goal.
 
         TODO(Kevin)

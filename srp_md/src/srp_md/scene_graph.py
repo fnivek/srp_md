@@ -1,9 +1,9 @@
-import srp_md
+from .factor_graph import FactorGraph, Var
 from builtins import str
 import itertools
 
 
-class SceneGraph(srp_md.FactorGraph):
+class SceneGraph(FactorGraph):
     # Class constants
     RELATIONS = ['disjoint', 'on', 'support', 'proximity']
 
@@ -139,6 +139,6 @@ class SceneGraph(srp_md.FactorGraph):
             # Make a new relationship var
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
-            var = srp_md.Var(name='R_{}_{}'.format(id_1, id_2))
+            var = Var(name='R_{}_{}'.format(id_1, id_2))
             self.relations.append(var)
             self._vars.append(var)

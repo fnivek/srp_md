@@ -8,7 +8,7 @@ class FakeGoalGenerator(goal_generator.BaseGoalGenerator):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
 
-    def generate_goal(self):
+    def generate_goal(self, factors=None):
         self._logger.debug('Generating goal')
         return None
 
