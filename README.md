@@ -32,7 +32,6 @@ TODO (maybe never)
   * libgmp-dev
   * cimg-dev
 * PyQt5
-* Python3
 * ROS Melodic
 
 ## How to Run
