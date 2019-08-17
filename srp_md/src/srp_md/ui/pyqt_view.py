@@ -29,6 +29,7 @@ class PyQtView(view.BaseView):
         self._stream = StringIO()
         self._qt_handler = logging.StreamHandler(self._stream)
         self._qt_handler.setLevel(logging.DEBUG)
+        self._qt_handler.setFormatter(HtmlFormat())
         self._global_logger.addHandler(self._qt_handler)
 
         # Initialize the GUI
@@ -81,11 +82,13 @@ class PyQtView(view.BaseView):
                            self._model.get_sensor(),
                            self._model.get_num_demos()]
 
-        # # Print to QTextEdit in GUI
+        # Print to QTextEdit in GUI
         self._qt_handler.flush()
         if self._stream.len != 0:
-            self._gui.loggerText.append(self._stream.getvalue())
+            new_text = self._stream.getvalue()
             self._stream.truncate(0)
+            for line in new_text.splitlines():
+                self._gui.loggerText.append(line)
         self._gui.numLabel.setText('{}'.format(self._model.get_num_demos()))
 
     def update_sensor(self):
@@ -120,3 +123,78 @@ class PyQtView(view.BaseView):
         self.timer = QTimer(self._gui)
         self.timer.timeout.connect(self.run_once)
         self.timer.start(100)
+
+
+class HtmlFormat(logging.Formatter):
+    def __init__(self, fmt='[%(module)s:%(lineno)d] [%(levelname)s] %(message)s'):
+        logging.Formatter.__init__(self, fmt)
+        bold_font = '<span style=\" font-weight:bold;\" >'
+        color_font = '<span style=\" color:#{};\" >'
+        plain_font = '<span>'
+        end = '</span>'
+        # TODO(Henry): Fill in more fonts and ensure it matches up to LOG_COLORS
+        self._log_colors = {
+            'RESET': end,
+            'BOLD': bold_font,
+            'DISABLE': plain_font,
+            'UNDERLINE': plain_font,
+            'REVERSE': plain_font,
+            'STRIKE': plain_font,
+            'INVISIBLE': plain_font,
+            'BLACK': plain_font,
+            'RED': color_font.format('f22e2e'),
+            'GREEN': color_font.format('32a852'),
+            'ORANGE': color_font.format('ff5a0d'),
+            'BLUE': color_font.format('0d25ff'),
+            'PURPLE': plain_font,
+            'CYAN': plain_font,
+            'LIGHTGREY': plain_font,
+            'DARKGREY': plain_font,
+            'LIGHTRED': plain_font,
+            'LIGHTGREEN': plain_font,
+            'YELLOW': plain_font,
+            'LIGHTBLUE': plain_font,
+            'PINK': plain_font,
+            'LIGHTCYAN': plain_font,
+            'BG_BLACK': plain_font,
+            'BG_RED': plain_font,
+            'BG_GREEN': plain_font,
+            'BG_ORANGE': plain_font,
+            'BG_BLUE': plain_font,
+            'BG_PURPLE': plain_font,
+            'BG_CYAN': plain_font,
+            'BG_LIGHTGREY': plain_font,
+        }
+
+    def format(self, record):
+        format_origin = self._fmt
+        # Get the index of message
+        msg_index = self._fmt.find('%(message)s')
+
+        # Change color of message if indicated
+        message = '%(message)s'
+        if '#' in record.message:
+            split_index = record.message.find('#')
+            str_format = '{:.' + str(split_index) + '}'
+            message = self._log_colors[record.message[split_index + 1:]] + \
+                str_format.format(record.message) + self._log_colors['RESET']
+        # Construct general message
+        self._fmt = self._fmt[:msg_index] + self._log_colors['RESET'] + message + '\r'
+
+        # Change the color of prefix message depending on their level
+        if record.levelno == logging.DEBUG:
+            self._fmt = self._log_colors['GREEN'] + self._fmt
+        elif record.levelno == logging.INFO:
+            self._fmt = self._log_colors['BLACK'] + self._fmt
+        elif record.levelno == logging.WARNING:
+            self._fmt = self._log_colors['YELLOW'] + self._fmt
+        elif record.levelno == logging.ERROR:
+            self._fmt = self._log_colors['ORANGE'] + self._fmt
+        elif record.levelno == logging.CRITICAL:
+            self._fmt = self._log_colors['RED'] + self._fmt
+
+        # Call the original formatter class to do the grunt work
+        result = logging.Formatter.format(self, record)
+        self._fmt = format_origin
+
+        return result
