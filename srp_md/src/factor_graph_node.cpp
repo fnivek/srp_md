@@ -12,6 +12,7 @@ int main(int argc, char** argv) {
 
     // Make a factor graph worker
     FactorGraphWorker worker;
+    worker.Setup();
 
     // Loop forever
     ros::Rate sleep_rate(10);

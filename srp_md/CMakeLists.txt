@@ -16,6 +16,8 @@ list(APPEND CMAKE_MODULE_PATH
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  std_msgs
+  message_generation
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -23,6 +25,18 @@ find_package(OpenCV REQUIRED)
 ## This macro ensures modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
+
+# Make services
+add_service_files(
+  FILES
+  GetGoal.srv
+)
+
+# Generate messages
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -36,7 +50,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES srp_md
-#  CATKIN_DEPENDS roscpp rospy
+  CATKIN_DEPENDS roscpp rospy message_runtime
 #  DEPENDS system_lib
 )
 

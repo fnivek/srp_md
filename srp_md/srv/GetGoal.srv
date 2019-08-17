@@ -1,0 +1,5 @@
+# Request
+std_msgs/String test
+---
+# Response
+std_msgs/String result

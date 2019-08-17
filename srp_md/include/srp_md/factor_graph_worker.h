@@ -7,12 +7,20 @@
 // DAI includes
 #include <dai/scenegraph.h>
 
+// Project includes
+#include "srp_md/GetGoal.h"
+
 class FactorGraphWorker {
   public:
     FactorGraphWorker();
+    void Setup();
+
+  private:
+    bool GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResponse & resp);
 
   private:
     dai::sceneGraph scene_graph_;
+    ros::ServiceServer goal_server_;
 };
 
 #endif
