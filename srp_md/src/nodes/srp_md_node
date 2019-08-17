@@ -11,10 +11,18 @@ import rospy
 import logging
 import argparse
 import sys
+import signal
+
+# Qt
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
 
 # Get a logger
 loger = logging.getLogger('srp_md')
+
+
+def sigint_handler(*args):
+    QApplication.quit()
 
 
 def parse_args():
@@ -49,8 +57,12 @@ def main():
             view.run_once()
             r.sleep()
     elif args.gui == 'pyqt':
+        signal.signal(signal.SIGINT, sigint_handler)
         app = QApplication([])
         gui = ui.PyQtView(srp, ctrl)
+        timer = QTimer()
+        timer.start(10)
+        timer.timeout.connect(lambda: None)
         app.exec_()
 
 
