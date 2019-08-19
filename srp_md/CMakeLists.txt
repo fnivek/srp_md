@@ -56,13 +56,13 @@ catkin_package(
 ## Build ##
 ###########
 # TODO(Kevin): Use a find_package or some other way to get these libraries
-set(DAI_INCLUDE_DIRS /home/user/catkin_ws/src/mobile_manipulation/libDAI/include)
+set(DAI_INCLUDE_DIRS /home/user/catkin_ws/src/mobile_manipulation/srp-md/submodules/libDAI/include)
 # Note order is important
 list(APPEND DAI_LIBRARIES
-  /home/user/catkin_ws/src/mobile_manipulation/libDAI/build/libscenegraph.a
-  /home/user/catkin_ws/src/mobile_manipulation/libDAI/lib/libdai.a
+  /home/user/catkin_ws/src/mobile_manipulation/srp-md/submodules/libDAI/build/libscenegraph.a
+  /home/user/catkin_ws/src/mobile_manipulation/srp-md/submodules/libDAI/lib/libdai.a
 )
-link_directories(/home/user/catkin_ws/src/mobile_manipulation/libDAI/lib)
+link_directories(/home/user/catkin_ws/src/mobile_manipulation/srp-md/submodules/libDAI/lib)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
