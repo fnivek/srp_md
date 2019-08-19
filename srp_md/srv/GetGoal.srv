@@ -1,7 +1,14 @@
 # Request
-std_msgs/String[] objects
+# An ordered list of object names
+string[] objects
+
+# An ordered list of classes of objects
+uint8 CLASS_PROP=0
+uint8 CLASS_CONTAINER=1
+uint8 CLASS_SUPPORTER=2
+uint8[] classes
 ---
 # Response
-std_msgs/String[] object1
-std_msgs/String[] object2
-std_msgs/String[] relation
+string[] object1
+string[] object2
+string[] relation

@@ -2,10 +2,10 @@
 from __future__ import absolute_import
 import logging
 import sys
+from random import choice
 
 # Ros
 import rospy
-from std_msgs.msg import String
 
 # Project
 from . import goal_generator
@@ -31,7 +31,11 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('Took factors %s', factors)
 
         req = GetGoalRequest()
-        req.objects = [String(name) for name in ['A', 'B', 'C']]
+        req.objects = ['A', 'B', 'C']
+        req.classes = [
+            choice([GetGoalRequest.CLASS_PROP, GetGoalRequest.CLASS_CONTAINER, GetGoalRequest.CLASS_SUPPORTER])
+            for _ in range(len(req.objects))
+        ]
         resp = None
 
         try:

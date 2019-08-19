@@ -3,7 +3,6 @@
 
 // ROS includes
 #include <ros/ros.h>
-#include <std_msgs/String.h>
 
 // DAI includes
 #include <dai/scenegraph.h>

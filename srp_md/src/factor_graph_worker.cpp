@@ -17,7 +17,22 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     objs.reserve(req.objects.size());
     for (size_t i = 0; i < req.objects.size(); ++i)
     {
-        objs.emplace_back(req.objects[i].data, dai::ObjectClass::Prop, i);
+        // Choose the correct class
+        dai::ObjectClass cls;
+        switch (req.classes[i])
+        {
+            case srp_md::GetGoalRequest::CLASS_CONTAINER:
+                cls = dai::ObjectClass::Container;
+                break;
+            case srp_md::GetGoalRequest::CLASS_SUPPORTER:
+                cls = dai::ObjectClass::Supporter;
+                break;
+            case srp_md::GetGoalRequest::CLASS_PROP:
+            default:
+                cls = dai::ObjectClass::Prop;
+                break;
+        }
+        objs.emplace_back(req.objects[i], cls, i);
     }
 
     // Build scene graph from objects
@@ -33,15 +48,9 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     {
         const dai::ObjectPair& pair = pairs[i];
 
-        std_msgs::String str;
-        str.data = pair.object1.name;
-        resp.object1.push_back(str);
-
-        str.data = pair.object2.name;
-        resp.object2.push_back(str);
-
-        str.data = scene_graph._relation_strs[map[i]];
-        resp.relation.push_back(str);
+        resp.object1.push_back(pair.object1.name);
+        resp.object2.push_back(pair.object2.name);
+        resp.relation.push_back(scene_graph._relation_strs[map[i]]);
     }
 
     return true;

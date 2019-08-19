@@ -16,7 +16,6 @@ list(APPEND CMAKE_MODULE_PATH
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  std_msgs
   message_generation
 )
 find_package(Graphviz REQUIRED)
@@ -35,7 +34,6 @@ add_service_files(
 # Generate messages
 generate_messages(
   DEPENDENCIES
-  std_msgs
 )
 
 ###################################
