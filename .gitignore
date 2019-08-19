@@ -255,3 +255,6 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+
+# Additional ignored files
+srp_md/src/srp_md/ui/pyqt_format.py

@@ -41,7 +41,11 @@ class SceneGraph(FactorGraph):
         else:
             return None
 
-    def check_consistency(self):
+    def check_consistency(self, world=None):
+        # If no world specified, just return True
+        if world is None:
+            return None
+
         # Initialize
         relations = list(self.relations)
 
@@ -52,14 +56,22 @@ class SceneGraph(FactorGraph):
 
             # Compare with other relations
             for rel_2 in relations:
-                # If not consistent with rel_2, then return False
-                if not self.is_consistent(rel_1, rel_2):
-                    return False
+                # Depending on the world, pick function
+                if world == "block":
+                    # If not consistent with rel_2, then return False
+                    if not self.block_consistent(rel_1, rel_2):
+                        return False
+                elif world == "pen":
+                    # If not consistent with rel_2, then return False
+                    if not self.pen_consistent(rel_1, rel_2):
+                        return False
+                else:
+                    return True
 
         # If all relations are consistent with each other, then return True
         return True
 
-    def is_consistent(self, rel_1, rel_2):
+    def block_consistent(self, rel_1, rel_2):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
@@ -114,6 +126,45 @@ class SceneGraph(FactorGraph):
             elif values[0] is None:
                 if values[1:] in [['on', 'on'],
                                   ['support', 'support']]:
+                    consistency = False
+
+        # If they have more than 1 common object id, then something is wrong
+        elif len(ids) <= 2:
+            raise IndexError('Something is wrong!')
+
+        return consistency
+
+    def pen_consistent(self, rel_1, rel_2):
+        consistency = True
+
+        # Get the object id's of rel_1 and rel_2
+        var_i = rel_1.name[rel_1.name.find('_', 1) + 1:rel_1.name.find('_', 2)]
+        var_j = rel_1.name[rel_1.name.find('_', 2) + 1:]
+        var_k = rel_2.name[rel_2.name.find('_', 1) + 1:rel_2.name.find('_', 2)]
+        var_l = rel_2.name[rel_2.name.find('_', 2) + 1:]
+
+        # Put the object ids into a set
+        ids = list(set([int(var_i), int(var_j), int(var_k), int(var_l)]))
+
+        # If rel_1 and rel_2 have common object id, do:
+        if len(ids) == 3:
+            # Make sure that rel_1 and rel_2 and rel_3 are in order: R_i_j, R_j_k, R_i_k, where i < j < k
+            ids.sort()
+
+            # Get existing relation values, and one or more doesn't exist yet, it is consistent except few cases
+            values = []
+            values.append(self.get_rel_value_from_name('R_' + str(ids[0]) + '_' + str(ids[1])))
+            values.append(self.get_rel_value_from_name('R_' + str(ids[1]) + '_' + str(ids[2])))
+            values.append(self.get_rel_value_from_name('R_' + str(ids[0]) + '_' + str(ids[2])))
+
+            # Do if statements for each cases
+            # Should work for now, try reducing the code later
+            if values[0] == 'left':
+                if values[1:] == ['left', 'right']:
+                    consistency = False
+
+            elif values[0] == 'right':
+                if values[1:] == ['right', 'left']:
                     consistency = False
 
         # If they have more than 1 common object id, then something is wrong

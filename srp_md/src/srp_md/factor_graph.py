@@ -39,10 +39,11 @@ class Factor:
 
 
 class Var:
-    def __init__(self, name, factors=[], value=None):
+    def __init__(self, name, factors=[], value=None, properties={}):
         self.name = name
         self.value = value
         self.factors = factors
+        self.properties = properties
 
     def connect_factor(self, factor):
         self.factors.append(factor)
