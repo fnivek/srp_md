@@ -1,5 +1,7 @@
 # Request
-std_msgs/String test
+std_msgs/String[] objects
 ---
 # Response
-std_msgs/String result
+std_msgs/String[] object1
+std_msgs/String[] object2
+std_msgs/String[] relation

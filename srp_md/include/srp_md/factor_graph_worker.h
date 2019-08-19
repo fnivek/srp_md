@@ -3,23 +3,27 @@
 
 // ROS includes
 #include <ros/ros.h>
+#include <std_msgs/String.h>
 
 // DAI includes
 #include <dai/scenegraph.h>
 
+// C++
+#include <vector>
+
 // Project includes
 #include "srp_md/GetGoal.h"
 
-class FactorGraphWorker {
+class FactorGraphWorker
+{
   public:
     FactorGraphWorker();
     void Setup();
 
   private:
-    bool GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResponse & resp);
+    bool GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResponse& resp);
 
   private:
-    dai::sceneGraph scene_graph_;
     ros::ServiceServer goal_server_;
 };
 

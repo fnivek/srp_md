@@ -5,6 +5,7 @@ import sys
 
 # Ros
 import rospy
+from std_msgs.msg import String
 
 # Project
 from . import goal_generator
@@ -30,7 +31,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('Took factors %s', factors)
 
         req = GetGoalRequest()
-        req.test.data = 'test'
+        req.objects = [String(name) for name in ['A', 'B', 'C']]
         resp = None
 
         try:
@@ -39,7 +40,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             self._logger.error('Failed when calling /get_goal service: {}'.format(e))
             return None
 
-        self._logger.debug('/get_goal response: {}'.format(resp))
+        self._logger.debug('/get_goal response:\n{}'.format(resp))
 
         return None
 
