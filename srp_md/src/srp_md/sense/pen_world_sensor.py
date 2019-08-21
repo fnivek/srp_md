@@ -13,7 +13,7 @@ class PenWorldSensor(sense.BaseSensor):
         self._logger = logging.getLogger(__name__)
 
         # Initialize basic info
-        self._objs = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"]
+        self._objs = ["A", "B", "C", "D", "E"]
         self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
                             "type": ["pen", "pencil"],
                             "material": ["plastic", "metal", "wood"],
@@ -30,9 +30,9 @@ class PenWorldSensor(sense.BaseSensor):
         consistent = False
 
         # Randomly choose objects from object list
-        num_objs = random.randint(1, 8)
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), value=v, properties=self._ass_prop[v]) for i, v in
-                enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+        num_objs = random.randint(1, len(self._objs))
+        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
+                for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)

@@ -13,10 +13,10 @@ class AbstractWorldSensor(sense.BaseSensor):
         self._logger = logging.getLogger(__name__)
 
         # Initialize basic info
-        self._objs = [str(i + 1) for i in range(14)]
+        self._objs = [str(i + 1) for i in range(7)]
         self._properties = {}
-        for i in range(random.randint(2, 7)):
-            self._properties[str(i + 1)] = [str(i + 1) for i in range(random.randint(2, 5))]
+        for i in range(random.randint(2, 4)):
+            self._properties[str(i + 1)] = [str(i + 1) for i in range(random.randint(1, 5))]
         self._RELATIONS = ["smaller", "equal", "bigger"]
 
         # Setup goal condition
@@ -31,9 +31,9 @@ class AbstractWorldSensor(sense.BaseSensor):
         consistent = False
 
         # Randomly choose objects from object list
-        num_objs = random.randint(1, 8)
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), value=v, properties=self._ass_prop[v]) for i, v in
-                enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+        num_objs = random.randint(1, len(self._objs))
+        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
+                for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)

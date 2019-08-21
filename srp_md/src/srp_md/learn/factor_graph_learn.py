@@ -35,7 +35,7 @@ class FactorGraphLearner(learn.BaseLearner):
 
         factor_gen = {}
         for example in obs:
-            obs_factor_gens = self.learn_single_obs(example)
+            obs_factor_gens = self.learn_some_factors(example)
             for factor_key in obs_factor_gens:
                 if factor_key in factor_gen:
                     for value_key in obs_factor_gens[factor_key]:
@@ -48,12 +48,40 @@ class FactorGraphLearner(learn.BaseLearner):
 
         return factor_gen
 
-    def learn_single_obs(self, graph):
+    def learn_all_factors(self, graph):
         # Determine which factors exist in observation by counting number of objects
         # TODO(Kevin): When objects or relations has duplicate objects they are counted as different objects. I need to
         #              think about the assignment of the variable vs the number of variables
         factor_gens = {}
         for factor in graph.gen_all_possible_factors():
+            # Produce the map index for the factor generator
+            var_names = tuple([var.name for var in factor.vars])
+            factor_index = tuple(sorted([var.value for var in factor.vars]))
+            # Find the appropriate factor to udpate
+            num_relations = 0
+            for i in [1 for name in var_names if name.startswith('R_')]:
+                num_relations += 1
+            num_objs = len(factor_index) - num_relations
+            gen_index = (num_objs, num_relations)
+            gen = {}
+            if gen_index in factor_gens:
+                gen = factor_gens[gen_index]
+            else:
+                factor_gens[gen_index] = gen
+
+            # Increment seen assignments
+            if factor_index in gen:
+                gen[factor_index] += 1
+            else:
+                gen[factor_index] = 1
+
+        return factor_gens
+
+    def learn_some_factors(self, graph):
+        factor_gens = {}
+        config_list = [(1, 0), (0, 1), (2, 0), (1, 1), (0, 2),
+                       (3, 0), (2, 1), (1, 2), (0, 3)]
+        for factor in graph.gen_input_factors(configs=config_list):
             # Produce the map index for the factor generator
             var_names = tuple([var.name for var in factor.vars])
             factor_index = tuple(sorted([var.value for var in factor.vars]))

@@ -33,8 +33,8 @@ class BookWorldSensor(sense.BaseSensor):
 
         # Randomly choose objects from object list
         num_objs = random.randint(1, 8)
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), value=v, properties=self._ass_prop[v]) for i, v in
-                enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
+                for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)

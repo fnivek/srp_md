@@ -244,6 +244,6 @@ class SceneGraph(FactorGraph):
             # Make a new relationship var
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
-            var = Var(name='R_{}_{}'.format(id_1, id_2))
+            var = Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
             self.relations.append(var)
             self._vars.append(var)

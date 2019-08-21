@@ -23,10 +23,22 @@ class FactorGraph(object):
     def add_var(self, var):
         self._vars.append(var)
 
+    def get_objects(self):
+        return [var for var in self._vars if var.type == "object"]
+
+    def get_relations(self):
+        return [var for var in self._vars if var.type == "relation"]
+
     def gen_all_possible_factors(self):
         for i in range(1, self.num_vars() + 1):
             for combo in itertools.combinations(self._vars, i):
                 yield Factor(variables=combo)
+
+    def gen_input_factors(self, configs=[]):
+        for config in configs:
+            for obj_combo in itertools.combinations(self.get_objects(), config[0]):
+                for rel_combo in itertools.combinations(self.get_relations(), config[1]):
+                    yield Factor(variables=obj_combo + rel_combo)
 
 
 class Factor:
@@ -39,11 +51,12 @@ class Factor:
 
 
 class Var:
-    def __init__(self, name, factors=[], value=None, properties={}):
+    def __init__(self, name, var_type='object', factors=[], value=None, properties={}):
         self.name = name
         self.value = value
         self.factors = factors
         self.properties = properties
+        self.type = var_type
 
     def connect_factor(self, factor):
         self.factors.append(factor)
