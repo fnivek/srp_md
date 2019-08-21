@@ -44,7 +44,7 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     // Fill in response
     const std::vector<size_t>& map = scene_graph.getMAP();
     const std::vector<dai::ObjectPair>& pairs = scene_graph.getAllRelations();
-    for(size_t i = 0; i < map.size(); ++i)
+    for (size_t i = 0; i < map.size(); ++i)
     {
         const dai::ObjectPair& pair = pairs[i];
 
