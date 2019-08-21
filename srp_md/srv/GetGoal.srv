@@ -7,6 +7,9 @@ uint8 CLASS_PROP=0
 uint8 CLASS_CONTAINER=1
 uint8 CLASS_SUPPORTER=2
 uint8[] classes
+
+# All learned factors
+srp_md/Factor[] factors
 ---
 # Response
 string[] object1

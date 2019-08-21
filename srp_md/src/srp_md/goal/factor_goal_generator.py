@@ -10,6 +10,7 @@ import rospy
 # Project
 from . import goal_generator
 from srp_md.srv import GetGoal, GetGoalRequest
+from srp_md.msg import Factor
 
 
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
@@ -30,14 +31,23 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('Generating goal')
         self._logger.debug('Took factors %s', factors)
 
+        # Fill in the request
         req = GetGoalRequest()
         req.objects = ['A', 'B', 'C']
         req.classes = [
             choice([GetGoalRequest.CLASS_PROP, GetGoalRequest.CLASS_CONTAINER, GetGoalRequest.CLASS_SUPPORTER])
             for _ in range(len(req.objects))
         ]
-        resp = None
+        for factor_type, value in factors.iteritems():
+            ros_factor = Factor()
+            ros_factor.num_objs = factor_type[0]
+            ros_factor.num_relations = factor_type[1]
+            # TODO(Kevin): Fill this in correctly, they must be in a particular order that is known to here and in cpp
+            ros_factor.probs = [val for val in value.values()]
+            req.factors.append(ros_factor)
 
+        # Get the response
+        resp = None
         try:
             resp = self._get_goal_client(req)
         except rospy.ServiceException as e:

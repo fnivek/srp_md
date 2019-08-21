@@ -25,6 +25,12 @@ find_package(OpenCV REQUIRED)
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
 
+# Make messages
+add_message_files(
+  FILES
+  Factor.msg
+)
+
 # Make services
 add_service_files(
   FILES
