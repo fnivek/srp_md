@@ -12,6 +12,7 @@
 
 // Project includes
 #include "srp_md/GetGoal.h"
+#include "srp_md/ros_service_factor.h"
 
 class FactorGraphWorker
 {

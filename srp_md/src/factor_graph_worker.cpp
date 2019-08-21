@@ -2,6 +2,8 @@
 
 FactorGraphWorker::FactorGraphWorker()
 {
+    RosServiceFactor test("hi", dai::VarSet());
+    test.Setup();
 }
 
 void FactorGraphWorker::Setup()
@@ -35,7 +37,7 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
         objs.emplace_back(req.objects[i], cls, i);
     }
 
-    // Build scene graph from objects
+    // Build scene graph from objects and learned factors
     dai::sceneGraph scene_graph(objs);
 
     // Perform inference

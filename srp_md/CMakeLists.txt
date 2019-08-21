@@ -25,10 +25,17 @@ find_package(OpenCV REQUIRED)
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
 
+# Make msgs
+add_message_files(
+  FILES
+  Var.msg
+)
+
 # Make services
 add_service_files(
   FILES
   GetGoal.srv
+  EvalFactor.srv
 )
 
 # Generate messages
@@ -78,6 +85,7 @@ include_directories(
 add_executable(factor_graph_node
   src/factor_graph_node.cpp
   src/factor_graph_worker.cpp
+  src/ros_service_factor.cpp
 )
 # Note order should be if depends on another then must go higher in list
 target_link_libraries(factor_graph_node

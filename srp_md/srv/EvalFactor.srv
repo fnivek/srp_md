@@ -1,0 +1,10 @@
+# Request
+# This service is used for evaluating a factor over a ros service
+# Description of the factor
+uint8 num_objs
+uint8 num_relations
+# The assignments and properties of the variables to evaluate
+srp_md/Var[] vars
+---
+# Result
+float64 result
