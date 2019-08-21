@@ -46,7 +46,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
 
         self._logger.debug('/get_goal response:\n{}'.format(resp))
 
-        return None
+        return ['factor', 'graph', 'goal']
 
 
 # Register the goal generator

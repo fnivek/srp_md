@@ -10,7 +10,7 @@ class FakeGoalGenerator(goal_generator.BaseGoalGenerator):
 
     def generate_goal(self, factors=None):
         self._logger.debug('Generating goal')
-        return None
+        return ['fake_goal']
 
 
 # Register the goal generator

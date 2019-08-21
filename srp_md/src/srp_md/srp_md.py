@@ -10,6 +10,7 @@ from builtins import object
 from . import learn
 from . import sense
 from . import goal
+from . import evaluate
 
 # Python imports
 import logging as log
@@ -25,13 +26,15 @@ class SrpMd(object):
 
     """
     # TODO(Kevin): Set defaults when they exist
-    def __init__(self, learner='fake_learner', sensor='fake_sensor', goal_generator='fake_goal_generator'):
+    def __init__(self, learner='fake_learner', sensor='fake_sensor', goal_generator='fake_goal_generator',
+                 goal_evaluator='adapt_goal_evaluator'):
         # Logging
         self._logger = log.getLogger(__name__)
 
         # Vars
         self._obs = []
         self._goal = None
+        self._goal_instance = None
         self._raw_data = None
         self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
                          4: 'Redo demo', 5: 'Clear demos'}
@@ -42,6 +45,7 @@ class SrpMd(object):
         self.set_learner(learner)
         self.set_sensor(sensor)
         self.set_goal_generator(goal_generator)
+        self.set_goal_evaluator(goal_evaluator)
 
     def get_num_demos(self):
         return len(self._obs)
@@ -110,9 +114,21 @@ class SrpMd(object):
 
     def generate_goal(self):
         if self.get_learner() == 'factor_graph_learner':
-            self._goal_generator.generate_goal(self._factors)
+            self._goal_instance = self._goal_generator.generate_goal(self._factors)
         else:
-            self._goal_generator.generate_goal()
+            self._goal_instance = self._goal_generator.generate_goal()
+
+    """ Goal Evaluator.
+
+    Functions to evaluate generated goal.
+
+    """
+    def set_goal_evaluator(self, goal_evaluator):
+        self._goal_evaluator_name = goal_evaluator
+        self._goal_evaluator = evaluate.goal_evaluators[goal_evaluator]()
+
+    def evaluate_goal(self):
+        self._goal_evaluator.evaluate_goal(self._goal_instance)
 
     """ Actions.
 

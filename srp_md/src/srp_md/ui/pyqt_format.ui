@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>613</width>
-    <height>488</height>
+    <width>1556</width>
+    <height>1145</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -113,6 +113,13 @@
         <widget class="QPushButton" name="generate_goal">
          <property name="text">
           <string>Generate Goal</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QPushButton" name="evaluate_goal">
+         <property name="text">
+          <string>Evaluate Goal</string>
          </property>
         </widget>
        </item>
@@ -242,8 +249,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>613</width>
-     <height>20</height>
+     <width>1556</width>
+     <height>39</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuGoes">
