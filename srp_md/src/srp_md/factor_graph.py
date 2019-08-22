@@ -29,11 +29,6 @@ class FactorGraph(object):
     def get_relations(self):
         return [var for var in self._vars if var.type == "relation"]
 
-    def gen_all_possible_factors(self):
-        for i in range(1, self.num_vars() + 1):
-            for combo in itertools.combinations(self._vars, i):
-                yield Factor(variables=combo)
-
     def gen_input_factors(self, configs=[]):
         for config in configs:
             for obj_combo in itertools.combinations(self.get_objects(), config[0]):
