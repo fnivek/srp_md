@@ -128,7 +128,8 @@ class SrpMd(object):
         self._goal_evaluator = evaluate.goal_evaluators[goal_evaluator]()
 
     def evaluate_goal(self):
-        self._goal_evaluator.evaluate_goal(self._goal_instance)
+        self._goal_instance = self._sensor.process_data(self._raw_data)
+        self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
 
     """ Actions.
 

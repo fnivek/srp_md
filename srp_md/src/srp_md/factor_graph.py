@@ -60,3 +60,10 @@ class Var:
 
     def connect_factor(self, factor):
         self.factors.append(factor)
+
+    def return_objects(self):
+        if self.type == "relation":
+            return [int(self.name[self.name.find('_', 1) + 1:self.name.find('_', 2)]),
+                    int(self.name[self.name.find('_', 2) + 1:])]
+        else:
+            raise TypeError("This method should only be used with relation variables")

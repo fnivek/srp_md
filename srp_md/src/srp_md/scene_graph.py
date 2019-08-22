@@ -64,9 +64,9 @@ class SceneGraph(FactorGraph):
                     # If not consistent with rel_2, then return False
                     if not self.block_consistent(rel_1, rel_2):
                         return False
-                elif world == "pen":
+                elif world == "pen" or world == "book":
                     # If not consistent with rel_2, then return False
-                    if not self.pen_consistent(rel_1, rel_2):
+                    if not self.pen_book_consistent(rel_1, rel_2):
                         return False
                 elif world == "abstract":
                     # If not consistent with rel_2, then return False
@@ -141,7 +141,7 @@ class SceneGraph(FactorGraph):
 
         return consistency
 
-    def pen_consistent(self, rel_1, rel_2):
+    def pen_book_consistent(self, rel_1, rel_2):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
