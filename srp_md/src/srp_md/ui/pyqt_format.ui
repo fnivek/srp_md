@@ -30,20 +30,6 @@
        <number>2</number>
       </property>
       <layout class="QGridLayout" name="actionsLayout">
-       <item row="2" column="1">
-        <widget class="QPushButton" name="clear_demos">
-         <property name="text">
-          <string>Clear demos</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="load_demos">
-         <property name="text">
-          <string>Load demos</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <widget class="QPushButton" name="get_demo">
          <property name="text">
@@ -51,75 +37,24 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QPushButton" name="redo_demo">
-         <property name="text">
-          <string>Redo demo</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QPushButton" name="write_demos">
-         <property name="text">
-          <string>Write demos</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="learnLayout" stretch="1,2,1">
-         <item>
-          <spacer name="space_1">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>30</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QPushButton" name="learnButton">
-           <property name="text">
-            <string>Learn!</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="space_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>30</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item row="0" column="1">
-        <widget class="QPushButton" name="undo_demo">
-         <property name="text">
-          <string>Undo demo</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
+       <item row="2" column="0">
         <widget class="QPushButton" name="generate_goal">
          <property name="text">
           <string>Generate Goal</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="2" column="1">
         <widget class="QPushButton" name="evaluate_goal">
          <property name="text">
           <string>Evaluate Goal</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="learnButton">
+         <property name="text">
+          <string>Learn</string>
          </property>
         </widget>
        </item>
@@ -138,52 +73,6 @@
        <number>2</number>
       </property>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="9" column="0">
-        <widget class="QLabel" name="learnerLabel">
-         <property name="text">
-          <string>Learner</string>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="1">
-        <widget class="QComboBox" name="learnerComboBox"/>
-       </item>
-       <item row="10" column="0" colspan="2">
-        <spacer name="horizontalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="2" column="0" colspan="2">
-        <spacer name="horizontalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="sensorLabel">
-         <property name="text">
-          <string>Sensor</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QComboBox" name="sensorComboBox"/>
-       </item>
        <item row="1" column="0">
         <widget class="QLabel" name="num_demos">
          <property name="text">
@@ -211,15 +100,40 @@
          </property>
         </widget>
        </item>
-       <item row="11" column="0">
-        <widget class="QLabel" name="goalGeneratorLabel">
-         <property name="text">
-          <string>Goal Generator</string>
+       <item row="3" column="0">
+        <widget class="QComboBox" name="sensorComboBox">
+         <property name="cursor">
+          <cursorShape>ArrowCursor</cursorShape>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="currentText">
+          <string/>
          </property>
         </widget>
        </item>
-       <item row="11" column="1">
+       <item row="2" column="0" colspan="2">
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="5" column="1">
         <widget class="QComboBox" name="goalGeneratorComboBox"/>
+       </item>
+       <item row="3" column="1">
+        <widget class="QComboBox" name="learnerComboBox"/>
+       </item>
+       <item row="5" column="0">
+        <widget class="QComboBox" name="getDemoComboBox"/>
        </item>
       </layout>
      </widget>
@@ -253,26 +167,65 @@
      <height>39</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuGoes">
+   <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>Menu</string>
+     <string>File</string>
     </property>
+    <addaction name="load_demos"/>
+    <addaction name="write_demos"/>
    </widget>
-   <widget class="QMenu" name="menuHere">
+   <widget class="QMenu" name="menuEdit">
     <property name="title">
-     <string>Goes</string>
+     <string>Edit</string>
     </property>
+    <addaction name="undo_demo"/>
+    <addaction name="redo_demo"/>
+    <addaction name="clear_demos"/>
    </widget>
-   <widget class="QMenu" name="menuHere_2">
-    <property name="title">
-     <string>Here</string>
-    </property>
-   </widget>
-   <addaction name="menuGoes"/>
-   <addaction name="menuHere"/>
-   <addaction name="menuHere_2"/>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="load_demos">
+   <property name="text">
+    <string>Load demos</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="write_demos">
+   <property name="text">
+    <string>Save demos</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="undo_demo">
+   <property name="text">
+    <string>Undo demo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="redo_demo">
+   <property name="text">
+    <string>Redo demo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="clear_demos">
+   <property name="text">
+    <string>Clear demos</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Z</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

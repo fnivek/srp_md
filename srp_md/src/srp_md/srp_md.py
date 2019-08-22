@@ -26,7 +26,7 @@ class SrpMd(object):
 
     """
     # TODO(Kevin): Set defaults when they exist
-    def __init__(self, learner='fake_learner', sensor='fake_sensor', goal_generator='fake_goal_generator',
+    def __init__(self, learner=None, sensor=None, goal_generator=None,
                  goal_evaluator='adapt_goal_evaluator'):
         # Logging
         self._logger = log.getLogger(__name__)
@@ -40,6 +40,8 @@ class SrpMd(object):
                          4: 'Redo demo', 5: 'Clear demos'}
         self._undoed = []
         self._factors = None
+        self.demo_types = ["only_goal", "only_not_goal", "random"]
+        self.demo_type = None
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -60,18 +62,24 @@ class SrpMd(object):
 
     def set_learner(self, learner):
         self._learner_name = learner
-        self._learner = learn.learners[learner]()
+        if self._learner_name is None:
+            self._learner = None
+        else:
+            self._learner = learn.learners[learner]()
 
     def learn(self):
-        self._logger.debug('Learning...')
-        if len(self._obs) == 0:
-            self._logger.warning('No demo to be learned from!')
-        elif self.get_learner() == 'factor_graph_learner':
-            self._factors = self._learner.learn(self._obs)
-            self._logger.debug('Factors learned: %s', self._factors)
+        if self._learner is None:
+            self._logger.error('Please select learner!')
         else:
-            self._goal = self._learner.learn(self._obs)
-            self._logger.debug('Learned: %s', self._goal)
+            self._logger.debug('Learning...')
+            if len(self._obs) == 0:
+                self._logger.warning('No demo to be learned from!')
+            elif self.get_learner() == 'factor_graph_learner':
+                self._factors = self._learner.learn(self._obs)
+                self._logger.debug('Factors learned: %s', self._factors)
+            else:
+                self._goal = self._learner.learn(self._obs)
+                self._logger.debug('Learned: %s', self._goal)
 
     """ Sensor.
 
@@ -83,7 +91,10 @@ class SrpMd(object):
 
     def set_sensor(self, sensor):
         self._sensor_name = sensor
-        self._sensor = sense.sensors[sensor]()
+        if self._sensor_name is None:
+            self._sensor = None
+        else:
+            self._sensor = sense.sensors[sensor]()
 
     def accept_data(self, data):
         """ Accept Raw Data.
@@ -97,8 +108,11 @@ class SrpMd(object):
         self._raw_data = data
 
     def process_data(self):
-        self._logger.debug('Processing: ' + str(self._raw_data))
-        self._obs.append(self._sensor.process_data(self._raw_data))
+        if self._sensor is None:
+            self._logger.error('Please select sensor!')
+        else:
+            self._logger.debug('Processing: ' + str(self._raw_data))
+            self._obs.append(self._sensor.process_data(self._raw_data))
 
     """ Goal Generator.
 
@@ -110,13 +124,19 @@ class SrpMd(object):
 
     def set_goal_generator(self, goal_generator):
         self._goal_generator_name = goal_generator
-        self._goal_generator = goal.goal_generators[goal_generator]()
+        if self._goal_generator_name is None:
+            self._goal_generator = None
+        else:
+            self._goal_generator = goal.goal_generators[goal_generator]()
 
     def generate_goal(self):
-        if self.get_learner() == 'factor_graph_learner':
-            self._goal_instance = self._goal_generator.generate_goal(self._factors)
+        if self._goal_generator is None:
+            self._logger.error('Please select goal generator!')
         else:
-            self._goal_instance = self._goal_generator.generate_goal()
+            if self.get_learner() == 'factor_graph_learner':
+                self._goal_instance = self._goal_generator.generate_goal(self._factors)
+            else:
+                self._goal_instance = self._goal_generator.generate_goal()
 
     """ Goal Evaluator.
 
@@ -125,11 +145,19 @@ class SrpMd(object):
     """
     def set_goal_evaluator(self, goal_evaluator):
         self._goal_evaluator_name = goal_evaluator
-        self._goal_evaluator = evaluate.goal_evaluators[goal_evaluator]()
+        if self._goal_evaluator_name is None:
+            self._goal_evaluator = None
+        else:
+            self._goal_evaluator = evaluate.goal_evaluators[goal_evaluator]()
 
     def evaluate_goal(self):
-        self._goal_instance = self._sensor.process_data(self._raw_data)
-        self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
+        if self._goal_evaluator is None:
+            self._logger.error('Please select goal evaluator!')
+        elif self._sensor is None:
+            self._logger.error('Please select sensor!')
+        else:
+            self._goal_instance = self._sensor.process_data(self._raw_data)
+            self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
 
     """ Actions.
 

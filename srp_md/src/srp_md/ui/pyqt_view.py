@@ -48,24 +48,27 @@ class PyQtView(view.BaseView):
 
         # Set up displays on GUI
         self._gui.setWindowTitle("Semantic Robot Programing with Multiple Demonstrations")
+        self._gui.sensorComboBox.addItems(['  --- Choose Sensor ---  '])
+        self._gui.learnerComboBox.addItems(['  --- Choose Learner ---  '])
+        self._gui.getDemoComboBox.addItems(['  --- Choose Type ---  '])
+        self._gui.goalGeneratorComboBox.addItems(['  --- Choose Generator ---  '])
+
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
         self._gui.learnerComboBox.addItems(list(learn.learners.keys()))
+        self._gui.getDemoComboBox.addItems(list(self._model.demo_types))
         self._gui.goalGeneratorComboBox.addItems(list(srp_md.goal.goal_generators.keys()))
-
-        # Set initial values for comboboxes
-        self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
-        self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
 
         # Connect the buttons to actions
         self._gui.get_demo.pressed.connect(self._ctrl.generate_demo)
-        self._gui.write_demos.pressed.connect(self.write_demos)
-        self._gui.load_demos.pressed.connect(self.load_demos)
-        self._gui.clear_demos.pressed.connect(self._ctrl.clear_demos)
-        self._gui.undo_demo.pressed.connect(self._ctrl.undo_demo)
-        self._gui.redo_demo.pressed.connect(self._ctrl.redo_demo)
+        self._gui.write_demos.triggered.connect(self.write_demos)
+        self._gui.load_demos.triggered.connect(self.load_demos)
+        self._gui.clear_demos.triggered.connect(self._ctrl.clear_demos)
+        self._gui.undo_demo.triggered.connect(self._ctrl.undo_demo)
+        self._gui.redo_demo.triggered.connect(self._ctrl.redo_demo)
         self._gui.learnButton.pressed.connect(self._ctrl.learn)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.learnerComboBox.currentIndexChanged.connect(self.update_learner)
+        self._gui.getDemoComboBox.currentIndexChanged.connect(self.update_demo_type)
         self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
         self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
         self._gui.evaluate_goal.pressed.connect(self._ctrl.evaluate_goal)
@@ -93,13 +96,25 @@ class PyQtView(view.BaseView):
         self._gui.numLabel.setText('{}'.format(self._model.get_num_demos()))
 
     def update_sensor(self):
-        self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
+        if self._gui.sensorComboBox.currentText()[0] == " ":
+            self._ctrl.set_sensor(None)
+        else:
+            self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
 
     def update_learner(self):
-        self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
+        if self._gui.learnerComboBox.currentText()[0] == " ":
+            self._ctrl.set_learner(None)
+        else:
+            self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
+
+    def update_demo_type(self):
+        self._model.demo_type = self._gui.getDemoComboBox.currentText()
 
     def update_goal_generator(self):
-        self._ctrl.set_goal_generator(self._gui.goalGeneratorComboBox.currentText())
+        if self._gui.goalGeneratorComboBox.currentText()[0] == " ":
+            self._ctrl.set_goal_generator(None)
+        else:
+            self._ctrl.set_goal_generator(self._gui.goalGeneratorComboBox.currentText())
 
     def write_demos(self):
         demo_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
