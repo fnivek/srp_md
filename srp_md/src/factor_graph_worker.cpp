@@ -36,7 +36,7 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     }
 
     // Build scene graph from objects
-    dai::sceneGraph scene_graph(objs);
+    // dai::sceneGraph scene_graph(objs);
 
     // Perform inference
     // scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 1, 1e-10);
@@ -52,6 +52,18 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     //     resp.object2.push_back(pair.object2.name);
     //     resp.relation.push_back(scene_graph._relation_strs[map[i]]);
     // }
+
+    // TODO(Kevin): Delete this
+    // Temporary dummy data for testing
+    for (size_t i = 0; i < req.objects.size(); ++i)
+    {
+        for (size_t j = i + 1; j < req.objects.size(); ++j)
+        {
+            resp.object1.push_back(req.objects[i]);
+            resp.object2.push_back(req.objects[j]);
+            resp.relation.push_back(dai::sceneGraph::kRelationStrings.at(rand() % dai::Relation::kNumRelations));
+        }
+    }
 
     return true;
 }
