@@ -158,7 +158,7 @@ class SrpMd(object):
         elif self._sensor is None:
             self._logger.error('Please select sensor!')
         else:
-            self._goal_instance = self._sensor.process_data(self._raw_data)
+            self._goal_instance = self._sensor.process_data(self.demo_type, self._raw_data)
             self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
 
     """ Actions.
