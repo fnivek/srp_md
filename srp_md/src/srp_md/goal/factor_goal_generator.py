@@ -4,6 +4,7 @@ import logging
 import sys
 from random import choice
 import itertools
+import copy
 
 # Ros
 import rospy
@@ -77,7 +78,21 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
 
         self._logger.debug('/get_goal response:\n{}'.format(resp))
 
-        return resp
+        # Turn the response into scene graph
+        goal = copy.deepcopy(obs)
+        for i in range(len(resp.relation)):
+            id_list = [resp.object1[i][resp.object1[i].find('_') + 1:], resp.object2[i][resp.object2[i].find('_') + 1:]]
+            id_list.sort()
+            rel_name = 'R_' + id_list[0] + '_' + id_list[1]
+            for relation in goal.relations:
+                if relation.name == rel_name:
+                    relation.value = resp.relation[i]
+        self._logger.debug('What is resp? %s', resp)
+        self._logger.debug('What are object names? %s', goal.get_obj_names())
+        self._logger.debug('What are object values? %s', goal.get_obj_values())
+        self._logger.debug('What are relation names? %s', goal.get_rel_names())
+        self._logger.debug('What are relation values? %s', goal.get_rel_values())
+        return goal
 
 
 # Register the goal generator
