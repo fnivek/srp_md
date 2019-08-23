@@ -47,15 +47,19 @@ class AbstractWorldSensor(sense.BaseSensor):
     def process_data(self, demo_type, data):
         satisfied = False
         consistent = False
+        count = 0
 
-        # Randomly choose objects from object list
-        num_objs = random.randint(1, len(self._objs))
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
-                for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+        while (not satisfied or not consistent):
+            count += 1
 
-        # Generate a consistent scene graph
-        scene_graph = srp_md.SceneGraph(objs)
-        while (not satisfied) or (not consistent):
+            # Randomly choose objects from object list
+            num_objs = random.randint(1, len(self._objs))
+            objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
+                    for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+
+            # Generate a consistent scene graph
+            scene_graph = srp_md.SceneGraph(objs)
+
             for relation in scene_graph.relations:
                 relation.value = random.choice(self._RELATIONS)
             goal_cond = self.check_property(scene_graph, self._goal_prop)
@@ -67,12 +71,18 @@ class AbstractWorldSensor(sense.BaseSensor):
                 satisfied = True
             consistent = scene_graph.check_consistency("abstract")
 
+            if count > 100:
+                self._logger.warning('Desired scene graph could not be generated during given time. \
+                    Please retry!')
+                break
+
         self._logger.info('What are object names? %s', scene_graph.get_obj_names())
         self._logger.info('What are object values? %s', scene_graph.get_obj_values())
         self._logger.info('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.info('What are relation values? %s', scene_graph.get_rel_values())
         self._logger.info('Is this scene graph consistent? %s', consistent)
         self._logger.info('Is goal condition satisfied? %s', goal_cond)
+        self._logger.info('What was the count? %s', count)
 
         return scene_graph
 
