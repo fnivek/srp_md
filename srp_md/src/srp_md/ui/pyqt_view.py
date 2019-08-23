@@ -149,7 +149,7 @@ class HtmlFormat(logging.Formatter):
         logging.Formatter.__init__(self, fmt)
         bold_font = '<span style=\" font-weight:bold;\" >'
         color_font = '<span style=\" color:#{};\" >'
-        plain_font = '<span>'
+        plain_font = '<span style=\" color:#969696;\" >'
         end = '</span>'
         # TODO(Henry): Fill in more fonts and ensure it matches up to LOG_COLORS
         self._log_colors = {
@@ -161,6 +161,7 @@ class HtmlFormat(logging.Formatter):
             'STRIKE': plain_font,
             'INVISIBLE': plain_font,
             'BLACK': plain_font,
+            'WHITE': color_font.format('b9b9b9'),
             'RED': color_font.format('f22e2e'),
             'GREEN': color_font.format('32a852'),
             'ORANGE': color_font.format('ff5a0d'),
@@ -171,7 +172,7 @@ class HtmlFormat(logging.Formatter):
             'DARKGREY': plain_font,
             'LIGHTRED': plain_font,
             'LIGHTGREEN': plain_font,
-            'YELLOW': plain_font,
+            'YELLOW': color_font.format('fcd303'),
             'LIGHTBLUE': plain_font,
             'PINK': plain_font,
             'LIGHTCYAN': plain_font,
@@ -204,7 +205,7 @@ class HtmlFormat(logging.Formatter):
         if record.levelno == logging.DEBUG:
             self._fmt = self._log_colors['GREEN'] + self._fmt
         elif record.levelno == logging.INFO:
-            self._fmt = self._log_colors['BLACK'] + self._fmt
+            self._fmt = self._log_colors['WHITE'] + self._fmt
         elif record.levelno == logging.WARNING:
             self._fmt = self._log_colors['YELLOW'] + self._fmt
         elif record.levelno == logging.ERROR:
