@@ -27,7 +27,25 @@ class AbstractWorldSensor(sense.BaseSensor):
             for prop in self._properties.keys():
                 self._ass_prop[obj][prop] = random.choice(self._properties[prop])
 
-    def process_data(self, data):
+    def check_property(self, scene_graph, goal_prop):
+        for relation in scene_graph.relations:
+            var_ids = relation.return_objects()
+            var_i = scene_graph.objs[var_ids[0] - 1]
+            var_j = scene_graph.objs[var_ids[1] - 1]
+
+            if var_i.properties[goal_prop] < var_j.properties[goal_prop]:
+                if relation.value != self._RELATIONS[0]:
+                    return False
+            elif var_i.properties[goal_prop] == var_j.properties[goal_prop]:
+                if relation.value != self._RELATIONS[1]:
+                    return False
+            else:
+                if relation.value != self._RELATIONS[2]:
+                    return False
+        return True
+
+    def process_data(self, demo_type, data):
+        satisfied = False
         consistent = False
 
         # Randomly choose objects from object list
@@ -37,24 +55,24 @@ class AbstractWorldSensor(sense.BaseSensor):
 
         # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)
-        while not consistent:
+        while (not satisfied) or (not consistent):
             for relation in scene_graph.relations:
-                var_i = objs[int(relation.name[relation.name.find('_', 1) + 1:relation.name.find('_', 2)]) - 1]
-                var_j = objs[int(relation.name[relation.name.find('_', 2) + 1:]) - 1]
-                if var_i.properties[self._goal_prop] < var_j.properties[self._goal_prop]:
-                    relation.value = self._RELATIONS[0]
-                elif var_i.properties[self._goal_prop] == var_j.properties[self._goal_prop]:
-                    relation.value = self._RELATIONS[1]
-                else:
-                    relation.value = self._RELATIONS[2]
+                relation.value = random.choice(self._RELATIONS)
+            goal_cond = self.check_property(scene_graph, self._goal_prop)
+            if (demo_type == "only_goal") and (goal_cond):
+                satisfied = True
+            elif (demo_type == "only_not_goal") and (not goal_cond):
+                satisfied = True
+            elif demo_type == "random":
+                satisfied = True
             consistent = scene_graph.check_consistency("abstract")
 
         self._logger.info('What are object names? %s', scene_graph.get_obj_names())
         self._logger.info('What are object values? %s', scene_graph.get_obj_values())
         self._logger.info('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.info('What are relation values? %s', scene_graph.get_rel_values())
-        self._logger.info('What are the objects property values? %s', scene_graph.get_prop_values(self._goal_prop))
         self._logger.info('Is this scene graph consistent? %s', consistent)
+        self._logger.info('Is goal condition satisfied? %s', goal_cond)
 
         return scene_graph
 

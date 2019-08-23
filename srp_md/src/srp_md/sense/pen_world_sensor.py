@@ -19,6 +19,7 @@ class PenWorldSensor(sense.BaseSensor):
                             "material": ["plastic", "metal", "wood"],
                             "shape": ["round", "sharp"]}
         self._RELATIONS = ["left", "right"]
+        self._goal_prop = "color"
         self._ass_prop = {}
         for obj in self._objs:
             self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
@@ -26,7 +27,22 @@ class PenWorldSensor(sense.BaseSensor):
                                    "material": random.choice(self._properties["material"]),
                                    "shape": random.choice(self._properties["shape"])}
 
-    def process_data(self, data):
+    def check_property(self, scene_graph, goal_prop):
+        for relation in scene_graph.relations:
+            var_ids = relation.return_objects()
+            var_i = scene_graph.objs[var_ids[0] - 1]
+            var_j = scene_graph.objs[var_ids[1] - 1]
+            prop_list = self._properties[goal_prop]
+            if prop_list.index(var_i.properties[goal_prop]) <= prop_list.index(var_j.properties[goal_prop]):
+                if relation.value != "left":
+                    return False
+            elif prop_list.index(var_i.properties[goal_prop]) > prop_list.index(var_j.properties[goal_prop]):
+                if relation.value != "right":
+                    return False
+        return True
+
+    def process_data(self, demo_type, data):
+        satisfied = False
         consistent = False
 
         # Randomly choose objects from object list
@@ -36,15 +52,16 @@ class PenWorldSensor(sense.BaseSensor):
 
         # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)
-        while not consistent:
+        while (not satisfied) or (not consistent):
             for relation in scene_graph.relations:
-                var_i = objs[int(relation.name[relation.name.find('_', 1) + 1:relation.name.find('_', 2)]) - 1]
-                var_j = objs[int(relation.name[relation.name.find('_', 2) + 1:]) - 1]
-                if (self._properties["color"].index(var_i.properties["color"]) <=
-                        self._properties["color"].index(var_j.properties["color"])):
-                    relation.value = "left"
-                else:
-                    relation.value = "right"
+                relation.value = random.choice(self._RELATIONS)
+            goal_cond = self.check_property(scene_graph, self._goal_prop)
+            if (demo_type == "only_goal") and (goal_cond):
+                satisfied = True
+            elif (demo_type == "only_not_goal") and (not goal_cond):
+                satisfied = True
+            elif demo_type == "random":
+                satisfied = True
             consistent = scene_graph.check_consistency("pen")
 
         self._logger.info('What are object names? %s', scene_graph.get_obj_names())
@@ -52,6 +69,7 @@ class PenWorldSensor(sense.BaseSensor):
         self._logger.info('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.info('What are relation values? %s', scene_graph.get_rel_values())
         self._logger.info('Is this scene graph consistent? %s', consistent)
+        self._logger.info('Is goal condition satisfied? %s', goal_cond)
 
         return scene_graph
 

@@ -110,9 +110,11 @@ class SrpMd(object):
     def process_data(self):
         if self._sensor is None:
             self._logger.error('Please select sensor!')
+        elif self.demo_type is None:
+            self._logger.error('Please select demo type!')
         else:
             self._logger.debug('Processing: ' + str(self._raw_data))
-            self._obs.append(self._sensor.process_data(self._raw_data))
+            self._obs.append(self._sensor.process_data(self.demo_type, self._raw_data))
 
     """ Goal Generator.
 

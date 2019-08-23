@@ -14,7 +14,7 @@ class BaseSensor(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def process_data(self, data):
+    def process_data(self, demo_type, data):
         """ Process data.
 
         Processes data and return the world state.

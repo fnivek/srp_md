@@ -35,7 +35,7 @@ class ExampleSensor(sense.BaseSensor):
         self._num_examples = len(self._known_examples)
         self._index = -1
 
-    def process_data(self, data):
+    def process_data(self, demo_type, data):
         self._index += 1
         if self._index >= self._num_examples:
             self._logger.debug('We have viewd all examples')

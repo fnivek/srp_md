@@ -16,7 +16,7 @@ class PoseCNNSensor(sense.BaseSensor):
         self._poses = [[random.random() for _ in range(7)] for _ in range(self._num_objs)]
         return (self._objs, self._poses)
 
-    def process_data(self, data):
+    def process_data(self, demo_type, data):
         processed_data = self.simulate_posecnn()
         return processed_data
 

@@ -108,7 +108,10 @@ class PyQtView(view.BaseView):
             self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
 
     def update_demo_type(self):
-        self._model.demo_type = self._gui.getDemoComboBox.currentText()
+        if self._gui.getDemoComboBox.currentText()[0] == " ":
+            self._model.demo_type = None
+        else:
+            self._model.demo_type = self._gui.getDemoComboBox.currentText()
 
     def update_goal_generator(self):
         if self._gui.goalGeneratorComboBox.currentText()[0] == " ":
