@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import logging
 import itertools
+import operator
 
 # SRP MD imports
 from . import learn
@@ -29,52 +30,50 @@ class FactorGraphLearner(learn.BaseLearner):
           obs - list of srp_md.SceneGraph
 
         Returns:
-          A dictionary of factor types to dictionaries of variable state to real [0, inf) i.e.:
+          A dictionary of LearnedFactor where key's are a tuple (num_objs, num_relations):
             {'xx': {x1=A,x2=B: 10, ...}, 'x': {x1=A: 10, x2=B: 0.01}, 'rrr': {r1=ON, r2=ON, r3=DISJOINT: 3.8}}
 
         """
         self._logger.debug('Learn')
 
-        factor_gen = {}
-        for example in obs:
-            obs_factor_gens = self.learn_factors(example)
-            for factor_key in obs_factor_gens:
-                if factor_key in factor_gen:
-                    for value_key in obs_factor_gens[factor_key]:
-                        if value_key in factor_gen[factor_key]:
-                            factor_gen[factor_key][value_key] += obs_factor_gens[factor_key][value_key]
-                        else:
-                            factor_gen[factor_key][value_key] = obs_factor_gens[factor_key][value_key]
-                else:
-                    factor_gen[factor_key] = obs_factor_gens[factor_key]
-
-        return factor_gen
-
-    def learn_factors(self, graph):
         factor_gens = {}
-        for factor in graph.gen_input_factors(configs=self._config_list):
-            # Produce the map index for the factor generator
-            var_names = tuple([var.name for var in factor.vars])
-            factor_index = tuple(sorted([var.value for var in factor.vars]))
-            # Find the appropriate factor to udpate
-            num_relations = 0
-            for i in [1 for name in var_names if name.startswith('R_')]:
-                num_relations += 1
-            num_objs = len(factor_index) - num_relations
-            gen_index = (num_objs, num_relations)
-            gen = {}
-            if gen_index in factor_gens:
-                gen = factor_gens[gen_index]
-            else:
-                factor_gens[gen_index] = gen
+        # Loop through all examples
+        for graph in obs:
+            # Loop through individual factors for one observation
+            for factor in graph.gen_input_factors(configs=self._config_list):
+                # Find the appropriate LearnedFactor to udpate
+                num_relations = sum(1 for var in factor.vars if var.type is 'relation')
+                num_objs = len(factor.vars) - num_relations
+                gen_index = (num_objs, num_relations)
+                gen = None
+                if gen_index in factor_gens:
+                    gen = factor_gens[gen_index]
+                else:
+                    gen = LearnedFactor(num_objs, num_relations)
+                    factor_gens[gen_index] = gen
 
-            # Increment seen assignments
-            if factor_index in gen:
-                gen[factor_index] += 1
-            else:
-                gen[factor_index] = 1
+                # Update the learned factor
+                gen.observe(tuple(sorted([var.value for var in factor.vars])))
 
         return factor_gens
+
+
+class LearnedFactor():
+    def __init__(self, num_objs, num_relations):
+        self.num_objs = num_objs
+        self.num_relations = num_relations
+        self._freq = {}
+
+    def observe(self, obs):
+        # Increment seen assignments
+        if obs in self._freq:
+            self._freq[obs] += 1
+        else:
+            self._freq[obs] = 1
+
+    def gen_factor(self, vars):
+        # TODO(Kevin): Fill in the probabilites correctly
+        return srp_md.Factor(vars, probs=[1 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))])
 
 
 # Register the learner

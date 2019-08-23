@@ -29,6 +29,7 @@ catkin_python_setup()
 add_message_files(
   FILES
   Factor.msg
+  ObjectPair.msg
 )
 
 # Make services

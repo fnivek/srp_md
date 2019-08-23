@@ -1,5 +1,10 @@
+from __future__ import absolute_import
 from builtins import range
 import itertools
+
+# srp_md imports
+from srp_md.msg import Factor as RosFactor
+from srp_md.msg import ObjectPair
 
 
 class FactorGraph(object):
@@ -37,21 +42,40 @@ class FactorGraph(object):
 
 
 class Factor:
-    def __init__(self, variables=[]):
-        self.vars = variables
-        self.map = {}
+    def __init__(self, variables=None, probs=None):
+        if variables is None:
+            self.vars = []
+        else:
+            self.vars = variables
+        self.probs = probs
 
     def connect_var(self, var):
         self.vars.append(var)
 
+    def to_ros_factor(self):
+        ros_factor = RosFactor()
+        ros_factor.objects = [var.name for var in self.vars if var.type == 'object']
+        for var in [var for var in self.vars if var.type == 'relation']:
+            pair = ObjectPair()
+            pair.object1 = var.properties['object1'].name
+            pair.object2 = var.properties['object2'].name
+            ros_factor.pairs.append(pair)
+        ros_factor.probs = self.probs
+        return ros_factor
+
 
 class Var:
-    def __init__(self, name, var_type='object', factors=[], value=None, properties={}):
+    def __init__(self, name, var_type='object', factors=None, value=None, properties=None, num_states=1):
         self.name = name
         self.value = value
         self.factors = factors
+        if factors is None:
+            self.factors = []
         self.properties = properties
+        if properties is None:
+            self.properties = {}
         self.type = var_type
+        self.num_states = num_states
 
     def connect_factor(self, factor):
         self.factors.append(factor)

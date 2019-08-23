@@ -1,8 +1,8 @@
 # Represents a factor
 
-# Descriptor
-uint8 num_objs
-uint8 num_relations
+# Strings representing all objects and pairs of objects the factor is connected to
+string[] objects
+srp_md/ObjectPair[] pairs
 
 # Large vector of all possible assignments
 float64[] probs

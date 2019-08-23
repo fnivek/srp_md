@@ -245,5 +245,10 @@ class SceneGraph(FactorGraph):
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
             var = Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
+            var.properties['object1'] = pair[0]
+            var.properties['object2'] = pair[1]
+            # TODO(Henry): Remove this magic number 6, it is the number of types of relations in scenegraph.cpp
+            #              this number should come from something like a config file that specifies our domain.
+            var.num_states = 6
             self.relations.append(var)
             self._vars.append(var)
