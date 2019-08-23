@@ -35,21 +35,12 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('Took factors %s', factors)
 
         # Fill in the request
-        # TODO(Henry): Use the obs param to fill in the request (I made something for myself to test with feel free to
-        #   change the data type)
-        if obs is None:
-            a = srp_md.Var('Up')
-            a.properties['color'] = 'red'
-            a.properties['spin'] = 'up'
-            b = srp_md.Var('Down')
-            b.properties['color'] = 'green'
-            b.properties['spin'] = 'down'
-            c = srp_md.Var('Strange')
-            c.properties['color'] = 'blue'
-            c.properties['spin'] = 'up'
-            obs = srp_md.SceneGraph([a, b, c])
         req = GetGoalRequest()
         req.objects = obs.get_obj_names()
+        # There are no relations because there is only one object therfore return that object
+        if len(req.objects) <= 1:
+            self._logger.warn('Only one object in the scene graph, maybe we should just disallow this case')
+            return None
         # TODO(?): We need to figure out how to represent this
         req.classes = [
             choice([GetGoalRequest.CLASS_PROP, GetGoalRequest.CLASS_CONTAINER, GetGoalRequest.CLASS_SUPPORTER])
@@ -64,6 +55,9 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         #   For each type of factor generate all possible combinations
         #   If there are not enough vars for the factor the factor is skipped
         for factor_type, learned_factor in factors.iteritems():
+            ros_factor = None
+            if len(obs.objs) > factor_type[0] or len(obs.relations) > factor_type[1]:
+                continue
             for objects in itertools.combinations(obs.objs, factor_type[0]):
                 for pairs in itertools.combinations(obs.relations, factor_type[1]):
                     # Use the LearnedFactor to generate a ros_factor for each combination
