@@ -22,36 +22,36 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
         switch (req.classes[i])
         {
             case srp_md::GetGoalRequest::CLASS_CONTAINER:
-                cls = dai::ObjectClass::Container;
+                cls = dai::ObjectClass::kContainer;
                 break;
             case srp_md::GetGoalRequest::CLASS_SUPPORTER:
-                cls = dai::ObjectClass::Supporter;
+                cls = dai::ObjectClass::kSupporter;
                 break;
             case srp_md::GetGoalRequest::CLASS_PROP:
             default:
-                cls = dai::ObjectClass::Prop;
+                cls = dai::ObjectClass::kProp;
                 break;
         }
-        objs.emplace_back(req.objects[i], cls, i);
+        objs.emplace_back(req.objects[i], cls, i, req.num_states[i]);
     }
 
     // Build scene graph from objects
     dai::sceneGraph scene_graph(objs);
 
     // Perform inference
-    scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 1, 1e-10);
+    // scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 1, 1e-10);
 
     // Fill in response
-    const std::vector<size_t>& map = scene_graph.getMAP();
-    const std::vector<dai::ObjectPair>& pairs = scene_graph.getAllRelations();
-    for (size_t i = 0; i < map.size(); ++i)
-    {
-        const dai::ObjectPair& pair = pairs[i];
+    // const std::vector<size_t>& map = scene_graph.getMAP();
+    // const std::vector<dai::ObjectPair>& pairs = scene_graph.getAllRelations();
+    // for (size_t i = 0; i < map.size(); ++i)
+    // {
+    //     const dai::ObjectPair& pair = pairs[i];
 
-        resp.object1.push_back(pair.object1.name);
-        resp.object2.push_back(pair.object2.name);
-        resp.relation.push_back(scene_graph._relation_strs[map[i]]);
-    }
+    //     resp.object1.push_back(pair.object1.name);
+    //     resp.object2.push_back(pair.object2.name);
+    //     resp.relation.push_back(scene_graph._relation_strs[map[i]]);
+    // }
 
     return true;
 }
