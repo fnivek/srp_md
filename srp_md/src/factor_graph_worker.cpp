@@ -12,10 +12,11 @@ void FactorGraphWorker::Setup()
 
 bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResponse& resp)
 {
-    // Make a vector of new objects
-    std::vector<dai::Object> objs;
-    objs.reserve(req.objects.size());
-    for (size_t i = 0; i < req.objects.size(); ++i)
+    // Build scene graph from objects
+    dai::sceneGraph scene_graph;
+
+    // Add all object vars
+    for (int i = 0; i < req.objects.size(); ++i)
     {
         // Choose the correct class
         dai::ObjectClass cls;
@@ -32,11 +33,30 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
                 cls = dai::ObjectClass::kProp;
                 break;
         }
-        objs.emplace_back(req.objects[i], cls, i, req.num_states[i]);
+        scene_graph.addObjectVar(req.objects[i], cls, req.num_states[i]);
     }
 
-    // Build scene graph from objects
-    // dai::sceneGraph scene_graph(objs);
+    // Generate all relationships between objects
+    scene_graph.generateRelationVars();
+
+    // Make all the learned factors
+    for (const auto& ros_factor : req.factors)
+    {
+        dai::VarSet vars;
+        // Get the Vars for singular objects
+        for (const auto& obj_name : ros_factor.objects)
+        {
+            vars.insert(scene_graph.getObjectVarByName(obj_name));
+        }
+        // Get the Vars for pairs of objects
+        for (const auto& pair : ros_factor.pairs)
+        {
+            vars.insert(scene_graph.getRelationVarByNames(pair.object1, pair.object2));
+        }
+        // TODO(Kevin): Make sure probs are ordered correctly
+        // learned_factors.emplace_back(vars, ros_factor.probs);
+        scene_graph.addFactor(vars, ros_factor.probs);
+    }
 
     // Perform inference
     // scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 1, 1e-10);
