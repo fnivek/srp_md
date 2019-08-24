@@ -59,30 +59,19 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     }
 
     // Perform inference
-    // scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 1, 1e-10);
+    scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 1, 1e-10);
 
     // Fill in response
-    // const std::vector<size_t>& map = scene_graph.getMAP();
-    // const std::vector<dai::ObjectPair>& pairs = scene_graph.getAllRelations();
-    // for (size_t i = 0; i < map.size(); ++i)
-    // {
-    //     const dai::ObjectPair& pair = pairs[i];
-
-    //     resp.object1.push_back(pair.object1.name);
-    //     resp.object2.push_back(pair.object2.name);
-    //     resp.relation.push_back(scene_graph._relation_strs[map[i]]);
-    // }
-
-    // TODO(Kevin): Delete this
-    // Temporary dummy data for testing
-    for (size_t i = 0; i < req.objects.size(); ++i)
+    const std::vector<size_t>& map = scene_graph.getMAP();
+    const std::vector<dai::ObjectPair>& pairs = scene_graph.getRelationVars();
+    for (size_t i = 0; i < map.size(); ++i)
     {
-        for (size_t j = i + 1; j < req.objects.size(); ++j)
-        {
-            resp.object1.push_back(req.objects[i]);
-            resp.object2.push_back(req.objects[j]);
-            resp.relation.push_back(dai::sceneGraph::kRelationStrings.at(rand() % dai::Relation::kNumRelations));
-        }
+        dai::ObjectPair pair;
+        if (!scene_graph.getRelationVarByLabel(i, &pair))
+            continue;
+        resp.object1.push_back(pair.object1.name);
+        resp.object2.push_back(pair.object2.name);
+        resp.relation.push_back(dai::sceneGraph::kRelationStrings.at(map.at(i)));
     }
 
     return true;

@@ -9,7 +9,6 @@
 
 // C++
 #include <vector>
-#include <stdlib.h>  // TODO(Kevin): Delete only for debug
 
 // Project includes
 #include "srp_md/GetGoal.h"
