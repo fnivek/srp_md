@@ -42,20 +42,28 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     // Make all the learned factors
     for (const auto& ros_factor : req.factors)
     {
-        dai::VarSet vars;
+        dai::VarSet sorted_vars;
+        std::vector<dai::Var> vars;
         // Get the Vars for singular objects
         for (const auto& obj_name : ros_factor.objects)
         {
-            vars.insert(scene_graph.getObjectVarByName(obj_name));
+            dai::Var v = scene_graph.getObjectVarByName(obj_name);
+            vars.push_back(v);
+            sorted_vars.insert(v);
         }
         // Get the Vars for pairs of objects
         for (const auto& pair : ros_factor.pairs)
         {
-            vars.insert(scene_graph.getRelationVarByNames(pair.object1, pair.object2));
+            dai::Var v = scene_graph.getRelationVarByNames(pair.object1, pair.object2);
+            vars.push_back(v);
+            sorted_vars.insert(v);
         }
-        // TODO(Kevin): Make sure probs are ordered correctly
-        // learned_factors.emplace_back(vars, ros_factor.probs);
-        scene_graph.addFactor(vars, ros_factor.probs);
+        // Re-order ros_factor.probs to match the ordering of vars
+        // Assumption is that all objects are first in the order they are in the ros_factor.objects then all relation
+        // vars in order of ros_factor.pairs
+        std::vector<dai::Real> sorted_probs;
+        reorderFactorProbs(vars, ros_factor.probs, &sorted_probs);
+        scene_graph.addFactor(sorted_vars, sorted_probs);
     }
 
     // Perform inference

@@ -72,7 +72,7 @@ class LearnedFactor():
             self._freq[obs] = 1
 
     def gen_factor(self, vars):
-        # TODO(Kevin): Fill in the probabilites correctly
+        # WARNING: Vars must be ordered such that all objects are first and are followed by any relations
         return srp_md.Factor(vars, probs=[1 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))])
 
 
