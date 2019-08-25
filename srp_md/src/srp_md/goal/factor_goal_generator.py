@@ -57,7 +57,10 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         #   If there are not enough vars for the factor the factor is skipped
         for factor_type, learned_factor in factors.iteritems():
             ros_factor = None
-            if len(obs.objs) > factor_type[0] or len(obs.relations) > factor_type[1]:
+            if len(obs.objs) < factor_type[0] or len(obs.relations) < factor_type[1]:
+                self._logger.debug(
+                    'Can not make a factor of type {} because there are {} objects and {} relations'.format(
+                        factor_type, len(obs.objs), len(obs.relations)))
                 continue
             for objects in itertools.combinations(obs.objs, factor_type[0]):
                 for pairs in itertools.combinations(obs.relations, factor_type[1]):
