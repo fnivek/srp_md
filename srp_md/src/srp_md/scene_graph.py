@@ -35,7 +35,10 @@ class SceneGraph(FactorGraph):
         return [rel.value for rel in self.relations]
 
     def get_prop_values(self, prop=None):
-        return [obj.properties[prop] for obj in self.objs]
+        if prop is None:
+            raise ValueError("Property needs to be specified")
+        else:
+            return [obj.properties[prop] for obj in self.objs]
 
     def get_rel_value_from_name(self, name):
         for rel in self.relations:

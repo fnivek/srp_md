@@ -136,7 +136,6 @@ class SrpMd(object):
             self._logger.error('Please select goal generator!')
         else:
             if self.get_learner() == 'factor_graph_learner':
-                # TODO(Henry): Get an observation to put into the goal generator
                 self._goal_instance = self._goal_generator.generate_goal(
                     self._factors, self._sensor.process_data(self.demo_type, self._raw_data))
             else:
