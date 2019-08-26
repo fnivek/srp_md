@@ -42,6 +42,20 @@ class FactorGraph(object):
 
 
 class Factor:
+    """
+    Factor.
+
+    Represents a factor in a factor graph.
+
+    WARNING: Vars must be ordered such that all objects are first and are followed by any relations
+             additionally the probabilities are sorted such that states are as follows:
+             [[0, 0, ..., 0], [1, 0, ..., 0], ..., [n1, 0, ..., 0], [0, 1, ..., 0], [1, 1, ..., 0], ...,
+             [n1, 1, ..., 0], ..., [n1, n2, ..., nm]]
+             i.e. index = sum[i = 0 -> n-1](state(vi) * prod[j = 0 -> i - 1](num_states(vi)))
+             see https://staff.fnwi.uva.nl/j.m.mooij/libDAI/doc/namespacedai.html#a750c3807e7375265c3fb410a1f1223fe
+             calcLinearState and calcState for more details.
+
+    """
     def __init__(self, variables=None, probs=None):
         if variables is None:
             self.vars = []

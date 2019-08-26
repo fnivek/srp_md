@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import logging
 import itertools
 import operator
+from random import random
 
 # SRP MD imports
 from . import learn
@@ -72,8 +73,18 @@ class LearnedFactor():
             self._freq[obs] = 1
 
     def gen_factor(self, vars):
-        # WARNING: Vars must be ordered such that all objects are first and are followed by any relations
-        return srp_md.Factor(vars, probs=[1 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))])
+        """
+        Generates factors from vars.
+
+        Uses the learned knowledge to generate a factor that cooresponds to the variables in vars. vars might contain
+        variables that were not seen in the training data.
+
+        WARNING: Vars must be ordered such that all objects are first and are followed by any relations
+                 Then follow the rules specified in the Factor class defined in factor_graph.py
+
+        """
+        return srp_md.Factor(vars,
+                             probs=[random() for _ in range(reduce(operator.mul, [var.num_states for var in vars]))])
 
 
 # Register the learner
