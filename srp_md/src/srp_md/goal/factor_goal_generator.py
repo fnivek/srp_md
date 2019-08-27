@@ -66,8 +66,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
                 for pairs in itertools.combinations(obs.relations, factor_type[1]):
                     # Use the LearnedFactor to generate a ros_factor for each combination
                     ros_factor = learned_factor.gen_factor(objects + pairs).to_ros_factor()
-
-            req.factors.append(ros_factor)
+                    req.factors.append(ros_factor)
 
         self._logger.debug('Get goal request is:\n{}'.format(req))
 
