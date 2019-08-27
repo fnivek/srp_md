@@ -89,7 +89,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             rel_name = 'R_' + id_list[0] + '_' + id_list[1]
             for relation in goal.relations:
                 if relation.name == rel_name:
-                    relation.value = resp.relation[i]
+                    relation.properties['value'] = resp.relation[i]
         self._logger.debug('What is resp? %s', resp)
         self._logger.debug('What are object names? %s', goal.get_obj_names())
         self._logger.debug('What are object values? %s', goal.get_obj_values())

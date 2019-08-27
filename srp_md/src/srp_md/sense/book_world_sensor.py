@@ -36,10 +36,10 @@ class BookWorldSensor(sense.BaseSensor):
             var_j = scene_graph.objs[var_ids[1] - 1]
             prop_list = self._properties[goal_prop]
             if prop_list.index(var_i.properties[goal_prop]) <= prop_list.index(var_j.properties[goal_prop]):
-                if relation.value != "left":
+                if relation.properties['value'] != "left":
                     return False
             elif prop_list.index(var_i.properties[goal_prop]) > prop_list.index(var_j.properties[goal_prop]):
-                if relation.value != "right":
+                if relation.properties['value'] != "right":
                     return False
         return True
 
@@ -60,7 +60,7 @@ class BookWorldSensor(sense.BaseSensor):
             scene_graph = srp_md.SceneGraph(objs)
 
             for relation in scene_graph.relations:
-                relation.value = random.choice(self._RELATIONS)
+                relation.properties['value'] = random.choice(self._RELATIONS)
             goal_cond = self.check_property(scene_graph, self._goal_prop)
             if (demo_type == "only_goal") and (goal_cond):
                 satisfied = True

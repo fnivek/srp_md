@@ -34,13 +34,13 @@ class AbstractWorldSensor(sense.BaseSensor):
             var_j = scene_graph.objs[var_ids[1] - 1]
 
             if var_i.properties[goal_prop] < var_j.properties[goal_prop]:
-                if relation.value != self._RELATIONS[0]:
+                if relation.properties['value'] != self._RELATIONS[0]:
                     return False
             elif var_i.properties[goal_prop] == var_j.properties[goal_prop]:
-                if relation.value != self._RELATIONS[1]:
+                if relation.properties['value'] != self._RELATIONS[1]:
                     return False
             else:
-                if relation.value != self._RELATIONS[2]:
+                if relation.properties['value'] != self._RELATIONS[2]:
                     return False
         return True
 
@@ -61,7 +61,7 @@ class AbstractWorldSensor(sense.BaseSensor):
             scene_graph = srp_md.SceneGraph(objs)
 
             for relation in scene_graph.relations:
-                relation.value = random.choice(self._RELATIONS)
+                relation.properties['value'] = random.choice(self._RELATIONS)
             goal_cond = self.check_property(scene_graph, self._goal_prop)
             if (demo_type == "only_goal") and (goal_cond):
                 satisfied = True

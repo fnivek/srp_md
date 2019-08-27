@@ -13,8 +13,7 @@ import srp_md
 class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
-        self._config_list = [(1, 0), (0, 1), (2, 0), (1, 1), (0, 2),
-                             (3, 0), (2, 1), (1, 2), (0, 3)]
+        self._config_list = [(0, 1), (1, 1), (0, 2), (2, 1), (1, 2), (0, 3)]
 
     def learn(self, obs):
         """ Learn.
@@ -31,7 +30,7 @@ class FactorGraphLearner(learn.BaseLearner):
           obs - list of srp_md.SceneGraph
 
         Returns:
-          A dictionary of LearnedFactor where key's are a tuple (num_objs, num_relations):
+          A dictionary of FactorGenerator where key's are a tuple (num_objs, num_relations):
             {'xx': {x1=A,x2=B: 10, ...}, 'x': {x1=A: 10, x2=B: 0.01}, 'rrr': {r1=ON, r2=ON, r3=DISJOINT: 3.8}}
 
         """
@@ -42,7 +41,7 @@ class FactorGraphLearner(learn.BaseLearner):
         for graph in obs:
             # Loop through individual factors for one observation
             for factor in graph.gen_input_factors(configs=self._config_list):
-                # Find the appropriate LearnedFactor to udpate
+                # Find the appropriate FactorGenerator to udpate
                 num_relations = sum(1 for var in factor.vars if var.type is 'relation')
                 num_objs = len(factor.vars) - num_relations
                 gen_index = (num_objs, num_relations)
@@ -50,27 +49,24 @@ class FactorGraphLearner(learn.BaseLearner):
                 if gen_index in factor_gens:
                     gen = factor_gens[gen_index]
                 else:
-                    gen = LearnedFactor(num_objs, num_relations)
+                    gen = FactorGenerator(num_objs, num_relations)
                     factor_gens[gen_index] = gen
 
                 # Update the learned factor
-                gen.observe(tuple(sorted([var.value for var in factor.vars])))
+                gen.observe(tuple(sorted([var.properties['value'] for var in factor.vars])))
 
         return factor_gens
 
 
-class LearnedFactor():
-    def __init__(self, num_objs, num_relations):
+class FactorGenerator():
+    def __init__(self, num_objs, num_relations, learner=None):
         self.num_objs = num_objs
         self.num_relations = num_relations
-        self._freq = {}
-
-    def observe(self, obs):
-        # Increment seen assignments
-        if obs in self._freq:
-            self._freq[obs] += 1
-        else:
-            self._freq[obs] = 1
+        self._learner = learner
+        if learner is None:
+            # Default to FreqLearner
+            self._learner = FreqLearner()
+        setattr(FactorGenerator, 'observe', self._learner.observe)
 
     def gen_factor(self, vars):
         """
@@ -83,8 +79,54 @@ class LearnedFactor():
                  Then follow the rules specified in the Factor class defined in factor_graph.py
 
         """
-        return srp_md.Factor(vars,
-                             probs=[random() for _ in range(reduce(operator.mul, [var.num_states for var in vars]))])
+        # Recursively determine every possible value for Factor.probs
+        self._probs = [0 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))]
+        self._probs_index = 0
+        self._assignment = {var: 0 for var in vars}
+        self._vars = list(reversed(vars))
+        self._recurse_gen_factor(0)
+        return srp_md.Factor(vars, self._probs)
+
+    def _recurse_gen_factor(self, var_index):
+        # Assign prob
+        if var_index >= len(self._vars):
+            self._probs[self._probs_index] = self._learner.predict(self._assignment)
+            self._probs_index += 1
+            return
+
+        var = self._vars[var_index]
+        # Itterate over all relations
+        if var.type == 'relation':
+            for relation in srp_md.SceneGraph.RELATION_STRS:
+                self._assignment[var] = relation
+                self._recurse_gen_factor(var_index + 1)
+        else:
+            # Only has one state
+            self._assignment[var] = var.properties['value']
+            self._recurse_gen_factor(var_index + 1)
+
+
+class FreqLearner:
+    """ Learn factors by frequency.
+
+    Simpily keep a list of observation and return the count.
+
+    """
+    def __init__(self):
+        self._freq = {}
+
+    def observe(self, obs):
+        if obs in self._freq:
+            self._freq[obs] += 1
+        else:
+            self._freq[obs] = 1
+
+    def predict(self, assignment):
+        value_tuple = tuple(sorted(value for value in assignment.values()))
+        if value_tuple in self._freq:
+            return self._freq[value_tuple]
+        else:
+            return 0
 
 
 # Register the learner

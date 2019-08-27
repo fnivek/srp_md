@@ -39,10 +39,10 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
                     var_j = goal_instance.objs[var_ids[1] - 1]
                     prop_list = current_sensor._properties[des_prop]
                     if prop_list.index(var_i.properties[des_prop]) <= prop_list.index(var_j.properties[des_prop]):
-                        if relation.value != "left":
+                        if relation.properties['value'] != "left":
                             evaluation = False
                     elif prop_list.index(var_i.properties[des_prop]) > prop_list.index(var_j.properties[des_prop]):
-                        if relation.value != "right":
+                        if relation.properties['value'] != "right":
                             evaluation = False
                 if not goal_instance.check_consistency("pen"):
                     evaluation = False
@@ -54,13 +54,13 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
                     var_i = goal_instance.objs[var_ids[0] - 1]
                     var_j = goal_instance.objs[var_ids[1] - 1]
                     if var_i.properties[des_prop] < var_j.properties[des_prop]:
-                        if relation.value != current_sensor._RELATIONS[0]:
+                        if relation.properties['value'] != current_sensor._RELATIONS[0]:
                             evaluation = False
                     elif var_i.properties[des_prop] == var_j.properties[des_prop]:
-                        if relation.value != current_sensor._RELATIONS[1]:
+                        if relation.properties['value'] != current_sensor._RELATIONS[1]:
                             evaluation = False
                     else:
-                        if relation.value != current_sensor._RELATIONS[2]:
+                        if relation.properties['value'] != current_sensor._RELATIONS[2]:
                             evaluation = False
                 if not goal_instance.check_consistency("abstract"):
                     evaluation = False

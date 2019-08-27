@@ -5,7 +5,7 @@ import itertools
 
 class SceneGraph(FactorGraph):
     # Class constants
-    RELATIONS = ['disjoint', 'on', 'support', 'proximity']
+    RELATION_STRS = ['disjoint', 'on', 'support', 'proximity', 'in', 'contain']
 
     def __init__(self, objs=None):
         super(SceneGraph, self).__init__()
@@ -26,13 +26,13 @@ class SceneGraph(FactorGraph):
         return [obj.name for obj in self.objs]
 
     def get_obj_values(self):
-        return [obj.value for obj in self.objs]
+        return [obj.properties['value'] for obj in self.objs]
 
     def get_rel_names(self):
         return [rel.name for rel in self.relations]
 
     def get_rel_values(self):
-        return [rel.value for rel in self.relations]
+        return [rel.properties['value'] for rel in self.relations]
 
     def get_prop_values(self, prop=None):
         if prop is None:
@@ -43,7 +43,7 @@ class SceneGraph(FactorGraph):
     def get_rel_value_from_name(self, name):
         for rel in self.relations:
             if rel.name == name:
-                return rel.value
+                return rel.properties['value']
         else:
             return None
 

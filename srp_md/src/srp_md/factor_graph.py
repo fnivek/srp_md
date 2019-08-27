@@ -81,13 +81,13 @@ class Factor:
 class Var:
     def __init__(self, name, var_type='object', factors=None, value=None, properties=None, num_states=1):
         self.name = name
-        self.value = value
         self.factors = factors
         if factors is None:
             self.factors = []
         self.properties = properties
         if properties is None:
             self.properties = {}
+        self.properties['value'] = value
         self.type = var_type
         self.num_states = num_states
 

@@ -32,7 +32,7 @@ class BlockWorldSensor(sense.BaseSensor):
             scene_graph = srp_md.SceneGraph(objs)
 
             for relation in scene_graph.relations:
-                relation.value = random.choice(self._RELATIONS)
+                relation.properties['value'] = random.choice(self._RELATIONS)
             consistent = scene_graph.check_consistency("block")
 
             # Set end condition for while loop depending on demo type we want
