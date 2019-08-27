@@ -5,7 +5,7 @@ import itertools
 
 class SceneGraph(FactorGraph):
     # Class constants
-    RELATION_STRS = ['disjoint', 'on', 'support', 'proximity', 'in', 'contain']
+    RELATION_STRS = ['disjoint', 'in', 'on', 'contain', 'support', 'proximity']
 
     def __init__(self, objs=None):
         super(SceneGraph, self).__init__()
