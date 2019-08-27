@@ -19,7 +19,7 @@ class PenWorldSensor(sense.BaseSensor):
                             "material": ["plastic", "metal", "wood"],
                             "shape": ["round", "sharp"]}
         self._RELATIONS = ["left", "right"]
-        self._goal_prop = "color"
+        self.goal_prop = "color"
         self._ass_prop = {}
         for obj in self._objs:
             self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
@@ -59,7 +59,7 @@ class PenWorldSensor(sense.BaseSensor):
 
             for relation in scene_graph.relations:
                 relation.properties['value'] = random.choice(self._RELATIONS)
-            goal_cond = self.check_property(scene_graph, self._goal_prop)
+            goal_cond = self.check_property(scene_graph, self.goal_prop)
             if (demo_type == "only_goal") and (goal_cond):
                 satisfied = True
             elif (demo_type == "only_not_goal") and (not goal_cond):

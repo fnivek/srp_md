@@ -17,7 +17,7 @@ class BlockTowerSensor(sense.BaseSensor):
         self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
                             "material": ["metal", "wood", "plastic"]}
         self._RELATIONS = ['disjoint', 'on', 'support', 'proximity']
-        self._goal_prop = "color"
+        self.goal_prop = "color"
         self._ass_prop = {}
         for obj in self._objs:
             self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
@@ -74,11 +74,11 @@ class BlockTowerSensor(sense.BaseSensor):
     def gen_goal_demo(self, scene_graph):
         # Get a list of integer ids for variables and randomly shuffle them
         bot_top = list(range(1, len(scene_graph.objs) + 1))
-        if self._goal_prop is None:
+        if self.goal_prop is None:
             random.shuffle(bot_top)
         else:
-            prop_list = self._properties[self._goal_prop]
-            prop_order = [prop_list.index(val) for val in scene_graph.get_prop_values(self._goal_prop)]
+            prop_list = self._properties[self.goal_prop]
+            prop_order = [prop_list.index(val) for val in scene_graph.get_prop_values(self.goal_prop)]
             bot_top = [var_id for _, var_id in sorted(zip(prop_order, bot_top))]
 
         # Initialize all relations to be "disjoint"
@@ -112,7 +112,7 @@ class BlockTowerSensor(sense.BaseSensor):
             if not consistent:
                 pass
             else:
-                goal_cond = self.check_property(scene_graph, self._goal_prop)
+                goal_cond = self.check_property(scene_graph, self.goal_prop)
 
             if count > 100:
                 self._logger.warning('Desired scene graph could not be generated during given time. \
@@ -139,13 +139,13 @@ class BlockTowerSensor(sense.BaseSensor):
             scene_graph = self.gen_not_goal_demo(scene_graph)
         elif demo_type == "random":
             scene_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
-        goal_cond = self.check_property(scene_graph, self._goal_prop)
+        goal_cond = self.check_property(scene_graph, self.goal_prop)
 
         self._logger.debug('What are object names? %s', scene_graph.get_obj_names())
         self._logger.debug('What are object values? %s', scene_graph.get_obj_values())
         self._logger.debug('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.debug('What are relation values? %s', scene_graph.get_rel_values())
-        self._logger.debug('What are property values? %s', scene_graph.get_prop_values(self._goal_prop))
+        self._logger.debug('What are property values? %s', scene_graph.get_prop_values(self.goal_prop))
         self._logger.debug('Is this scene graph consistent? %s', scene_graph.check_consistency("block"))
         self._logger.debug('Is goal condition satisfied? %s', goal_cond)
 
