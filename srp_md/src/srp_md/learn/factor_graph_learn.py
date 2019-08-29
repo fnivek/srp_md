@@ -7,6 +7,7 @@ from random import random
 
 # SRP MD imports
 from . import learn
+from .decision_tree_factor_learner import DecisionTreeFactorLearner
 import srp_md
 
 
@@ -64,8 +65,8 @@ class FactorGenerator():
         self.num_relations = num_relations
         self._learner = learner
         if learner is None:
-            # Default to FreqLearner
-            self._learner = FreqLearner()
+            # Default to FreqFactorLearner
+            self._learner = FreqFactorLearner()
         setattr(FactorGenerator, 'observe', self._learner.observe)
 
     def gen_factor(self, vars):
@@ -106,7 +107,7 @@ class FactorGenerator():
             self._recurse_gen_factor(var_index + 1)
 
 
-class FreqLearner:
+class FreqFactorLearner:
     """ Learn factors by frequency.
 
     Simpily keep a list of observation and return the count.
