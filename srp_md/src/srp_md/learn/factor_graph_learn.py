@@ -15,6 +15,12 @@ class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
         self._config_list = [(0, 1), (1, 1), (0, 2), (2, 1), (1, 2), (0, 3)]
+        self.factor_learner = DecisionTreeFactorLearner
+
+    def set_attributes(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            self._logger.debug('Setting {} to {}'.format(key, value))
+            setattr(self, key, value)
 
     def learn(self, obs):
         """ Learn.
@@ -50,7 +56,7 @@ class FactorGraphLearner(learn.BaseLearner):
                 if gen_index in factor_gens:
                     gen = factor_gens[gen_index]
                 else:
-                    gen = FactorGenerator(num_objs, num_relations)
+                    gen = FactorGenerator(num_objs, num_relations, self.factor_learner())
                     factor_gens[gen_index] = gen
 
                 # Update the learned factor

@@ -13,6 +13,9 @@ class Controller(object):
     def set_learner(self, learner):
         self._model.set_learner(learner)
 
+    def set_learner_attributes(self, **kwargs):
+        self._model.set_learner_attributes(**kwargs)
+
     def learn(self):
         self._model.learn()
 
