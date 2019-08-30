@@ -113,28 +113,5 @@ class FactorGenerator():
             self._recurse_gen_factor(var_index + 1)
 
 
-class FreqFactorLearner:
-    """ Learn factors by frequency.
-
-    Simpily keep a list of observation and return the count.
-
-    """
-    def __init__(self):
-        self._freq = {}
-
-    def observe(self, obs):
-        if obs in self._freq:
-            self._freq[obs] += 1
-        else:
-            self._freq[obs] = 1
-
-    def predict(self, assignment):
-        value_tuple = tuple(sorted(value for value in assignment.values()))
-        if value_tuple in self._freq:
-            return self._freq[value_tuple]
-        else:
-            return 0
-
-
 # Register the learner
 learn.learners['factor_graph_learner'] = FactorGraphLearner

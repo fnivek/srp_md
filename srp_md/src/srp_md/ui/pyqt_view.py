@@ -143,18 +143,12 @@ class PyQtView(view.BaseView):
             return
 
         main_menu = QMenu('Configure {}'.format(self._gui.learnerComboBox.currentText()))
-        config_menu = QMenu('config')
-        freq_action = config_menu.addAction("FreqFactorLearner")
-        decision_tree_action = config_menu.addAction("DecisionTreeFactorLearner")
-        least_squares_action = config_menu.addAction("LeastSquaresFactorLearner")
+        config_menu = QMenu('Factor learner')
+        actions = {config_menu.addAction(name): cls for name, cls in learn.FACTOR_LEARNERS.iteritems()}
         main_menu.addMenu(config_menu)
         action = main_menu.exec_(self._gui.learnerComboBox.mapToGlobal(pos))
-        if action == freq_action:
-            self._ctrl.set_learner_attributes(factor_learner=learn.FreqFactorLearner)
-        elif action == decision_tree_action:
-            self._ctrl.set_learner_attributes(factor_learner=learn.DecisionTreeFactorLearner)
-        elif action == least_squares_action:
-            self._ctrl.set_learner_attributes(factor_learner=learn.LeastSquaresFactorLearner)
+        if action in actions:
+            self._ctrl.set_learner_attributes(factor_learner=actions[action])
 
     def run_once(self):
         self.update_from_model()

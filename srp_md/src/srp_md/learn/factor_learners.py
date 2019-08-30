@@ -13,6 +13,36 @@ import numpy
 import srp_md
 
 
+# A dictionary of names to Factor Learner Classes
+FACTOR_LEARNERS = {}
+
+
+class FreqFactorLearner:
+    """ Learn factors by frequency.
+
+    Simpily keep a list of observation and return the count.
+
+    """
+    def __init__(self):
+        self._freq = {}
+
+    def observe(self, obs):
+        if obs in self._freq:
+            self._freq[obs] += 1
+        else:
+            self._freq[obs] = 1
+
+    def predict(self, assignment):
+        value_tuple = tuple(sorted(value for value in assignment.values()))
+        if value_tuple in self._freq:
+            return self._freq[value_tuple]
+        else:
+            return 0
+
+
+FACTOR_LEARNERS['frequency'] = FreqFactorLearner
+
+
 class DecisionTreeFactorLearner:
     """ Learn factors by a decision  tree.
 
@@ -53,6 +83,9 @@ class DecisionTreeFactorLearner:
             return probs[0][probs_index[0][0]]
 
         return 0
+
+
+FACTOR_LEARNERS['decision_tree'] = DecisionTreeFactorLearner
 
 
 class LeastSquaresFactorLearner:
@@ -99,3 +132,6 @@ class LeastSquaresFactorLearner:
         #     return probs[0][probs_index[0][0]]
 
         return 0
+
+
+FACTOR_LEARNERS['least_squares'] = LeastSquaresFactorLearner
