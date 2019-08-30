@@ -3,7 +3,6 @@ from builtins import range
 import itertools
 
 # srp_md imports
-import srp_md
 from srp_md.msg import Factor as RosFactor
 from srp_md.msg import ObjectPair
 
@@ -16,14 +15,6 @@ class FactorGraph(object):
             factors = list()
         self._vars = variables
         self._factors = factors
-        self._rev_rel_dict = {
-            "disjoint": "disjoint",
-            "proximity": "proximity",
-            "on": "support",
-            "support": "on",
-            "in": "contain",
-            "contain": "in"
-        }
 
     def num_vars(self):
         return len(self._vars)
@@ -36,12 +27,6 @@ class FactorGraph(object):
 
     def add_var(self, var):
         self._vars.append(var)
-
-    def get_objects(self):
-        return [var for var in self._vars if var.type == "object"]
-
-    def get_relations(self):
-        return [var for var in self._vars if var.type == "relation"]
 
     def get_var_names(self):
         return [var.name for var in self._vars]
@@ -58,39 +43,6 @@ class FactorGraph(object):
             for obj_combo in itertools.combinations(self.get_objects(), config[0]):
                 for rel_combo in itertools.combinations(self.get_relations(), config[1]):
                     yield Factor(variables=obj_combo + rel_combo)
-
-    def gen_ordered_factors(self, configs=[]):
-        # For each (obj, rel) config, do:
-        for config in configs:
-            # If the number of relations do not match with corresponding number of objects, just skip
-            if config[1] != srp_md.tri_num(config[0] - 1):
-                continue
-            # For each combination of objects and relations, do:
-            for obj_permu in itertools.permutations(self.get_objects(), config[0]):
-                # Initialize variable list as the permutated list of objects
-                var_list = list(obj_permu)
-                # For each pair of objects in the list, do:
-                for obj_pair in itertools.combinations(obj_permu, 2):
-                    # Get the relation of those pair (in order)
-                    rel_name = "R_" + str(obj_pair[0].return_id()) + "_" + str(obj_pair[1].return_id())
-                    relation = self.get_var_from_name(rel_name)
-                    # If such relation does not exist, then it's reverse should exist
-                    if relation is None:
-                        rev_name = "R_" + str(obj_pair[1].return_id()) + "_" + str(obj_pair[0].return_id())
-                        rev_var = self.get_var_from_name(rev_name)
-                        # If the reverse doesn't exist print error
-                        if rev_var is None:
-                            raise ValueError("Something is seriously wrong here!")
-                        # Otherwise, make and add the relation into variable list
-                        else:
-                            rev_val = self._rev_rel_dict[rev_var.assignment['value']]
-                            temp_var = Var(rel_name, var_type='relation', value=rev_val)
-                            var_list.append(temp_var)
-                    # Else if the relation exists, just add it to the list
-                    else:
-                        var_list.append(relation)
-                # Finally return the factor of this variables list
-                yield Factor(variables=var_list)
 
 
 class Factor:

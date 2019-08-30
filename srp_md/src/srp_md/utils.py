@@ -45,4 +45,3 @@ def tri_num(n):
     for i in range(n):
         num += i + 1
     return num
-

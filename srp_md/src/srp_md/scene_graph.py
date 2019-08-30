@@ -1,11 +1,23 @@
-from .factor_graph import FactorGraph, Var
+# Python
+from __future__ import absolute_import
 from builtins import str
 import itertools
 
+# Project
+import srp_md
 
-class SceneGraph(FactorGraph):
+
+class SceneGraph(srp_md.FactorGraph):
     # Class constants
     RELATION_STRS = ['disjoint', 'in', 'on', 'contain', 'support', 'proximity']
+    REV_RELATION_DICT = {
+        "disjoint":  "disjoint",
+        "proximity": "proximity",
+        "on":        "support",
+        "support":   "on",
+        "in":        "contain",
+        "contain":   "in"
+    }
 
     def __init__(self, objs=None):
         super(SceneGraph, self).__init__()
@@ -46,6 +58,45 @@ class SceneGraph(FactorGraph):
                 return rel.assignment['value']
         else:
             return None
+
+    def get_objects(self):
+        return [var for var in self._vars if var.type == "object"]
+
+    def get_relations(self):
+        return [var for var in self._vars if var.type == "relation"]
+
+    def gen_ordered_factors(self, configs=[]):
+        # For each (obj, rel) config, do:
+        for config in configs:
+            # If the number of relations do not match with corresponding number of objects, just skip
+            if config[1] != srp_md.tri_num(config[0] - 1):
+                continue
+            # For each combination of objects and relations, do:
+            for obj_permu in itertools.permutations(self.get_objects(), config[0]):
+                # Initialize variable list as the permutated list of objects
+                var_list = list(obj_permu)
+                # For each pair of objects in the list, do:
+                for obj_pair in itertools.combinations(obj_permu, 2):
+                    # Get the relation of those pair (in order)
+                    rel_name = "R_" + str(obj_pair[0].return_id()) + "_" + str(obj_pair[1].return_id())
+                    relation = self.get_var_from_name(rel_name)
+                    # If such relation does not exist, then it's reverse should exist
+                    if relation is None:
+                        rev_name = "R_" + str(obj_pair[1].return_id()) + "_" + str(obj_pair[0].return_id())
+                        rev_var = self.get_var_from_name(rev_name)
+                        # If the reverse doesn't exist print error
+                        if rev_var is None:
+                            raise ValueError("Something is seriously wrong here!")
+                        # Otherwise, make and add the relation into variable list
+                        else:
+                            rev_val = SceneGraph.REV_RELATION_DICT[rev_var.assignment['value']]
+                            temp_var = srp_md.Var(rel_name, var_type='relation', value=rev_val)
+                            var_list.append(temp_var)
+                    # Else if the relation exists, just add it to the list
+                    else:
+                        var_list.append(relation)
+                # Finally return the factor of this variables list
+                yield srp_md.Factor(variables=var_list)
 
     def check_consistency(self, world=None):
         # If no world specified, just return True
@@ -247,7 +298,7 @@ class SceneGraph(FactorGraph):
             # Make a new relationship var
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
-            var = Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
+            var = srp_md.Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
             setattr(var, 'object1', pair[0].name)
             setattr(var, 'object2', pair[1].name)
             # TODO(Henry): Remove this magic number 6, it is the number of types of relations in scenegraph.cpp
