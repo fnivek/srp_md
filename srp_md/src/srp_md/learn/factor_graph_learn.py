@@ -14,7 +14,8 @@ import srp_md
 class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
-        self._config_list = [(0, 1), (1, 1), (0, 2), (2, 1), (1, 2), (0, 3)]
+        # self._config_list = [(0, 1), (1, 1), (0, 2), (2, 1), (1, 2), (0, 3)]
+        self._config_list = [(2, 1)]
         self.factor_learner = DecisionTreeFactorLearner
 
     def set_attributes(self, **kwargs):
