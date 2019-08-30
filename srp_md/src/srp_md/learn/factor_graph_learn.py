@@ -61,7 +61,7 @@ class FactorGraphLearner(learn.BaseLearner):
                     factor_gens[gen_index] = gen
 
                 # Update the learned factor
-                gen.observe(tuple(sorted([var.properties['value'] for var in factor.vars])))
+                gen.observe(tuple([var.assignment['value'] for var in factor.vars]))
 
         return factor_gens
 
@@ -110,7 +110,7 @@ class FactorGenerator():
                 self._recurse_gen_factor(var_index + 1)
         else:
             # Only has one state
-            self._assignment[var] = var.properties['value']
+            self._assignment[var] = var.assignment['value']
             self._recurse_gen_factor(var_index + 1)
 
 

@@ -28,11 +28,11 @@ class BlockTowerSensor(sense.BaseSensor):
         bot_top = []
         for relation in scene_graph.relations:
             # Count how many relations that are 'on' or 'support'
-            if relation.properties['value'] == 'on':
+            if relation.assignment['value'] == 'on':
                 var_ids = relation.return_objects()
                 var_ids.reverse()
                 order_list.append(var_ids)
-            elif relation.properties['value'] == 'support':
+            elif relation.assignment['value'] == 'support':
                 var_ids = relation.return_objects()
                 order_list.append(var_ids)
 
@@ -63,10 +63,10 @@ class BlockTowerSensor(sense.BaseSensor):
                         if prop_list.index(prop_order[bot_top[i] - 1]) > \
                                 prop_list.index(prop_order[bot_top[i + 1] - 1]):
                             if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
-                                if relation.properties['value'] != "support":
+                                if relation.assignment['value'] != "support":
                                     return False
                             elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
-                                if relation.properties['value'] != "on":
+                                if relation.assignment['value'] != "on":
                                     return False
 
         return True
@@ -83,15 +83,15 @@ class BlockTowerSensor(sense.BaseSensor):
 
         # Initialize all relations to be "disjoint"
         for relation in scene_graph.relations:
-            relation.properties['value'] = "disjoint"
+            relation.assignment['value'] = "disjoint"
 
         # For each pair in bot_top list, set value for relation in correspondence
         for i in range(len(bot_top) - 1):
             for relation in scene_graph.relations:
                 if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
-                    relation.properties['value'] = "support"
+                    relation.assignment['value'] = "support"
                 elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
-                    relation.properties['value'] = "on"
+                    relation.assignment['value'] = "on"
 
         self._logger.debug('Tower Order from Bottom to Top %s', bot_top)
 
@@ -106,7 +106,7 @@ class BlockTowerSensor(sense.BaseSensor):
             count += 1
 
             for relation in scene_graph.relations:
-                relation.properties['value'] = random.choice(self._RELATIONS)
+                relation.assignment['value'] = random.choice(self._RELATIONS)
 
             consistent = scene_graph.check_consistency("block")
             if not consistent:
@@ -126,7 +126,7 @@ class BlockTowerSensor(sense.BaseSensor):
     def process_data(self, demo_type, data):
         # Randomly choose objects from object list
         num_objs = random.randint(3, len(self._objs))
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
+        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph
