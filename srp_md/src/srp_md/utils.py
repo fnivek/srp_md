@@ -34,7 +34,15 @@ def reservoir_sample(items, k):
 
 
 def ncr(n, r):
-    r = min(r, n-r)
-    numer = reduce(operator.mul, range(n, n-r, -1), 1)
-    denom = reduce(operator.mul, range(1, r+1), 1)
+    r = min(r, n - r)
+    numer = reduce(operator.mul, range(n, n - r, -1), 1)
+    denom = reduce(operator.mul, range(1, r + 1), 1)
     return numer / denom
+
+
+def tri_num(n):
+    num = 0
+    for i in range(n):
+        num += i + 1
+    return num
+
