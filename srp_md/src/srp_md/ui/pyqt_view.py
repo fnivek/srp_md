@@ -68,6 +68,8 @@ class PyQtView(view.BaseView):
         self._gui.learnButton.pressed.connect(self._ctrl.learn)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.learnerComboBox.currentIndexChanged.connect(self.update_learner)
+        self._gui.learnerComboBox.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._gui.learnerComboBox.customContextMenuRequested.connect(self.configure_learner)
         self._gui.getDemoComboBox.currentIndexChanged.connect(self.update_demo_type)
         self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
         self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
@@ -134,6 +136,19 @@ class PyQtView(view.BaseView):
             pass
         else:
             self._ctrl.load_demos(demo_file[0])
+
+    def configure_learner(self, pos):
+        # Currently only factor_graph_learner is configurable
+        if self._gui.learnerComboBox.currentText() != 'factor_graph_learner':
+            return
+
+        main_menu = QMenu('Configure {}'.format(self._gui.learnerComboBox.currentText()))
+        config_menu = QMenu('Factor learner')
+        actions = {config_menu.addAction(name): cls for name, cls in learn.FACTOR_LEARNERS.iteritems()}
+        main_menu.addMenu(config_menu)
+        action = main_menu.exec_(self._gui.learnerComboBox.mapToGlobal(pos))
+        if action in actions:
+            self._ctrl.set_learner_attributes(factor_learner=actions[action])
 
     def run_once(self):
         self.update_from_model()

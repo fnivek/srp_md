@@ -26,24 +26,24 @@ class SceneGraph(FactorGraph):
         return [obj.name for obj in self.objs]
 
     def get_obj_values(self):
-        return [obj.properties['value'] for obj in self.objs]
+        return [obj.assignment['value'] for obj in self.objs]
 
     def get_rel_names(self):
         return [rel.name for rel in self.relations]
 
     def get_rel_values(self):
-        return [rel.properties['value'] for rel in self.relations]
+        return [rel.assignment['value'] for rel in self.relations]
 
     def get_prop_values(self, prop=None):
         if prop is None:
             raise ValueError("Property needs to be specified")
         else:
-            return [obj.properties[prop] for obj in self.objs]
+            return [obj.assignment[prop] for obj in self.objs]
 
     def get_rel_value_from_name(self, name):
         for rel in self.relations:
             if rel.name == name:
-                return rel.properties['value']
+                return rel.assignment['value']
         else:
             return None
 
@@ -248,8 +248,8 @@ class SceneGraph(FactorGraph):
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
             var = Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
-            var.properties['object1'] = pair[0]
-            var.properties['object2'] = pair[1]
+            setattr(var, 'object1', pair[0].name)
+            setattr(var, 'object2', pair[1].name)
             # TODO(Henry): Remove this magic number 6, it is the number of types of relations in scenegraph.cpp
             #              this number should come from something like a config file that specifies our domain.
             var.num_states = 6

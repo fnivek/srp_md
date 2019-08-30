@@ -33,14 +33,14 @@ class AbstractWorldSensor(sense.BaseSensor):
             var_i = scene_graph.objs[var_ids[0] - 1]
             var_j = scene_graph.objs[var_ids[1] - 1]
 
-            if var_i.properties[goal_prop] < var_j.properties[goal_prop]:
-                if relation.properties['value'] != self._RELATIONS[0]:
+            if var_i.assignment[goal_prop] < var_j.assignment[goal_prop]:
+                if relation.assignment['value'] != self._RELATIONS[0]:
                     return False
-            elif var_i.properties[goal_prop] == var_j.properties[goal_prop]:
-                if relation.properties['value'] != self._RELATIONS[1]:
+            elif var_i.assignment[goal_prop] == var_j.assignment[goal_prop]:
+                if relation.assignment['value'] != self._RELATIONS[1]:
                     return False
             else:
-                if relation.properties['value'] != self._RELATIONS[2]:
+                if relation.assignment['value'] != self._RELATIONS[2]:
                     return False
         return True
 
@@ -54,14 +54,14 @@ class AbstractWorldSensor(sense.BaseSensor):
 
             # Randomly choose objects from object list
             num_objs = random.randint(1, len(self._objs))
-            objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, properties=self._ass_prop[v])
+            objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, assignment=self._ass_prop[v])
                     for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
             # Generate a consistent scene graph
             scene_graph = srp_md.SceneGraph(objs)
 
             for relation in scene_graph.relations:
-                relation.properties['value'] = random.choice(self._RELATIONS)
+                relation.assignment['value'] = random.choice(self._RELATIONS)
             goal_cond = self.check_property(scene_graph, self.goal_prop)
             if (demo_type == "only_goal") and (goal_cond):
                 satisfied = True

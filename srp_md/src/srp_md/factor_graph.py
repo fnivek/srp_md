@@ -86,36 +86,36 @@ class Factor:
             self.vars = variables
         self.probs = probs
 
-    def connect_var(self, var):
-        self.vars.append(var)
+    def connect_vars(self, vars):
+        self.vars.extend(vars)
 
     def to_ros_factor(self):
         ros_factor = RosFactor()
         ros_factor.objects = [var.name for var in self.vars if var.type == 'object']
         for var in [var for var in self.vars if var.type == 'relation']:
             pair = ObjectPair()
-            pair.object1 = var.properties['object1'].name
-            pair.object2 = var.properties['object2'].name
+            pair.object1 = var.object1
+            pair.object2 = var.object2
             ros_factor.pairs.append(pair)
         ros_factor.probs = self.probs
         return ros_factor
 
 
 class Var:
-    def __init__(self, name, var_type='object', factors=None, value=None, properties=None, num_states=1):
+    def __init__(self, name, var_type='object', factors=None, value=None, assignment=None, num_states=1):
         self.name = name
         self.factors = factors
         if factors is None:
             self.factors = []
-        self.properties = properties
-        if properties is None:
-            self.properties = {}
-        self.properties['value'] = value
+        self.assignment = assignment
+        if assignment is None:
+            self.assignment = {}
+        self.assignment['value'] = value
         self.type = var_type
         self.num_states = num_states
 
-    def connect_factor(self, factor):
-        self.factors.append(factor)
+    def connect_factors(self, factors):
+        self.factors.extend(factors)
 
     def return_id(self):
         if self.type == "object":

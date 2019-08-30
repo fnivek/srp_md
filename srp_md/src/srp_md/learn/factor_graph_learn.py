@@ -5,13 +5,21 @@ import operator
 
 # SRP MD imports
 from . import learn
+from .factor_learners import FreqFactorLearner, DecisionTreeFactorLearner
 import srp_md
 
 
 class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
-        self._config_list = [(2, 1), (3, 2)]
+        # self._config_list = [(0, 1), (1, 1), (0, 2), (2, 1), (1, 2), (0, 3)]
+        self._config_list = [(2, 1)]
+        self.factor_learner = DecisionTreeFactorLearner
+
+    def set_attributes(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            self._logger.debug('Setting {} to {}'.format(key, value))
+            setattr(self, key, value)
 
     def learn(self, obs):
         """ Learn.
@@ -44,12 +52,12 @@ class FactorGraphLearner(learn.BaseLearner):
                 num_objs = len(factor.vars) - num_relations
                 gen_index = (num_objs, num_relations)
                 if gen_index not in factor_gens:
-                    factor_gens[gen_index] = FactorGenerator(num_objs, num_relations)
+                    factor_gens[gen_index] = FactorGenerator(num_objs, num_relations, self.factor_learner())
 
                 # Update the learned factor
                 self._logger.debug("Show me this list1 %s", tuple([var.name for var in factor.vars]))
-                self._logger.debug("Show me this list2 %s", tuple([var.properties['value'] for var in factor.vars]))
-                factor_gens[gen_index].observe(tuple([var.properties['value'] for var in factor.vars]))
+                self._logger.debug("Show me this list2 %s", tuple([var.assignment['value'] for var in factor.vars]))
+                factor_gens[gen_index].observe(tuple([var.assignment['value'] for var in factor.vars]))
 
         return factor_gens
 
@@ -60,8 +68,8 @@ class FactorGenerator():
         self.num_relations = num_relations
         self._learner = learner
         if learner is None:
-            # Default to FreqLearner
-            self._learner = FreqLearner()
+            # Default to FreqFactorLearner
+            self._learner = FreqFactorLearner()
         setattr(FactorGenerator, 'observe', self._learner.observe)
 
     def gen_factor(self, vars):
@@ -99,31 +107,8 @@ class FactorGenerator():
                 self._recurse_gen_factor(var_index + 1)
         else:
             # Only has one state
-            self._assignment[var] = var.properties['value']
+            self._assignment[var] = var.assignment['value']
             self._recurse_gen_factor(var_index + 1)
-
-
-class FreqLearner:
-    """ Learn factors by frequency.
-
-    Simpily keep a list of observation and return the count.
-
-    """
-    def __init__(self):
-        self._freq = {}
-
-    def observe(self, obs):
-        if obs in self._freq:
-            self._freq[obs] += 1
-        else:
-            self._freq[obs] = 1
-
-    def predict(self, assignment):
-        value_tuple = tuple(sorted(value for value in assignment.values()))
-        if value_tuple in self._freq:
-            return self._freq[value_tuple]
-        else:
-            return 0
 
 
 # Register the learner
