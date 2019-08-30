@@ -146,12 +146,15 @@ class PyQtView(view.BaseView):
         config_menu = QMenu('config')
         freq_action = config_menu.addAction("FreqFactorLearner")
         decision_tree_action = config_menu.addAction("DecisionTreeFactorLearner")
+        least_squares_action = config_menu.addAction("LeastSquaresFactorLearner")
         main_menu.addMenu(config_menu)
         action = main_menu.exec_(self._gui.learnerComboBox.mapToGlobal(pos))
         if action == freq_action:
             self._ctrl.set_learner_attributes(factor_learner=learn.FreqFactorLearner)
         elif action == decision_tree_action:
             self._ctrl.set_learner_attributes(factor_learner=learn.DecisionTreeFactorLearner)
+        elif action == least_squares_action:
+            self._ctrl.set_learner_attributes(factor_learner=learn.LeastSquaresFactorLearner)
 
     def run_once(self):
         self.update_from_model()
