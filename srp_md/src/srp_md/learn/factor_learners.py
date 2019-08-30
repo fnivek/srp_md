@@ -114,17 +114,12 @@ class LeastSquaresFactorLearner:
     def predict(self, assignment):
         # Fit data if needed
         if self._must_fit:
-            print('self._data: {}'.format(self._data))
-            print('self._target: {}'.format(self._target))
             self._must_fit = False
             self._pipe.fit(self._data, self._target)
-            # print('self._pipe[\'enc\'].coef_: {}'.format(self._pipe['enc'].coef_))
         # Predict probability
         # TODO(Kevin): I don't think these should be sorted anymore
         value_tuple = tuple(sorted(value for value in assignment.values()))
-        print('value_tuple: {}'.format(value_tuple))
         probs = self._pipe.predict([value_tuple])
-        print('probs: {}'.format(probs))
 
         # relation = [value for value in assignment.values() if value in srp_md.SceneGraph.RELATION_STRS][0]
         # if relation in self._clf.classes_:
