@@ -40,6 +40,29 @@ class FactorGraph(object):
                 for rel_combo in itertools.combinations(self.get_relations(), config[1]):
                     yield Factor(variables=obj_combo + rel_combo)
 
+    def gen_ordered_factors(self, configs=[]):
+        # For each (obj, rel) config, do:
+        for config in configs:
+            # Assume # objs = # rels + 1
+            if config[0] != config[1] + 1:
+                continue
+            # For each combination of objects and relations, do:
+            for obj_combo in itertools.combinations(self.get_objects(), config[0]):
+                for rel_combo in itertools.combinations(self.get_relations(), config[1]):
+                    # If the relations do not concern with objects next to it, prune!
+                    verify = True
+                    for i in range(config[1]):
+                        rel_ids = rel_combo[i].return_objects()
+                        var_ids = list([obj_combo[i].return_id(), obj_combo[i + 1].return_id()])
+                        if rel_ids != var_ids:
+                            verify = False
+
+                    if verify:
+                        # Make var_list which is alternating objs & rels
+                        var_list = [x for x in
+                                    itertools.chain.from_iterable(itertools.izip_longest(obj_combo, rel_combo)) if x]
+                        yield Factor(variables=var_list)
+
 
 class Factor:
     """
@@ -93,6 +116,12 @@ class Var:
 
     def connect_factor(self, factor):
         self.factors.append(factor)
+
+    def return_id(self):
+        if self.type == "object":
+            return int(self.name[self.name.find('_') + 1:])
+        else:
+            raise TypeError("This method should only be used with object variables")
 
     def return_objects(self):
         if self.type == "relation":

@@ -1,9 +1,7 @@
 # Python imports
 from __future__ import absolute_import
 import logging
-import itertools
 import operator
-from random import random
 
 # SRP MD imports
 from . import learn
@@ -13,7 +11,7 @@ import srp_md
 class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
-        self._config_list = [(0, 1), (1, 1), (0, 2), (2, 1), (1, 2), (0, 3)]
+        self._config_list = [(2, 1), (3, 2)]
 
     def learn(self, obs):
         """ Learn.
@@ -40,20 +38,18 @@ class FactorGraphLearner(learn.BaseLearner):
         # Loop through all examples
         for graph in obs:
             # Loop through individual factors for one observation
-            for factor in graph.gen_input_factors(configs=self._config_list):
+            for factor in graph.gen_ordered_factors(configs=self._config_list):
                 # Find the appropriate FactorGenerator to udpate
                 num_relations = sum(1 for var in factor.vars if var.type is 'relation')
                 num_objs = len(factor.vars) - num_relations
                 gen_index = (num_objs, num_relations)
-                gen = None
-                if gen_index in factor_gens:
-                    gen = factor_gens[gen_index]
-                else:
-                    gen = FactorGenerator(num_objs, num_relations)
-                    factor_gens[gen_index] = gen
+                if gen_index not in factor_gens:
+                    factor_gens[gen_index] = FactorGenerator(num_objs, num_relations)
 
                 # Update the learned factor
-                gen.observe(tuple(sorted([var.properties['value'] for var in factor.vars])))
+                self._logger.debug("Show me this list1 %s", tuple([var.name for var in factor.vars]))
+                self._logger.debug("Show me this list2 %s", tuple([var.properties['value'] for var in factor.vars]))
+                factor_gens[gen_index].observe(tuple([var.properties['value'] for var in factor.vars]))
 
         return factor_gens
 
@@ -83,11 +79,12 @@ class FactorGenerator():
         self._probs = [0 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))]
         self._probs_index = 0
         self._assignment = {var: 0 for var in vars}
+        # libDAI uses specific ordering of permutations, which reversing the list will match
         self._vars = list(reversed(vars))
-        self._recurse_gen_factor(0)
+        self._recurse_gen_factor()
         return srp_md.Factor(vars, self._probs)
 
-    def _recurse_gen_factor(self, var_index):
+    def _recurse_gen_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
             self._probs[self._probs_index] = self._learner.predict(self._assignment)
