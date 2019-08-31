@@ -65,6 +65,14 @@ class SceneGraph(srp_md.FactorGraph):
     def get_relations(self):
         return [var for var in self._vars if var.type == "relation"]
 
+    @classmethod
+    def make_relation(cls, obj1, obj2):
+        name = 'R_{}_{}'.format(obj1.name, obj2.name)
+        relation = srp_md.Var(name, var_type='relation', num_states=len(SceneGraph.RELATION_STRS))
+        setattr(relation, 'object1', obj1.name)
+        setattr(relation, 'object2', obj2.name)
+        return relation
+
     def gen_ordered_factors(self, configs=[]):
         # For each (obj, rel) config, do:
         for config in configs:

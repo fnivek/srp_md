@@ -42,7 +42,8 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         if len(req.objects) <= 1:
             self._logger.warn('Only one object in the scene graph, maybe we should just disallow this case')
             return None
-        # TODO(?): We need to figure out how to represent this
+        # TODO(?): We need to figure out how to represent this, we are not using common sense knowledge in libDAI so it
+        #          should not matter for now
         req.classes = [
             choice([GetGoalRequest.CLASS_PROP, GetGoalRequest.CLASS_CONTAINER, GetGoalRequest.CLASS_SUPPORTER])
             for _ in req.objects
@@ -63,10 +64,11 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
                         factor_type, len(obs.objs), len(obs.relations)))
                 continue
             for objects in itertools.combinations(obs.objs, factor_type[0]):
-                for pairs in itertools.combinations(obs.relations, factor_type[1]):
-                    # Use the LearnedFactor to generate a ros_factor for each combination
-                    ros_factor = learned_factor.gen_factor(objects + pairs).to_ros_factor()
-                    req.factors.append(ros_factor)
+                pairs = tuple(srp_md.SceneGraph.make_relation(pair[0], pair[1])
+                              for pair in itertools.combinations(objects, 2))
+                # Use the LearnedFactor to generate a ros_factor for each combination
+                ros_factor = learned_factor.gen_factor(objects + pairs).to_ros_factor()
+                req.factors.append(ros_factor)
 
         self._logger.debug('Get goal request is:\n{}'.format(req))
 
