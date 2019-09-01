@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import logging
 import operator
+from collections import OrderedDict
 
 # SRP MD imports
 from . import learn
@@ -51,12 +52,13 @@ class FactorGraphLearner(learn.BaseLearner):
                 num_objs = len(factor.vars) - num_relations
                 gen_index = (num_objs, num_relations)
                 if gen_index not in factor_gens:
+                    self._logger.debug('Learning a new factor of type {}'.format(gen_index))
                     factor_gens[gen_index] = FactorGenerator(num_objs, num_relations, self.factor_learner())
 
                 # Update the learned factor
-                self._logger.debug("Show me this list1 %s", tuple([var.name for var in factor.vars]))
-                self._logger.debug("Show me this list2 %s", tuple([var.assignment['value'] for var in factor.vars]))
-                factor_gens[gen_index].observe(tuple([var.assignment['value'] for var in factor.vars]))
+                # self._logger.debug("Show me this list1 %s", tuple([var.name for var in factor.vars]))
+                # self._logger.debug("Show me this list2 %s", tuple([var.assignment for var in factor.vars]))
+                factor_gens[gen_index].observe(tuple([var.assignment for var in factor.vars]))
 
         return factor_gens
 
@@ -87,7 +89,7 @@ class FactorGenerator():
         # Recursively determine every possible value for Factor.probs
         self._probs = [0 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))]
         self._probs_index = 0
-        self._assignment = {var: 0 for var in vars}
+        self._assignment = OrderedDict([(var, None) for var in vars])
         # libDAI uses specific ordering of permutations, which reversing the list will match
         self._vars = list(reversed(vars))
         self._recurse_gen_factor()
@@ -96,7 +98,8 @@ class FactorGenerator():
     def _recurse_gen_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
-            self._probs[self._probs_index] = self._learner.predict(self._assignment)
+            self._probs[self._probs_index] = self._learner.predict(
+                list(srp_md.iterate_recursively(self._assignment.values())))
             self._probs_index += 1
             return
 
@@ -108,7 +111,7 @@ class FactorGenerator():
                 self._recurse_gen_factor(var_index + 1)
         else:
             # Only has one state
-            self._assignment[var] = var.assignment['value']
+            self._assignment[var] = var.assignment.values()
             self._recurse_gen_factor(var_index + 1)
 
 

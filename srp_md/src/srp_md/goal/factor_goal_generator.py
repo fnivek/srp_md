@@ -33,7 +33,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             self._logger.error('/get_goal service not avaliable cannot generate goal')
             return None
 
-        self._logger.debug('Took factors %s', factors)
+        self._logger.debug('Took factors %s', factors.keys())
 
         # Fill in the request
         req = GetGoalRequest()

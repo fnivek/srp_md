@@ -79,7 +79,7 @@ class SrpMd(object):
                 self._logger.warning('No demo to be learned from!')
             elif self.get_learner() == 'factor_graph_learner':
                 self._factors = self._learner.learn(self._obs)
-                self._logger.debug('Factors learned: %s', self._factors)
+                self._logger.debug('Factors learned: %s', self._factors.keys())
             else:
                 self._goal = self._learner.learn(self._obs)
                 self._logger.debug('Learned: %s', self._goal)
