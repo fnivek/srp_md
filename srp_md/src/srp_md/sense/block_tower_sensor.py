@@ -13,7 +13,7 @@ class BlockTowerSensor(sense.BaseSensor):
         self._logger = logging.getLogger(__name__)
 
         # Initialize basic info
-        self._objs = ["A", "B", "C"]
+        self._objs = ["A", "B", "C", "D", "E"]
         self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
                             "material": ["metal", "wood", "plastic"]}
         self._RELATIONS = ['disjoint', 'on', 'support', 'proximity']
