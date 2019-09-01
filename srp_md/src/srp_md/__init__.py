@@ -6,3 +6,4 @@ from .scene_graph import SceneGraph
 from .utils import reservoir_sample
 from .utils import ncr
 from .utils import tri_num
+from .utils import iterate_recursively
