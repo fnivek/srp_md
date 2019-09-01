@@ -69,7 +69,9 @@ class FactorGenerator():
         if learner is None:
             # Default to FreqFactorLearner
             self._learner = FreqFactorLearner()
-        setattr(FactorGenerator, 'observe', self._learner.observe)
+
+    def observe(self, obs):
+        self._learner.observe(obs)
 
     def gen_factor(self, vars):
         """
