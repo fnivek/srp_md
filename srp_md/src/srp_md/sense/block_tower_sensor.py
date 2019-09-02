@@ -41,6 +41,8 @@ class BlockTowerSensor(sense.BaseSensor):
             return False
         else:
             # Build a list of variable index from bottom block to top-most block
+            # TODO(Henry): This can get stuck in an infinite loop if the scene graph is ill formed as is the case when
+            #              we don't generate a proper scene graph in the correct number of itterations
             while len(order_list) != 0:
                 for order in order_list:
                     if bot_top == []:
@@ -115,8 +117,10 @@ class BlockTowerSensor(sense.BaseSensor):
                 goal_cond = self.check_property(scene_graph, self.goal_prop)
 
             if count > 100:
+                # TODO(Henry): Fail gracefully, if this occurs the program use to get stuck in an infinite loop but
+                #              by returning none instead of breaking it crashes instead
                 self._logger.warning('Desired scene graph could not be generated during given time. Please retry!')
-                break
+                return None
 
         self._logger.debug('What was the count? %s', count)
 
@@ -138,6 +142,10 @@ class BlockTowerSensor(sense.BaseSensor):
             scene_graph = self.gen_not_goal_demo(scene_graph)
         elif demo_type == "random":
             scene_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
+        # TODO(Henry): Is there a better way to handle this?
+        if scene_graph is None:
+            self._logger.warning('Got None object instead of a scene graph')
+            return None
         goal_cond = self.check_property(scene_graph, self.goal_prop)
 
         self._logger.debug('What are object names? %s', scene_graph.get_obj_names())
