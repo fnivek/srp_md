@@ -50,13 +50,11 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
 
         if evaluation:
             self._logger.debug('This is a goal instance in the world %s', sensor_name)
-            return evaluation
         elif evaluation is None:
             self._logger.debug('Evaluation cannot be processed')
-            return evaluation
         else:
             self._logger.debug('This is not a goal instance in the world %s', sensor_name)
-            return evaluation
+        return evaluation
 
 
 # Register the goal generator

@@ -115,8 +115,7 @@ class BlockTowerSensor(sense.BaseSensor):
                 goal_cond = self.check_property(scene_graph, self.goal_prop)
 
             if count > 100:
-                self._logger.warning('Desired scene graph could not be generated during given time. \
-                    Please retry!')
+                self._logger.warning('Desired scene graph could not be generated during given time. Please retry!')
                 break
 
         self._logger.debug('What was the count? %s', count)

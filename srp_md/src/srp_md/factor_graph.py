@@ -38,6 +38,9 @@ class FactorGraph(object):
         else:
             return None
 
+    def get_vars(self):
+        return self._vars
+
     def gen_input_factors(self, configs=[]):
         for config in configs:
             for obj_combo in itertools.combinations(self.get_objects(), config[0]):
