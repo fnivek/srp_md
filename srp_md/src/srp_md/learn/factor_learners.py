@@ -32,7 +32,7 @@ class JointFreqFactorLearner:
     def to_joint(self, assignment):
         return tuple(reduce(operator.add, [var_assignment.values() for var_assignment in assignment.values()]))
 
-    def observe(self, obs):
+    def observe(self, obs, markov_blanket):
         # Add joint assignment
         joint_assignment = self.to_joint(obs)
         if joint_assignment in self._joint_assignments:
@@ -63,7 +63,7 @@ class FreqFactorLearner:
         # List of dictionaries of dictionaries [{{}}]
         self._assignments = []
 
-    def observe(self, obs):
+    def observe(self, obs, markov_blanket):
         for var_index, value in enumerate(obs.values()):
             # Grow the assignments if needed
             if var_index >= len(self._assignments):
@@ -103,7 +103,7 @@ class DecisionTreeFactorLearner:
         self._enc = preprocessing.OneHotEncoder(categories=[letters, letters])
         self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
 
-    def observe(self, obs):
+    def observe(self, obs, markov_blanket):
         self._data.append([obj for obj in obs if obj not in srp_md.SceneGraph.RELATION_STRS])
         self._target.append([rel for rel in obs if rel in srp_md.SceneGraph.RELATION_STRS])
         self._must_fit = True
@@ -149,7 +149,7 @@ class LeastSquaresFactorLearner:
         self._enc = preprocessing.OneHotEncoder(categories=[letters, letters, srp_md.SceneGraph.RELATION_STRS])
         self._pipe = Pipeline([('enc', self._enc), ('least_squares', self._clf)])
 
-    def observe(self, obs):
+    def observe(self, obs, markov_blanket):
         self._data.append(obs)
         self._target.append(1)
         self._must_fit = True

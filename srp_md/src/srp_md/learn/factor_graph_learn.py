@@ -58,7 +58,11 @@ class FactorGraphLearner(learn.BaseLearner):
                 # Update the learned factor
                 # self._logger.debug("Show me this list1 %s", tuple([var.name for var in factor.vars]))
                 # self._logger.debug("Show me this list2 %s", tuple([var.assignment for var in factor.vars]))
-                factor_gens[gen_index].observe(OrderedDict((var, var.assignment) for var in factor.vars))
+                mb = graph.markov_blanket(factor.vars)
+                # TODO(Kevin): Actually order this because mb is a set which has no order
+                mb_assignment = OrderedDict((var, var.assignment) for var in mb)
+                factor_gens[gen_index].observe(OrderedDict((var, var.assignment) for var in factor.vars),
+                                               mb_assignment)
 
         return factor_gens
 
@@ -72,8 +76,8 @@ class FactorGenerator():
             # Default to FreqFactorLearner
             self._learner = FreqFactorLearner()
 
-    def observe(self, obs):
-        self._learner.observe(obs)
+    def observe(self, obs, markov_blanket):
+        self._learner.observe(obs, markov_blanket)
 
     def gen_factor(self, vars):
         """

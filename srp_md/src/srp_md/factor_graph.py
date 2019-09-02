@@ -78,8 +78,8 @@ class Factor:
         ros_factor.objects = [var.name for var in self.vars if var.type == 'object']
         for var in [var for var in self.vars if var.type == 'relation']:
             pair = ObjectPair()
-            pair.object1 = var.object1
-            pair.object2 = var.object2
+            pair.object1 = var.object1.name
+            pair.object2 = var.object2.name
             ros_factor.pairs.append(pair)
         ros_factor.probs = self.probs
         return ros_factor

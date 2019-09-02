@@ -2,9 +2,13 @@
 from __future__ import absolute_import
 from builtins import str
 import itertools
+import logging
 
 # Project
 import srp_md
+
+# Can not pickle an object (or deepcopy) with a logger
+logger = logging.getLogger(__name__)
 
 
 class SceneGraph(srp_md.FactorGraph):
@@ -69,8 +73,8 @@ class SceneGraph(srp_md.FactorGraph):
     def make_relation(cls, obj1, obj2):
         name = 'R_{}_{}'.format(obj1.name, obj2.name)
         relation = srp_md.Var(name, var_type='relation', num_states=len(SceneGraph.RELATION_STRS))
-        setattr(relation, 'object1', obj1.name)
-        setattr(relation, 'object2', obj2.name)
+        setattr(relation, 'object1', obj1)
+        setattr(relation, 'object2', obj2)
         return relation
 
     def gen_ordered_factors(self, configs=[]):
@@ -96,15 +100,44 @@ class SceneGraph(srp_md.FactorGraph):
                         if rev_var is None:
                             raise ValueError("Something is seriously wrong here!")
                         # Otherwise, make and add the relation into variable list
-                        else:
-                            rev_val = SceneGraph.REV_RELATION_DICT[rev_var.assignment['value']]
-                            temp_var = srp_md.Var(rel_name, var_type='relation', value=rev_val)
-                            var_list.append(temp_var)
+                        rev_val = SceneGraph.REV_RELATION_DICT[rev_var.assignment['value']]
+                        temp_var = srp_md.Var(rel_name, var_type='relation', value=rev_val)
+                        var_list.append(temp_var)
                     # Else if the relation exists, just add it to the list
                     else:
                         var_list.append(relation)
                 # Finally return the factor of this variables list
                 yield srp_md.Factor(variables=var_list)
+
+    def markov_blanket(self, vars):
+        """ Get all vars in the markov blanket.
+
+        Assumptions:
+          * vars is a set of objects in the scene graph and all of there possible relations
+
+        """
+        # Split into objects and relations
+        relations = []
+        objs = []
+        for var in vars:
+            if var.type == 'relation':
+                relations.append(var)
+            else:
+                objs.append(var)
+        # Grab all relations and there objects that have a single common object
+        mb = set()
+        for relation in self.relations:
+            if relation in relations:
+                continue
+            if relation.object1 in objs:
+                mb.add(relation.object2)
+                mb.add(relation)
+            elif relation.object2 in objs:
+                mb.add(relation.object1)
+                mb.add(relation)
+
+        logger.debug('Markov blanket of {} is {}'.format([var.name for var in vars], [var.name for var in mb]))
+        return mb
 
     def check_consistency(self, world=None):
         # If no world specified, just return True
@@ -307,8 +340,8 @@ class SceneGraph(srp_md.FactorGraph):
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
             var = srp_md.Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
-            setattr(var, 'object1', pair[0].name)
-            setattr(var, 'object2', pair[1].name)
+            setattr(var, 'object1', pair[0])
+            setattr(var, 'object2', pair[1])
             # TODO(Henry): Remove this magic number 6, it is the number of types of relations in scenegraph.cpp
             #              this number should come from something like a config file that specifies our domain.
             var.num_states = 6
