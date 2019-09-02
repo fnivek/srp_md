@@ -157,6 +157,7 @@ class SrpMd(object):
             self._goal_evaluator = evaluate.goal_evaluators[goal_evaluator]()
 
     def evaluate_goal(self):
+        evaluation = None
         if self._goal_evaluator is None:
             self._logger.error('Please select goal evaluator!')
         elif self._sensor is None:
@@ -164,7 +165,8 @@ class SrpMd(object):
         elif self._goal_instance is None:
             self._logger.error('Please generate goal instance to evaluate!')
         else:
-            self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
+            evaluation = self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
+        return evaluation
 
     """ Actions.
 
