@@ -147,7 +147,8 @@ class BlockTowerSensor(sense.BaseSensor):
 
     def process_data(self, demo_type, data):
         # Randomly choose objects from object list
-        num_objs = random.randint(3, len(self._objs))
+        # num_objs = random.randint(3, len(self._objs))
+        num_objs = 3
         objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
