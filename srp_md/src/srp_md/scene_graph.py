@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from builtins import str
 import itertools
 import logging
+import copy
 
 # Project
 import srp_md
@@ -50,6 +51,14 @@ class SceneGraph(srp_md.FactorGraph):
     def get_rel_values(self):
         return [rel.assignment['value'] for rel in self.relations]
 
+    def get_rel_by_objs(self, obj1, obj2):
+        for relation in self.relations:
+            if (relation.object1 == obj1) and (relation.object2 == obj2):
+                return relation
+            elif (relation.object1 == obj2) and (relation.object2 == obj1):
+                return relation
+        return None
+
     def get_prop_values(self, prop=None):
         if prop is None:
             raise ValueError("Property needs to be specified")
@@ -71,8 +80,13 @@ class SceneGraph(srp_md.FactorGraph):
 
     @classmethod
     def make_relation(cls, obj1, obj2):
+        """ Generates a new relation from an object pair.
+
+        WARNING: Does not give a uuid instead just 0. Function user must assign a uuid.
+
+        """
         name = 'R_{}_{}'.format(obj1.name, obj2.name)
-        relation = srp_md.Var(name, var_type='relation', num_states=len(SceneGraph.RELATION_STRS))
+        relation = srp_md.Var(name, uuid=0, var_type='relation', num_states=len(SceneGraph.RELATION_STRS))
         setattr(relation, 'object1', obj1)
         setattr(relation, 'object2', obj2)
         return relation
@@ -89,23 +103,15 @@ class SceneGraph(srp_md.FactorGraph):
                 var_list = list(obj_permu)
                 # For each pair of objects in the list, do:
                 for obj_pair in itertools.combinations(obj_permu, 2):
-                    # Get the relation of those pair (in order)
-                    rel_name = "R_" + str(obj_pair[0].return_id()) + "_" + str(obj_pair[1].return_id())
-                    relation = self.get_var_from_name(rel_name)
-                    # If such relation does not exist, then it's reverse should exist
+                    # Get the relation of those obj_pair (in order)
+                    relation = self.get_rel_by_objs(obj_pair[0], obj_pair[1])
                     if relation is None:
-                        rev_name = "R_" + str(obj_pair[1].return_id()) + "_" + str(obj_pair[0].return_id())
-                        rev_var = self.get_var_from_name(rev_name)
-                        # If the reverse doesn't exist print error
-                        if rev_var is None:
-                            raise ValueError("Something is seriously wrong here!")
-                        # Otherwise, make and add the relation into variable list
-                        rev_val = SceneGraph.REV_RELATION_DICT[rev_var.assignment['value']]
-                        temp_var = srp_md.Var(rel_name, var_type='relation', value=rev_val)
-                        var_list.append(temp_var)
-                    # Else if the relation exists, just add it to the list
-                    else:
-                        var_list.append(relation)
+                        raise ValueError("Expected Var but got None!")
+                    # If reversed flip value
+                    if relation.object1 != obj_pair[0]:
+                        relation = copy.deepcopy(relation)
+                        relation.assignment['value'] = SceneGraph.REV_RELATION_DICT[relation.assignment['value']]
+                    var_list.append(relation)
                 # Finally return the factor of this variables list
                 yield srp_md.Factor(variables=var_list)
 
@@ -339,7 +345,7 @@ class SceneGraph(srp_md.FactorGraph):
             # Make a new relationship var
             id_1 = pair[0].name[pair[0].name.find('_') + 1:]
             id_2 = pair[1].name[pair[1].name.find('_') + 1:]
-            var = srp_md.Var(name='R_{}_{}'.format(id_1, id_2), var_type="relation")
+            var = srp_md.Var(name='R_{}_{}'.format(id_1, id_2), uuid=self.get_new_uuid(), var_type="relation")
             setattr(var, 'object1', pair[0])
             setattr(var, 'object2', pair[1])
             # TODO(Henry): Remove this magic number 6, it is the number of types of relations in scenegraph.cpp

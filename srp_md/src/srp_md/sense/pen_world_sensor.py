@@ -29,7 +29,7 @@ class PenWorldSensor(sense.BaseSensor):
 
     def check_property(self, scene_graph, goal_prop):
         for relation in scene_graph.relations:
-            var_ids = relation.return_objects()
+            var_ids = relation.get_objects()
             var_i = scene_graph.objs[var_ids[0] - 1]
             var_j = scene_graph.objs[var_ids[1] - 1]
             prop_list = self._properties[goal_prop]
@@ -51,7 +51,7 @@ class PenWorldSensor(sense.BaseSensor):
 
             # Randomly choose objects from object list
             num_objs = random.randint(1, len(self._objs))
-            objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, assignment=self._ass_prop[v])
+            objs = [srp_md.Var(name='X_{}'.format(i + 1), uuid=i + 1, var_type="object", value=v, assignment=self._ass_prop[v])
                     for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
             # Generate a consistent scene graph

@@ -25,7 +25,7 @@ class BlockWorldSensor(sense.BaseSensor):
 
             # Randomly choose objects from object list
             num_objs = random.randint(1, len(self._objs))
-            objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v) for i, v in
+            objs = [srp_md.Var(name='X_{}'.format(i + 1), uuid=i + 1, var_type="object", value=v) for i, v in
                     enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
             # Generate a consistent scene graph

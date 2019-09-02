@@ -41,6 +41,9 @@ class FactorGraph(object):
     def get_vars(self):
         return self._vars
 
+    def get_new_uuid(self):
+        return max([var.uuid for var in self._vars]) + 1
+
     def gen_input_factors(self, configs=[]):
         for config in configs:
             for obj_combo in itertools.combinations(self.get_objects(), config[0]):
@@ -48,7 +51,7 @@ class FactorGraph(object):
                     yield Factor(variables=obj_combo + rel_combo)
 
 
-class Factor:
+class Factor(object):
     """
     Factor.
 
@@ -70,6 +73,21 @@ class Factor:
             self.vars = variables
         self.probs = probs
 
+    def __eq__(self, other):
+        if isinstance(other, Factor):
+            return len(self.vars) == len(other.vars) and \
+                   len(self.vars) == sum([1 for var in other.vars if var in self.vars])
+        return NotImplemented
+
+    def __ne__(self, other):
+        x = self.__eq__(other)
+        if x is not NotImplemented:
+            return not x
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(tuple(self.vars))
+
     def connect_vars(self, vars):
         self.vars.extend(vars)
 
@@ -85,9 +103,10 @@ class Factor:
         return ros_factor
 
 
-class Var:
-    def __init__(self, name, var_type='object', factors=None, value=None, assignment=None, num_states=1):
+class Var(object):
+    def __init__(self, name, uuid, var_type='object', factors=None, value=None, assignment=None, num_states=1):
         self.name = name
+        self.uuid = uuid
         self.factors = factors
         if factors is None:
             self.factors = []
@@ -98,16 +117,34 @@ class Var:
         self.type = var_type
         self.num_states = num_states
 
+    def __eq__(self, other):
+        if isinstance(other, Var):
+            return self.uuid == other.uuid
+        return NotImplemented
+
+    def __ne__(self, other):
+        x = self.__eq__(other)
+        if x is not NotImplemented:
+            return not x
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.uuid)
+
+    def __str__(self):
+        return '{}[{}]'.format(self.name, str(self.uuid))
+
     def connect_factors(self, factors):
         self.factors.extend(factors)
 
-    def return_id(self):
+    def get_id(self):
         if self.type == "object":
             return int(self.name[self.name.find('_') + 1:])
         else:
             raise TypeError("This method should only be used with object variables")
 
-    def return_objects(self):
+    # TODO(?): Move this to a subclass of Var that explicitly represents relations (in scene_graph.py)
+    def get_objects(self):
         # Returns objects connected to single relation
         if self.type == "relation":
             return [int(self.name[self.name.find('_', 1) + 1:self.name.find('_', 2)]),

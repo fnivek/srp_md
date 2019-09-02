@@ -36,11 +36,11 @@ class BlockTowerSensor(sense.BaseSensor):
         for relation in scene_graph.relations:
             # Count how many relations that are 'on' or 'support' and add to order_list (from bot to top fashion)
             if relation.assignment['value'] == 'on':
-                var_ids = relation.return_objects()
+                var_ids = relation.get_objects()
                 var_ids.reverse()
                 order_list.append(var_ids)
             elif relation.assignment['value'] == 'support':
-                var_ids = relation.return_objects()
+                var_ids = relation.get_objects()
                 order_list.append(var_ids)
 
         # If that count does not equal number of objects in the scene - 1, then False
@@ -149,7 +149,8 @@ class BlockTowerSensor(sense.BaseSensor):
         # Randomly choose objects from object list
         # num_objs = random.randint(3, len(self._objs))
         num_objs = 3
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), var_type="object", value=v, assignment=self._ass_prop[v])
+        objs = [srp_md.Var(name='X_{}'.format(i + 1), uuid=i + 1, var_type="object", value=v,
+                assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph

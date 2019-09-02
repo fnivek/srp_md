@@ -63,11 +63,17 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
                     'Can not make a factor of type {} because there are {} objects and {} relations'.format(
                         factor_type, len(obs.objs), len(obs.relations)))
                 continue
+            # Generate all combinations of objects
             for objects in itertools.combinations(obs.objs, factor_type[0]):
-                pairs = tuple(srp_md.SceneGraph.make_relation(pair[0], pair[1])
-                              for pair in itertools.combinations(objects, 2))
+                # Generate all possible relationship vars and assign a uuid
+                pairs = []
+                new_uuid = obs.get_new_uuid()
+                for pair in itertools.combinations(objects, 2):
+                    relation = srp_md.SceneGraph.make_relation(pair[0], pair[1])
+                    relation.uuid = new_uuid + len(pairs)
+                    pairs.append(relation)
                 # Use the LearnedFactor to generate a ros_factor for each combination
-                ros_factor = learned_factor.gen_factor(objects + pairs).to_ros_factor()
+                ros_factor = learned_factor.gen_factor(objects + tuple(pairs)).to_ros_factor()
                 req.factors.append(ros_factor)
 
         self._logger.debug('Get goal request is:\n{}'.format(req))
