@@ -7,3 +7,4 @@ from .utils import reservoir_sample
 from .utils import ncr
 from .utils import tri_num
 from .utils import iterate_recursively
+from .utils import count_dicts

@@ -58,7 +58,7 @@ class FactorGraphLearner(learn.BaseLearner):
                 # Update the learned factor
                 # self._logger.debug("Show me this list1 %s", tuple([var.name for var in factor.vars]))
                 # self._logger.debug("Show me this list2 %s", tuple([var.assignment for var in factor.vars]))
-                factor_gens[gen_index].observe(tuple([var.assignment for var in factor.vars]))
+                factor_gens[gen_index].observe(OrderedDict((var, var.assignment) for var in factor.vars))
 
         return factor_gens
 
@@ -98,8 +98,7 @@ class FactorGenerator():
     def _recurse_gen_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
-            self._probs[self._probs_index] = self._learner.predict(
-                list(srp_md.iterate_recursively(self._assignment.values())))
+            self._probs[self._probs_index] = self._learner.predict(self._assignment)
             self._probs_index += 1
             return
 
@@ -107,11 +106,11 @@ class FactorGenerator():
         # Itterate over all relations
         if var.type == 'relation':
             for relation in srp_md.SceneGraph.RELATION_STRS:
-                self._assignment[var] = relation
+                self._assignment[var] = {'value': relation}
                 self._recurse_gen_factor(var_index + 1)
         else:
             # Only has one state
-            self._assignment[var] = var.assignment.values()
+            self._assignment[var] = var.assignment
             self._recurse_gen_factor(var_index + 1)
 
 

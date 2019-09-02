@@ -54,3 +54,25 @@ def iterate_recursively(it, allowed_iterables=(list, tuple)):
                 yield value
     else:
         yield it
+
+def count_dicts(din, dout=None):
+    """Count values in dictionary.
+
+    For the set of keys in d1 and d2 make a dictionary. For each such dictionary add each value from d1[key], d2[key] as
+    keys and set the vaule to the number of occurances of the value.
+
+    """
+    if dout is None:
+        dout = {}
+
+    for key, value in din.iteritems():
+        # Make the entry for the key if needed
+        if key not in dout:
+            dout[key] = {}
+        # Add value as key if needed
+        if value not in dout[key]:
+            dout[key][value] = 1
+        else:
+            dout[key][value] += 1
+
+    return dout
