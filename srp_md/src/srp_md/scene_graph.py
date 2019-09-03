@@ -142,7 +142,7 @@ class SceneGraph(srp_md.FactorGraph):
                 mb.add(relation.object1)
                 mb.add(relation)
 
-        logger.debug('Markov blanket of {} is {}'.format([var.name for var in vars], [var.name for var in mb]))
+        # logger.debug('Markov blanket of {} is {}'.format([var.name for var in vars], [var.name for var in mb]))
         return mb
 
     def check_consistency(self, world=None):
