@@ -24,10 +24,17 @@ class BlockTowerSensor(sense.BaseSensor):
                                    "material": random.choice(self._properties["material"])}
 
     def check_property(self, scene_graph, goal_prop):
+        # If the goal property is None, then this is automatically true
+        if goal_prop is None:
+                return True
+
+        # Initialize lists
         order_list = []
         bot_top = []
+
+        # For each relation, do:
         for relation in scene_graph.relations:
-            # Count how many relations that are 'on' or 'support'
+            # Count how many relations that are 'on' or 'support' and add to order_list (from bot to top fashion)
             if relation.assignment['value'] == 'on':
                 var_ids = relation.return_objects()
                 var_ids.reverse()
@@ -39,46 +46,56 @@ class BlockTowerSensor(sense.BaseSensor):
         # If that count does not equal number of objects in the scene - 1, then False
         if len(order_list) != len(scene_graph.objs) - 1:
             return False
-        else:
-            # Build a list of variable index from bottom block to top-most block
-            # TODO(Henry): This can get stuck in an infinite loop if the scene graph is ill formed as is the case when
-            #              we don't generate a proper scene graph in the correct number of itterations
-            while len(order_list) != 0:
-                for order in order_list:
-                    if bot_top == []:
-                        bot_top += order
-                    elif bot_top[0] == order[-1]:
-                        bot_top = order + bot_top[1:]
-                    elif bot_top[-1] == order[0]:
-                        bot_top = bot_top[:-1] + order
-                    else:
-                        continue
-                    order_list.pop(order_list.index(order))
 
-            if goal_prop is None:
-                return True
-            else:
-                prop_list = self._properties[goal_prop]
-                prop_order = scene_graph.get_prop_values(goal_prop)
-                for i in range(len(bot_top) - 1):
-                    for relation in scene_graph.relations:
-                        if prop_list.index(prop_order[bot_top[i] - 1]) > \
-                                prop_list.index(prop_order[bot_top[i + 1] - 1]):
-                            if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
-                                if relation.assignment['value'] != "support":
-                                    return False
-                            elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
-                                if relation.assignment['value'] != "on":
-                                    return False
+        # Build a list of variable index from bottom block to top-most block
+        while len(order_list) != 0:
+            # Save the size of order_list before going through for-loop
+            before_size = len(order_list)
+            # Add the order to the front or back of the bot_top list if one of the element matches
+            for order in order_list:
+                if bot_top == []:
+                    bot_top += order
+                elif bot_top[0] == order[-1]:
+                    bot_top = order + bot_top[1:]
+                elif bot_top[-1] == order[0]:
+                    bot_top = bot_top[:-1] + order
+                else:
+                    continue
+                # Pop off the element if it has been "used"
+                order_list.pop(order_list.index(order))
+            # Get the size after going through the for-loop
+            after_size = len(order_list)
+            # If there hasn't been any change (sign of infinite loop), then raise ValueError
+            if before_size == after_size:
+                raise ValueError()
+        self._logger.debug('Checked Tower Order from Bottom to Top %s', bot_top)
 
+        # Check if the blocks are ordered with desired property correctly, and if not, return False
+        prop_list = self._properties[goal_prop]
+        prop_order = scene_graph.get_prop_values(goal_prop)
+        for i in range(len(bot_top) - 1):
+            for relation in scene_graph.relations:
+                if prop_list.index(prop_order[bot_top[i] - 1]) > \
+                        prop_list.index(prop_order[bot_top[i + 1] - 1]):
+                    if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
+                        if relation.assignment['value'] != "support":
+                            return False
+                    elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
+                        if relation.assignment['value'] != "on":
+                            return False
         return True
 
     def gen_goal_demo(self, scene_graph):
-        # Get a list of integer ids for variables and randomly shuffle them
+        # Get a list of integer ids for variables
         bot_top = list(range(1, len(scene_graph.objs) + 1))
+
+        # If goal property is set to None
         if self.goal_prop is None:
+            # Just randomly shuffle the objects
             random.shuffle(bot_top)
+        # If a goal property is given
         else:
+            # Sort the objects based on goal property
             prop_list = self._properties[self.goal_prop]
             prop_order = [prop_list.index(val) for val in scene_graph.get_prop_values(self.goal_prop)]
             bot_top = [var_id for _, var_id in sorted(zip(prop_order, bot_top))]
@@ -100,27 +117,29 @@ class BlockTowerSensor(sense.BaseSensor):
         return scene_graph
 
     def gen_not_goal_demo(self, scene_graph):
+        # Initialize variables
         count = 0
         consistent = False
         goal_cond = True
 
+        # While we get a demo that is either inconsistent or is a goal
         while not consistent or goal_cond:
+            # Add to counter
             count += 1
-
+            # Randomly set relation values
             for relation in scene_graph.relations:
                 relation.assignment['value'] = random.choice(self._RELATIONS)
-
+            # Check the consistency of this graph
             consistent = scene_graph.check_consistency("block")
+            # Pass if inconsistent
             if not consistent:
                 pass
+            # If consistent, check if this graph is goal
             else:
                 goal_cond = self.check_property(scene_graph, self.goal_prop)
-
+            # If iteration is over 100, then raise ValueError
             if count > 100:
-                # TODO(Henry): Fail gracefully, if this occurs the program use to get stuck in an infinite loop but
-                #              by returning none instead of breaking it crashes instead
-                self._logger.warning('Desired scene graph could not be generated during given time. Please retry!')
-                return None
+                raise ValueError()
 
         self._logger.debug('What was the count? %s', count)
 
@@ -135,17 +154,16 @@ class BlockTowerSensor(sense.BaseSensor):
         # Generate a consistent scene graph
         scene_graph = srp_md.SceneGraph(objs)
 
-        # If not consistent, early quit and do next iteration
+        # Depending on the demo type wanted, input relations accordingly
         if demo_type == "only_goal":
-            scene_graph = self.gen_goal_demo(scene_graph)
+            demo_graph = self.gen_goal_demo(scene_graph)
         elif demo_type == "only_not_goal":
-            scene_graph = self.gen_not_goal_demo(scene_graph)
+            demo_graph = self.gen_not_goal_demo(scene_graph)
         elif demo_type == "random":
-            scene_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
-        # TODO(Henry): Is there a better way to handle this?
-        if scene_graph is None:
-            self._logger.warning('Got None object instead of a scene graph')
-            return None
+            demo_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
+
+        # If error doesn't occur, check the scene graph's goal condition and print check up statements
+        scene_graph = demo_graph
         goal_cond = self.check_property(scene_graph, self.goal_prop)
 
         self._logger.debug('What are object names? %s', scene_graph.get_obj_names())

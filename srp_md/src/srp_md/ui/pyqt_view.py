@@ -88,6 +88,11 @@ class PyQtView(view.BaseView):
                            self._model.get_sensor(),
                            self._model.get_num_demos()]
 
+        # Get the errors
+        errors = self._ctrl.pop_errors()
+        for error in errors:
+            QMessageBox.question(self._gui, 'Errors', error, QMessageBox.Ok)
+
         # Print to QTextEdit in GUI
         self._qt_handler.flush()
         if self._stream.len != 0:

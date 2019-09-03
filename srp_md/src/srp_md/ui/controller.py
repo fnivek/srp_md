@@ -9,6 +9,12 @@ from builtins import object
 class Controller(object):
     def __init__(self, model):
         self._model = model
+        self._errors = []
+
+    def pop_errors(self):
+        errors = list(self._errors)
+        self._errors = []
+        return errors
 
     def set_learner(self, learner):
         self._model.set_learner(learner)
@@ -30,18 +36,22 @@ class Controller(object):
         self._model.set_goal_generator(goal_generator)
 
     def generate_goal(self):
-        self._model.generate_goal()
+        try:
+            self._model.generate_goal()
+        except ValueError:
+            self._errors.append("Failed to generate goal")
 
     def evaluate_goal(self):
         self._model.evaluate_goal()
 
-    # TODO(Kevin): I think this doesn't belong here
     def accept_data(self):
         self._model.accept_data([])
 
-    # TODO(Kevin): I think this doesn't belong here
     def process_data(self):
-        self._model.process_data()
+        try:
+            self._model.process_data()
+        except ValueError:
+            self._errors.append("Failed to process data")
 
     # Actions added
     def write_demos(self, filename):

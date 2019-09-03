@@ -52,16 +52,24 @@ def main():
     # init
     num_correct = 0
     # Get demos
-    for _ in range(args.num_demos):
-        srp.process_data()
-    logger.info('Completed {} demos'.format(args.num_demos))
+    while srp.get_num_demos() < args.num_demos:
+        try:
+            srp.process_data()
+        except ValueError:
+            pass
+    logger.info('Completed {} demos'.format(srp.get_num_demos()))
     # Learn
     srp.learn()
     logger.info('Learned')
     # Generate goals from random observations
     srp.demo_type = 'random'
-    for _ in range(args.num_goals):
-        srp.generate_goal()
+    num_goals = 0
+    while num_goals < args.num_goals:
+        try:
+            srp.generate_goal()
+            num_goals += 1
+        except ValueError:
+            pass
         if srp.evaluate_goal():
             num_correct += 1
     logger.info('Generated and evaluated {} goals with {}%% correct'.format(args.num_goals,
