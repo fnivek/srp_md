@@ -68,3 +68,6 @@ class Controller(object):
 
     def clear_demos(self):
         self._model.clear_demos()
+
+    def show_graph(self):
+        self._model.show_graph(self._model._current_graph)

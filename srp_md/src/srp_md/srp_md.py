@@ -15,6 +15,8 @@ from . import evaluate
 # Python imports
 import logging as log
 import pickle
+import networkx as nx
+import matplotlib.pyplot as plt
 
 
 class SrpMd(object):
@@ -42,6 +44,11 @@ class SrpMd(object):
         self._factors = None
         self.demo_types = ["only_goal", "only_not_goal", "random"]
         self.demo_type = None
+        self._current_graph = None
+        self._sense_category = {'fake': ['fake_sensor'],
+                                'version': ['example_sensor', 'can_tower_sensor'],
+                                'factor': ['posecnn_sensor', 'block_world_sensor', 'pen_world_sensor',
+                                           'book_world_sensor', 'abstract_world_sensor', 'block_tower_sensor']}
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -117,7 +124,9 @@ class SrpMd(object):
             self._logger.error('Please select demo type!')
         else:
             self._logger.debug('Processing: ' + str(self._raw_data))
-            self._obs.append(self._sensor.process_data(self.demo_type, self._raw_data))
+            new_obs = self._sensor.process_data(self.demo_type, self._raw_data)
+            self._obs.append(new_obs)
+            self._current_graph = new_obs
 
     """ Goal Generator.
 
@@ -141,6 +150,7 @@ class SrpMd(object):
             if self.get_learner() == 'factor_graph_learner':
                 self._goal_instance = self._goal_generator.generate_goal(
                     self._factors, self._sensor.process_data(self.demo_type, self._raw_data))
+                self._current_graph = self._goal_instance
             else:
                 self._goal_instance = self._goal_generator.generate_goal()
 
@@ -180,6 +190,10 @@ class SrpMd(object):
     def load_demos(self, filename="./demos/test.txt"):
         self._obs = pickle.load(open(filename, 'rb'))
         self._logger.info('Success loading demos from file {}\n'.format(filename))
+        if len(self._obs) != 0:
+                self._current_graph = self._obs[-1]
+        else:
+            self._current_graph = None
 
     def undo_demo(self):
         if len(self._obs) == 0:
@@ -188,6 +202,11 @@ class SrpMd(object):
             last_demo = self._obs.pop()
             self._undoed.append(last_demo)
             self._logger.info('Success undoing last demo\n')
+        if self._sensor_name in self._sense_category['factor']:
+            if len(self._obs) != 0:
+                self._current_graph = self._obs[-1]
+            else:
+                self._current_graph = None
 
     def redo_demo(self):
         if len(self._undoed) == 0:
@@ -196,7 +215,75 @@ class SrpMd(object):
             last_demo = self._undoed.pop()
             self._obs.append(last_demo)
             self._logger.info('Success redoing last demo\n')
+        if self._sensor_name in self._sense_category['factor']:
+            self._current_graph = self._obs[-1]
 
     def clear_demos(self):
         self._obs = []
         self._logger.info('Success clearing demos\n')
+        self._current_graph = None
+
+    def show_graph(self, scene_graph):
+        # If the scene graph is None, print warning
+        if scene_graph is None:
+            self._logger.warning('No scene graph to show!\n')
+        # If scene graph exists, do:
+        else:
+            # Initialize graph object
+            G = nx.DiGraph()
+
+            # Add the objects as graph nodes
+            obj_names = scene_graph.get_obj_names()
+            node_labels = {obj_names[i]: r"$" + scene_graph.get_obj_values()[i] + "$"
+                           for i in range(scene_graph.num_objs())}
+            G.add_nodes_from(obj_names)
+
+            # Add the relations
+            edge_labels = {}
+            for relation in scene_graph.relations:
+                if relation.assignment['value'] != "disjoint":
+                    object_ids = relation.return_objects()
+                    e = tuple(["X_" + str(object_ids[0]), "X_" + str(object_ids[1])])
+                    edge_labels[e] = relation.assignment['value']
+                    G.add_edge(*e)
+
+            # Get the layout of nodes
+            pos = nx.spring_layout(G)
+
+            # Draw the graph
+            nx.draw_networkx_nodes(G, pos, node_color=scene_graph.get_prop_values(self._sensor.goal_prop),
+                                   node_size=500)
+            nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
+            nx.draw_networkx_labels(G, pos, node_labels, font_size=16)
+            nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+
+            # Show the plotted graph
+            self._logger.info('Showing the scene graph...\n')
+            plt.show()
+
+            # G = nx.DiGraph()
+            # G.add_edges_from(
+            #     [('A', 'B'), ('A', 'C'), ('D', 'B'), ('E', 'C'), ('E', 'F'),
+            #      ('B', 'H'), ('B', 'G'), ('B', 'F'), ('C', 'G')])
+
+            # val_map = {'A': 1.0,
+            #            'D': 0.5714285714285714,
+            #            'H': 0.0}
+
+            # values = [val_map.get(node, 0.25) for node in G.nodes()]
+
+            # # Specify the edges you want here
+            # red_edges = [('A', 'C'), ('E', 'C')]
+            # edge_colours = ['black' if not edge in red_edges else 'red'
+            #                 for edge in G.edges()]
+            # black_edges = [edge for edge in G.edges() if edge not in red_edges]
+
+            # # Need to create a layout when doing
+            # # separate calls to draw nodes and edges
+            # pos = nx.spring_layout(G)
+            # nx.draw_networkx_nodes(G, pos, cmap=plt.get_cmap('jet'),
+            #                        node_color=values, node_size=500)
+            # nx.draw_networkx_labels(G, pos)
+            # nx.draw_networkx_edges(G, pos, edgelist=red_edges, edge_color='r', arrows=True)
+            # nx.draw_networkx_edges(G, pos, edgelist=black_edges, arrows=False)
+            # plt.show()

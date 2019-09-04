@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
-    <height>480</height>
+    <width>946</width>
+    <height>558</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -59,9 +59,16 @@ color: rgb(150, 150, 150)
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QPushButton" name="learnButton">
+        <widget class="QPushButton" name="learn">
          <property name="text">
           <string>Learn</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QPushButton" name="show_graph">
+         <property name="text">
+          <string>Show Graph</string>
          </property>
         </widget>
        </item>
@@ -170,8 +177,8 @@ color: rgb(150, 150, 150)
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>640</width>
-     <height>20</height>
+     <width>946</width>
+     <height>39</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
