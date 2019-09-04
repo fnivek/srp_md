@@ -11,6 +11,7 @@ import logging
 import argparse
 import sys
 import signal
+import random
 
 # Get a logger
 logger = logging.getLogger('srp_md')
@@ -26,6 +27,8 @@ def parse_args():
                         default=100, type=int)
     parser.add_argument('--num_goals', dest='num_goals', help='Specify the number of goals to generate',
                         default=100, type=int)
+    parser.add_argument('--percent_noise', dest='percent_noise', help='Specify the percentage of noisy examples',
+                        default=0.0, type=float)
     parser.add_argument('--factor_learner', dest='factor_learner', help='Specify the factor learner',
                         default='joint_frequency', type=str, choices=learn.FACTOR_LEARNERS.keys())
     parser.add_argument('--log_level', dest='log_level', help='Set the logging level', default=logging.DEBUG, type=int,
@@ -51,13 +54,20 @@ def main():
     # Experiment
     # init
     num_correct = 0
+    num_noise = 0
     # Get demos
     while srp.get_num_demos() < args.num_demos:
         try:
+            if random.random() < args.percent_noise:
+                srp.demo_type = 'only_not_goal'
+            else:
+                srp.demo_type = 'only_goal'
             srp.process_data()
+            if srp.demo_type == 'only_not_goal':
+                num_noise += 1
         except ValueError:
             pass
-    logger.info('Completed {} demos'.format(srp.get_num_demos()))
+    logger.info('Completed {} demos with {} bad examples'.format(srp.get_num_demos(), num_noise))
     # Learn
     srp.learn()
     logger.info('Learned')
@@ -72,8 +82,10 @@ def main():
             pass
         if srp.evaluate_goal():
             num_correct += 1
-    logger.info('Generated and evaluated {} goals with {}%% correct'.format(args.num_goals,
-                                                                            100.0 * num_correct / args.num_goals))
+    logger.info('Number of examples {}\n\t'
+                'Number of bad examples {}\n\t'
+                'Generated and evaluated {} goals with {}%% correct'.format(
+                    args.num_demos, num_noise, args.num_goals, 100.0 * num_correct / args.num_goals))
 
 
 if __name__ == '__main__':
