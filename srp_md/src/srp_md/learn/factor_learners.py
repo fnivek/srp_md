@@ -281,7 +281,7 @@ class ClosedFormFactorLearner():
             self._predict_assignment = assignment
 
         # Calculate factor as equ 7 from "Learning Factor Graphs in Polynomial Time and Sample Complexity"
-        exponent = 0
+        exponent = 1
         # Loop over powerset of variables in factor
         for subset in srp_md.powerset(range(self._num_vars)):
             # Add if even subtract if odd
@@ -296,16 +296,14 @@ class ClosedFormFactorLearner():
             # P(A|MB(A)) = P(A,MB(A)) / P(MB(A))
             # P(A|MB(A)) aprox = (N(A,MB(A)) / num_samples) / (N(MB(A)) / num_samples)
             #            aprox = N(A,MB(A)) / N(MB(A))
+            # Since we are looking for the log(P(A|MB(A))) we can just add up all the counts first then do the log math
             try:
                 count_sigma_mb = float(self._joint_assignments[tuple(sigma_assignment + self._y_mb)])
-                log_prob_sigma_given_mb = log(count_sigma_mb / self._num_y_mb_samps)
+                exponent *= pow(count_sigma_mb, mult)
             except (ValueError, KeyError) as e:
-                # Log of 0 clip to large negative number
-                log_prob_sigma_given_mb = log(0.001 / self._num_y_mb_samps)
-            # Accumulate
-            exponent += mult * log_prob_sigma_given_mb
+                exponent *= pow(0.001, mult)
 
-        return exp(exponent)
+        return exponent
 
 
 FACTOR_LEARNERS['closed_form'] = ClosedFormFactorLearner
