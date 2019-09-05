@@ -3,6 +3,7 @@ from random import choice, shuffle, random, randint
 import logging
 import operator
 from functools import reduce
+from itertools import chain, combinations
 
 # Utils logger
 logger = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ def iterate_recursively(it, allowed_iterables=(list, tuple)):
     else:
         yield it
 
+
 def count_dicts(din, dout=None):
     """Count values in dictionary.
 
@@ -76,3 +78,9 @@ def count_dicts(din, dout=None):
             dout[key][value] += 1
 
     return dout
+
+
+def powerset(it):
+    # Copy to list
+    it2 = list(it)
+    return chain.from_iterable(combinations(it2, r) for r in range(len(it2) + 1))

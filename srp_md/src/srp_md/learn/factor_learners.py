@@ -3,6 +3,9 @@ import string
 from random import random
 import operator
 from functools import reduce
+from collections import OrderedDict, Counter
+from itertools import chain
+from math import log, exp
 
 # Scikit
 from sklearn import linear_model, tree, preprocessing
@@ -13,6 +16,47 @@ import numpy
 
 # Project
 import srp_md
+
+
+# Functions for working with assignments which are:
+#   OrderedDict((srp_md.var, {'property_name', 'vaule', ...}), (...), ...)
+def assign_to_vals(a):
+    """ Convert an assignment to an ordered list of values. """
+    return list(reduce(operator.add, [assign.values() for assign in a.values()], []))
+
+
+def assign_eq(a, b):
+    """ Check for equality between two assignments. """
+    return assign_to_vals(a) == assign_to_vals(b)
+
+
+# def assign_obj_var_getter(a):
+#     """ Returns a function that will grab all indicies corresponding to object vars. """
+#     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if var.type == 'object'])
+
+
+# def assign_rel_var_getter(a):
+#     """ Returns a function that will grab all indicies corresponding to relation vars. """
+#     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if var.type == 'relation'])
+
+
+# def assign_obj_vals(a):
+#     """ Returns object vals. """
+#     return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems() if var.type == 'object']))
+
+
+def assign_obj_val_indices(a):
+    """ Returns all value indices of object vars. """
+    indicies = []
+    cur_index = 0
+    for var, assignment in a.iteritems():
+        num_props = len(assignment)
+        if var.type != 'object':
+            cur_index += num_props
+            continue
+        indicies += list(range(cur_index, cur_index + num_props))
+        cur_index += num_props
+    return indicies
 
 
 # A dictionary of names to Factor Learner Classes
@@ -29,19 +73,16 @@ class JointFreqFactorLearner:
         # List of dictionaries of dictionaries [{{}}]
         self._joint_assignments = {}
 
-    def to_joint(self, assignment):
-        return tuple(reduce(operator.add, [var_assignment.values() for var_assignment in assignment.values()]))
-
     def observe(self, obs, markov_blanket):
         # Add joint assignment
-        joint_assignment = self.to_joint(obs)
+        joint_assignment = tuple(assign_to_vals(obs))
         if joint_assignment in self._joint_assignments:
             self._joint_assignments[joint_assignment] += 1
         else:
             self._joint_assignments[joint_assignment] = 1
 
     def predict(self, assignment):
-        key = self.to_joint(assignment)
+        key = tuple(assign_to_vals(assignment))
         if key in self._joint_assignments:
             return self._joint_assignments[key]
 
@@ -176,15 +217,120 @@ class LeastSquaresFactorLearner:
 # FACTOR_LEARNERS['least_squares'] = LeastSquaresFactorLearner
 
 
-class ClosedFormFactorLearner:
+class ClosedFormFactorLearner():
     def __init__(self):
-        pass
+        self._joint_assignments = {}
+        self._predict_assignment = None
+        self._num_var_props = None
+        self._num_mb_props = None
+        self._num_vars = None
+        self._must_fit = True
+        self._y_mb = []
 
-    def observe(self, obs):
-        pass
+    def fit(self, assignment):
+        """ Fit a model.
+
+        Choose the canonical assignment y as the largest number in the joint_assignments that matches the assignment of
+        the objects in assignment. Since the objects only have one state in goal inference we only want to consider
+        canonical assignments using thoes values.
+
+        """
+        obj_val_getter = operator.itemgetter(*assign_obj_val_indices(assignment))
+        assign_vals = assign_to_vals(assignment)
+        obj_vals = obj_val_getter(assign_vals)
+        valid_joint_assignmnets = {key: value for key, value in self._joint_assignments.iteritems()
+                                   if obj_val_getter(key) == obj_vals}
+        self._canonical_assignment = max(valid_joint_assignmnets.iteritems(), key=operator.itemgetter(1))[0]
+        # print 'self._joint_assignments', self._joint_assignments
+        # print 'assign_obj_val_indices(assignment)', assign_obj_val_indices(assignment)
+        # print 'assign_vals', assign_vals
+        # print 'obj_vals', obj_vals
+        # print 'valid_joint_assignmnets', valid_joint_assignmnets
+        # print 'self._canonical_assignment', self._canonical_assignment
+        # print 'assignment', assignment
+        # Get the total number of examples canonical markov blanket
+        if self._num_mb_props != 0:
+            mb_getter = operator.itemgetter(*list(range(self._num_var_props, self._num_var_props + self._num_mb_props)))
+            self._y_mb = mb_getter(self._canonical_assignment)
+            self._num_y_mb_samps = sum([count for assignment, count in self._joint_assignments.iteritems()
+                                       if mb_getter(assignment) == self._y_mb])
+            self._y_mb = [x for x in self._y_mb]
+        else:
+            self._y_mb = []
+            self._num_y_mb_samps = sum(self._joint_assignments.values())
+        # print 'self._y_mb', self._y_mb
+        # print 'self._num_y_mb_samps', self._num_y_mb_samps
+        # Done fitting
+        self._must_fit = False
+
+    def observe(self, obs, markov_blanket):
+        # TODO(Kevin): Ensure markov_blanket is in a specific order
+        # New observation therfore we must refit
+        self._must_fit = True
+        # Make a key out of the joint assignment
+        var_props = assign_to_vals(obs)
+        mb_props = assign_to_vals(markov_blanket)
+        key = tuple(var_props + mb_props)
+        # Save representative vars, sizes of obs and sizes of markov_blanket
+        if self._num_vars is None:
+            self._num_vars = len(obs)
+            self._num_var_props = len(var_props)
+            self._num_mb_props = len(mb_props)
+        # Increment the number of times that joint assignment has been seen
+        try:
+            self._joint_assignments[key] += 1
+        except KeyError:
+            self._joint_assignments[key] = 1
 
     def predict(self, assignment):
-        return 0
+        if (self._must_fit or
+                self._predict_assignment is None or
+                not assign_eq(self._predict_assignment, assignment)):
+            self.fit(assignment)
+            self._predict_assignment = assignment
+
+        # Calculate factor as equ 7 from "Learning Factor Graphs in Polynomial Time and Sample Complexity"
+        exponent = 0
+        # print 'Calculate for assignment: ', assign_to_vals(assignment)
+        # Loop over powerset of variables in factor
+        for subset in srp_md.powerset(range(self._num_vars)):
+            # print 'Current subset: ', subset
+            # Add if even subtract if odd
+            mult = -1 if (self._num_vars - len(subset)) % 2 else 1
+            # print 'multiplier: ', mult
+            # Use canonical assignment for all vars not in the subset
+            sigma_assignment = list(self._canonical_assignment[:self._num_var_props])
+            # print '_canonical_assignment', sigma_assignment
+            for var_index in subset:
+                prop_index = sum([len(assignment.values()[i]) for i in range(var_index)])
+                prop_end_index = prop_index + len(assignment.values()[var_index])
+                sigma_assignment[prop_index:prop_end_index] = assignment.values()[var_index].values()
+
+            # print 'sigma_assignment: ', sigma_assignment
+
+            # P(A|MB(A)) = P(A,MB(A)) / P(MB(A))
+            # P(A|MB(A)) aprox = (N(A,MB(A)) / num_samples) / (N(MB(A)) / num_samples)
+            #            aprox = N(A,MB(A)) / N(MB(A))
+            try:
+                count_sigma_mb = float(self._joint_assignments[tuple(sigma_assignment + self._y_mb)])
+                # print 'count_sigma_mb', count_sigma_mb
+                log_prob_sigma_given_mb = log(count_sigma_mb / self._num_y_mb_samps)
+                # print 'good', log_prob_sigma_given_mb
+            except (ValueError, KeyError) as e:
+                # return 0
+                # Log of 0 clip to large negative number
+                log_prob_sigma_given_mb = log(0.001 / self._num_y_mb_samps)
+                # log_prob_sigma_given_mb = 0
+                # print 'bad', log_prob_sigma_given_mb
+                # print 'bad: ', str(type(e)), str(e), log_prob_sigma_given_mb
+
+            # Accumulate
+            exponent += mult * log_prob_sigma_given_mb
+            # print 'exponent', exponent
+
+        # print 'exponent', exponent, exp(exponent)
+
+        return exp(exponent)
 
 
 FACTOR_LEARNERS['closed_form'] = ClosedFormFactorLearner
