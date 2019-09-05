@@ -40,9 +40,14 @@ def assign_eq(a, b):
 #     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if var.type == 'relation'])
 
 
-# def assign_obj_vals(a):
-#     """ Returns object vals. """
-#     return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems() if var.type == 'object']))
+def assign_obj_vals(a):
+    """ Returns object vals. """
+    return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems() if var.type == 'object']))
+
+
+def assign_rel_vals(a):
+    """ Returns object vals. """
+    return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems() if var.type == 'relation']))
 
 
 def assign_obj_val_indices(a):
@@ -129,8 +134,7 @@ FACTOR_LEARNERS['frequency'] = FreqFactorLearner
 class DecisionTreeFactorLearner:
     """ Learn factors by a decision  tree.
 
-    TODO(Kevin): Handle factors with more than one relation var
-    TODO(Kevin): Handle real object domains
+    TODO(Kevin): Get all possible categories so that we can use small numbers of examples and new novel objects
     TODO(Kevin): Tune the paramaters of the decision tree
     TODO(Kevin): Add a feature removal stage to the pipeline
 
@@ -140,13 +144,18 @@ class DecisionTreeFactorLearner:
         self._target = []
         self._must_fit = True
         self._clf = tree.DecisionTreeClassifier()
-        letters = [c for c in string.ascii_lowercase] + [c for c in string.ascii_uppercase]
-        self._enc = preprocessing.OneHotEncoder(categories=[letters, letters])
+        self._enc = preprocessing.OneHotEncoder()
         self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
 
+    def _combine_rels(self, rels):
+        """ Combine relations into one string deliminated by spaces. """
+        return reduce(lambda x, y: x + ' ' + y, rels)
+
     def observe(self, obs, markov_blanket):
-        self._data.append([obj for obj in obs if obj not in srp_md.SceneGraph.RELATION_STRS])
-        self._target.append([rel for rel in obs if rel in srp_md.SceneGraph.RELATION_STRS])
+        self._data.append(assign_obj_vals(obs))
+        # Each possible combination of assignments of the relations is a class
+        self._target.append(self._combine_rels(assign_rel_vals(obs)))
+        # New data so will need to refit
         self._must_fit = True
 
     def predict(self, assignment):
@@ -155,21 +164,19 @@ class DecisionTreeFactorLearner:
             self._must_fit = False
             self._pipe.fit(self._data, self._target)
         # Predict probability
-        # TODO(Kevin): I don't think these should be sorted anymore
-        value_tuple = tuple(sorted(value for value in assignment.values()
-                            if value not in srp_md.SceneGraph.RELATION_STRS))
-        probs = self._pipe.predict_proba([value_tuple])
-
-        relation = [value for value in assignment.values() if value in srp_md.SceneGraph.RELATION_STRS][0]
-        if relation in self._clf.classes_:
-            probs_index = numpy.where(self._clf.classes_ == relation)
-            return probs[0][probs_index[0][0]]
-
-        return 0
+        # TODO(?): Cache probs because this exact same query will be made many times
+        probs = self._pipe.predict_proba([assign_obj_vals(assignment)])
+        # Get the probability corresponding to the current assignment
+        rel_vals = self._combine_rels(assign_rel_vals(assignment))
+        prob = probs[0][self._clf.classes_ == rel_vals]
+        # If the class has never been seen before return 0
+        if len(prob) != 1:
+            return 0
+        return prob[0]
 
 
 # TODO(Kevin): Update to work with OrderedDictionary inputs
-# FACTOR_LEARNERS['decision_tree'] = DecisionTreeFactorLearner
+FACTOR_LEARNERS['decision_tree'] = DecisionTreeFactorLearner
 
 
 class LeastSquaresFactorLearner:
