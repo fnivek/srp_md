@@ -49,7 +49,7 @@ def main():
     srp = srp_md.SrpMd(learner='factor_graph_learner', sensor='block_tower_sensor',
                        goal_generator='factor_graph_goal_generator')
     srp.demo_type = 'only_goal'
-    srp.set_learner_attributes(factor_learner=learn.FACTOR_LEARNERS['joint_frequency'])
+    srp.set_learner_attributes(factor_learner=learn.FACTOR_LEARNERS[args.factor_learner])
 
     # Experiment
     # init
@@ -78,10 +78,13 @@ def main():
         try:
             srp.generate_goal()
             num_goals += 1
-        except ValueError:
-            pass
-        if srp.evaluate_goal():
-            num_correct += 1
+        except ValueError as e:
+            logger.warn('Failed to generate goal trying again: ' + str(e))
+        try:
+            if srp.evaluate_goal():
+                num_correct += 1
+        except ValueError as e:
+            logger.warn('Failed to evaluate goal must be a bad goal...' + str(e))
     logger.info('Number of examples {}\n\t'
                 'Number of bad examples {}\n\t'
                 'Generated and evaluated {} goals with {}%% correct'.format(
