@@ -242,7 +242,7 @@ class SrpMd(object):
             edge_labels = {}
             for relation in scene_graph.relations:
                 if relation.assignment['value'] != "disjoint":
-                    object_ids = relation.return_objects()
+                    object_ids = relation.get_objects()
                     e = tuple(["X_" + str(object_ids[0]), "X_" + str(object_ids[1])])
                     edge_labels[e] = relation.assignment['value']
                     G.add_edge(*e)
