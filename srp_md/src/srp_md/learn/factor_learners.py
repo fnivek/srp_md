@@ -146,6 +146,8 @@ class DecisionTreeFactorLearner:
         self._clf = tree.DecisionTreeClassifier()
         self._enc = preprocessing.OneHotEncoder()
         self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
+        self._last_vals = None
+        self._last_probs = None
 
     def _combine_rels(self, rels):
         """ Combine relations into one string deliminated by spaces. """
@@ -162,13 +164,16 @@ class DecisionTreeFactorLearner:
         # Fit data if needed
         if self._must_fit:
             self._must_fit = False
+            self._last_vals = None
             self._pipe.fit(self._data, self._target)
         # Predict probability
-        # TODO(?): Cache probs because this exact same query will be made many times
-        probs = self._pipe.predict_proba([assign_obj_vals(assignment)])
+        cur_vals = assign_obj_vals(assignment)
+        if cur_vals != self._last_vals:
+            self._probs = self._pipe.predict_proba([cur_vals])
+            self._last_vals = cur_vals
         # Get the probability corresponding to the current assignment
         rel_vals = self._combine_rels(assign_rel_vals(assignment))
-        prob = probs[0][self._clf.classes_ == rel_vals]
+        prob = self._probs[0][self._clf.classes_ == rel_vals]
         # If the class has never been seen before return 0
         if len(prob) != 1:
             return 0
