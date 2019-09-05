@@ -241,13 +241,6 @@ class ClosedFormFactorLearner():
         valid_joint_assignmnets = {key: value for key, value in self._joint_assignments.iteritems()
                                    if obj_val_getter(key) == obj_vals}
         self._canonical_assignment = max(valid_joint_assignmnets.iteritems(), key=operator.itemgetter(1))[0]
-        # print 'self._joint_assignments', self._joint_assignments
-        # print 'assign_obj_val_indices(assignment)', assign_obj_val_indices(assignment)
-        # print 'assign_vals', assign_vals
-        # print 'obj_vals', obj_vals
-        # print 'valid_joint_assignmnets', valid_joint_assignmnets
-        # print 'self._canonical_assignment', self._canonical_assignment
-        # print 'assignment', assignment
         # Get the total number of examples canonical markov blanket
         if self._num_mb_props != 0:
             mb_getter = operator.itemgetter(*list(range(self._num_var_props, self._num_var_props + self._num_mb_props)))
@@ -258,8 +251,6 @@ class ClosedFormFactorLearner():
         else:
             self._y_mb = []
             self._num_y_mb_samps = sum(self._joint_assignments.values())
-        # print 'self._y_mb', self._y_mb
-        # print 'self._num_y_mb_samps', self._num_y_mb_samps
         # Done fitting
         self._must_fit = False
 
@@ -291,44 +282,28 @@ class ClosedFormFactorLearner():
 
         # Calculate factor as equ 7 from "Learning Factor Graphs in Polynomial Time and Sample Complexity"
         exponent = 0
-        # print 'Calculate for assignment: ', assign_to_vals(assignment)
         # Loop over powerset of variables in factor
         for subset in srp_md.powerset(range(self._num_vars)):
-            # print 'Current subset: ', subset
             # Add if even subtract if odd
             mult = -1 if (self._num_vars - len(subset)) % 2 else 1
-            # print 'multiplier: ', mult
             # Use canonical assignment for all vars not in the subset
             sigma_assignment = list(self._canonical_assignment[:self._num_var_props])
-            # print '_canonical_assignment', sigma_assignment
             for var_index in subset:
                 prop_index = sum([len(assignment.values()[i]) for i in range(var_index)])
                 prop_end_index = prop_index + len(assignment.values()[var_index])
                 sigma_assignment[prop_index:prop_end_index] = assignment.values()[var_index].values()
-
-            # print 'sigma_assignment: ', sigma_assignment
 
             # P(A|MB(A)) = P(A,MB(A)) / P(MB(A))
             # P(A|MB(A)) aprox = (N(A,MB(A)) / num_samples) / (N(MB(A)) / num_samples)
             #            aprox = N(A,MB(A)) / N(MB(A))
             try:
                 count_sigma_mb = float(self._joint_assignments[tuple(sigma_assignment + self._y_mb)])
-                # print 'count_sigma_mb', count_sigma_mb
                 log_prob_sigma_given_mb = log(count_sigma_mb / self._num_y_mb_samps)
-                # print 'good', log_prob_sigma_given_mb
             except (ValueError, KeyError) as e:
-                # return 0
                 # Log of 0 clip to large negative number
                 log_prob_sigma_given_mb = log(0.001 / self._num_y_mb_samps)
-                # log_prob_sigma_given_mb = 0
-                # print 'bad', log_prob_sigma_given_mb
-                # print 'bad: ', str(type(e)), str(e), log_prob_sigma_given_mb
-
             # Accumulate
             exponent += mult * log_prob_sigma_given_mb
-            # print 'exponent', exponent
-
-        # print 'exponent', exponent, exp(exponent)
 
         return exp(exponent)
 
