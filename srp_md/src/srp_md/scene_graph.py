@@ -109,11 +109,15 @@ class SceneGraph(srp_md.FactorGraph):
                         raise ValueError("Expected Var but got None!")
                     # If reversed flip value
                     if relation.object1 != obj_pair[0]:
-                        relation = copy.deepcopy(relation)
-                        relation.assignment['value'] = SceneGraph.REV_RELATION_DICT[relation.assignment['value']]
+                        relation = self.flip_rel(relation)
                     var_list.append(relation)
                 # Finally return the factor of this variables list
                 yield srp_md.Factor(variables=var_list)
+
+    def flip_rel(self, rel):
+        rel_cp = copy.deepcopy(rel)
+        rel_cp.assignment['value'] = SceneGraph.REV_RELATION_DICT[rel.assignment['value']]
+        return rel_cp
 
     def markov_blanket(self, vars):
         """ Get all vars in the markov blanket.
