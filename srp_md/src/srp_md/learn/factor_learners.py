@@ -8,7 +8,7 @@ from itertools import chain
 from math import log, exp
 
 # Scikit
-from sklearn import linear_model, tree, preprocessing
+from sklearn import linear_model, tree, preprocessing, svm
 from sklearn.pipeline import Pipeline
 
 # Numpy
@@ -131,7 +131,7 @@ class FreqFactorLearner:
 FACTOR_LEARNERS['frequency'] = FreqFactorLearner
 
 
-class DecisionTreeFactorLearner:
+class SklearnFactorLearner(object):
     """ Learn factors by a decision  tree.
 
     TODO(Kevin): Get all possible categories so that we can use small numbers of examples and new novel objects
@@ -139,11 +139,11 @@ class DecisionTreeFactorLearner:
     TODO(Kevin): Add a feature removal stage to the pipeline
 
     """
-    def __init__(self):
+    def __init__(self, clf):
         self._data = []
         self._target = []
         self._must_fit = True
-        self._clf = tree.DecisionTreeClassifier()
+        self._clf = clf
         self._enc = preprocessing.OneHotEncoder()
         self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
         self._last_vals = None
@@ -180,52 +180,31 @@ class DecisionTreeFactorLearner:
         return prob[0]
 
 
-# TODO(Kevin): Update to work with OrderedDictionary inputs
+class DecisionTreeFactorLearner(SklearnFactorLearner):
+    def __init__(self):
+        clf = tree.DecisionTreeClassifier()
+        super(DecisionTreeFactorLearner, self).__init__(clf)
+
+
 FACTOR_LEARNERS['decision_tree'] = DecisionTreeFactorLearner
 
 
-class LeastSquaresFactorLearner:
-    """ Learn factors by a decision  tree.
-
-    TODO(Kevin): Handle factors with more than one relation var
-    TODO(Kevin): Handle real object domains
-    TODO(Kevin): Tune the paramaters of the decision tree
-    TODO(Kevin): Add a feature removal stage to the pipeline
-
-    """
+class SvmFactorLearner(SklearnFactorLearner):
     def __init__(self):
-        self._data = []
-        self._target = []
-        self._must_fit = True
-        self._clf = linear_model.LinearRegression()
-        letters = [c for c in string.ascii_lowercase] + [c for c in string.ascii_uppercase]
-        self._enc = preprocessing.OneHotEncoder(categories=[letters, letters, srp_md.SceneGraph.RELATION_STRS])
-        self._pipe = Pipeline([('enc', self._enc), ('least_squares', self._clf)])
-
-    def observe(self, obs, markov_blanket):
-        self._data.append(obs)
-        self._target.append(1)
-        self._must_fit = True
-
-    def predict(self, assignment):
-        # Fit data if needed
-        if self._must_fit:
-            self._must_fit = False
-            self._pipe.fit(self._data, self._target)
-        # Predict probability
-        # TODO(Kevin): I don't think these should be sorted anymore
-        value_tuple = tuple(sorted(value for value in assignment.values()))
-        probs = self._pipe.predict([value_tuple])
-
-        # relation = [value for value in assignment.values() if value in srp_md.SceneGraph.RELATION_STRS][0]
-        # if relation in self._clf.classes_:
-        #     probs_index = numpy.where(self._clf.classes_ == relation)
-        #     return probs[0][probs_index[0][0]]
-
-        return 0
+        clf = svm.SVC(gamma='auto', probability=True)
+        super(SvmFactorLearner, self).__init__(clf)
 
 
-# TODO(Kevin): Update to work with OrderedDictionary inputs
+FACTOR_LEARNERS['svm'] = SvmFactorLearner
+
+
+# TODO(Kevin): Figure out how to deal with SklearnFactorLearner that do not have a predict_proba func
+# class LeastSquaresFactorLearner(SklearnFactorLearner):
+#     def __init__(self):
+#         clf = linear_model.LinearRegression()
+#         super(LeastSquaresFactorLearner, self).__init__(clf)
+
+
 # FACTOR_LEARNERS['least_squares'] = LeastSquaresFactorLearner
 
 
