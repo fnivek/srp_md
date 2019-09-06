@@ -26,7 +26,7 @@ class BlockTowerSensor(sense.BaseSensor):
     def check_property(self, scene_graph, goal_prop):
         # If the goal property is None, then this is automatically true
         if goal_prop is None:
-                return True
+            return True
 
         # Initialize lists
         order_list = []
