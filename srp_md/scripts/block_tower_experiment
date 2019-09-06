@@ -80,6 +80,7 @@ def main():
             num_goals += 1
         except ValueError as e:
             logger.warn('Failed to generate goal trying again: ' + str(e))
+            continue
         try:
             if srp.evaluate_goal():
                 num_correct += 1
