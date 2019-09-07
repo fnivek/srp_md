@@ -56,7 +56,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         # Generate and fill in all factors
         #   For each type of factor generate all possible combinations
         #   If there are not enough vars for the factor the factor is skipped
-        for factor_type, learned_factor in factors.iteritems():
+        for factor_type, handler in factors.iteritems():
             ros_factor = None
             if len(obs.objs) < factor_type[0] or len(obs.relations) < factor_type[1]:
                 self._logger.debug(
@@ -69,11 +69,11 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
                 pairs = []
                 new_uuid = obs.get_new_uuid()
                 for pair in itertools.combinations(objects, 2):
-                    relation = srp_md.SceneGraph.make_relation(pair[0], pair[1])
-                    relation.uuid = new_uuid + len(pairs)
+                    relation = srp_md.Relation(list(pair), uuid=new_uuid,
+                                               num_states=len(srp_md.SceneGraph.RELATION_STRS))
                     pairs.append(relation)
                 # Use the LearnedFactor to generate a ros_factor for each combination
-                ros_factor = learned_factor.gen_factor(objects + tuple(pairs)).to_ros_factor()
+                ros_factor = handler.generate_factor(objects + tuple(pairs)).to_ros_factor()
                 req.factors.append(ros_factor)
 
         self._logger.debug('Get goal request is:\n{}'.format(req))
@@ -96,10 +96,9 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             rel_name = 'R_' + id_list[0] + '_' + id_list[1]
             for relation in goal.relations:
                 if relation.name == rel_name:
-                    relation.assignment['value'] = resp.relation[i]
+                    relation.value = resp.relation[i]
         self._logger.debug('What is resp? %s', resp)
         self._logger.debug('What are object names? %s', goal.get_obj_names())
-        self._logger.debug('What are object values? %s', goal.get_obj_values())
         self._logger.debug('What are relation names? %s', goal.get_rel_names())
         self._logger.debug('What are relation values? %s', goal.get_rel_values())
         self._logger.debug('What are property values? %s', goal.get_prop_values('color'))

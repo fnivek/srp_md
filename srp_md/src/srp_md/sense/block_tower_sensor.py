@@ -35,16 +35,16 @@ class BlockTowerSensor(sense.BaseSensor):
         # For each relation, do:
         for relation in scene_graph.relations:
             # Count how many relations that are 'on' or 'support' and add to order_list (from bot to top fashion)
-            if relation.assignment['value'] == 'on':
-                var_ids = relation.get_objects()
-                var_ids.reverse()
-                order_list.append(var_ids)
-            elif relation.assignment['value'] == 'support':
-                var_ids = relation.get_objects()
-                order_list.append(var_ids)
+            objs = relation.get_objs()
+            obj_ids = [obj.id for obj in objs]
+            if relation.value == 'on':
+                obj_ids.reverse()
+                order_list.append(obj_ids)
+            elif relation.value == 'support':
+                order_list.append(obj_ids)
 
         # If that count does not equal number of objects in the scene - 1, then False
-        if len(order_list) != len(scene_graph.objs) - 1:
+        if len(order_list) != scene_graph.num_objs() - 1:
             return False
 
         # Build a list of variable index from bottom block to top-most block
@@ -78,16 +78,16 @@ class BlockTowerSensor(sense.BaseSensor):
                 if prop_list.index(prop_order[bot_top[i] - 1]) > \
                         prop_list.index(prop_order[bot_top[i + 1] - 1]):
                     if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
-                        if relation.assignment['value'] != "support":
+                        if relation.value != "support":
                             return False
                     elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
-                        if relation.assignment['value'] != "on":
+                        if relation.value != "on":
                             return False
         return True
 
     def gen_goal_demo(self, scene_graph):
         # Get a list of integer ids for variables
-        bot_top = list(range(1, len(scene_graph.objs) + 1))
+        bot_top = list(range(1, scene_graph.num_objs() + 1))
 
         # If goal property is set to None
         if self.goal_prop is None:
@@ -102,15 +102,15 @@ class BlockTowerSensor(sense.BaseSensor):
 
         # Initialize all relations to be "disjoint"
         for relation in scene_graph.relations:
-            relation.assignment['value'] = "disjoint"
+            relation.value = "disjoint"
 
         # For each pair in bot_top list, set value for relation in correspondence
         for i in range(len(bot_top) - 1):
             for relation in scene_graph.relations:
                 if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
-                    relation.assignment['value'] = "support"
+                    relation.value = "support"
                 elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
-                    relation.assignment['value'] = "on"
+                    relation.value = "on"
 
         self._logger.debug('Tower Order from Bottom to Top %s', bot_top)
 
@@ -128,7 +128,7 @@ class BlockTowerSensor(sense.BaseSensor):
             count += 1
             # Randomly set relation values
             for relation in scene_graph.relations:
-                relation.assignment['value'] = random.choice(self._RELATIONS)
+                relation.value = random.choice(self._RELATIONS)
             # Check the consistency of this graph
             consistent = scene_graph.check_consistency("block")
             # Pass if inconsistent
@@ -149,8 +149,7 @@ class BlockTowerSensor(sense.BaseSensor):
         # Randomly choose objects from object list
         # num_objs = random.randint(3, len(self._objs))
         num_objs = 3
-        objs = [srp_md.Var(name='X_{}'.format(i + 1), uuid=i + 1, var_type="object", value=v,
-                assignment=self._ass_prop[v])
+        objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, properties=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph
@@ -169,7 +168,6 @@ class BlockTowerSensor(sense.BaseSensor):
         goal_cond = self.check_property(scene_graph, self.goal_prop)
 
         self._logger.debug('What are object names? %s', scene_graph.get_obj_names())
-        self._logger.debug('What are object values? %s', scene_graph.get_obj_values())
         self._logger.debug('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.debug('What are relation values? %s', scene_graph.get_rel_values())
         self._logger.debug('What are property values? %s', scene_graph.get_prop_values(self.goal_prop))

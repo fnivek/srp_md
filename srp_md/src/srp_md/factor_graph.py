@@ -1,10 +1,6 @@
 from __future__ import absolute_import
-from builtins import range
-import itertools
 
 # srp_md imports
-from srp_md.msg import Factor as RosFactor
-from srp_md.msg import ObjectPair
 
 
 class FactorGraph(object):
@@ -44,11 +40,12 @@ class FactorGraph(object):
     def get_new_uuid(self):
         return max([var.uuid for var in self._vars]) + 1
 
-    def gen_input_factors(self, configs=[]):
-        for config in configs:
-            for obj_combo in itertools.combinations(self.get_objects(), config[0]):
-                for rel_combo in itertools.combinations(self.get_relations(), config[1]):
-                    yield Factor(variables=obj_combo + rel_combo)
+    # This function uses scene graph's function variables... may need to change?
+    # def gen_input_factors(self, configs=[]):
+    #     for config in configs:
+    #         for obj_combo in itertools.combinations(self.get_objects(), config[0]):
+    #             for rel_combo in itertools.combinations(self.get_relations(), config[1]):
+    #                 yield Factor(variables=obj_combo + rel_combo)
 
 
 class Factor(object):
@@ -91,31 +88,11 @@ class Factor(object):
     def connect_vars(self, vars):
         self.vars.extend(vars)
 
-    def to_ros_factor(self):
-        ros_factor = RosFactor()
-        ros_factor.objects = [var.name for var in self.vars if var.type == 'object']
-        for var in [var for var in self.vars if var.type == 'relation']:
-            pair = ObjectPair()
-            pair.object1 = var.object1.name
-            pair.object2 = var.object2.name
-            ros_factor.pairs.append(pair)
-        ros_factor.probs = self.probs
-        return ros_factor
-
 
 class Var(object):
-    def __init__(self, name, uuid, var_type='object', factors=None, value=None, assignment=None, num_states=1):
+    def __init__(self, name=None, uuid=0):
         self.name = name
         self.uuid = uuid
-        self.factors = factors
-        if factors is None:
-            self.factors = []
-        self.assignment = assignment
-        if assignment is None:
-            self.assignment = {}
-        self.assignment['value'] = value
-        self.type = var_type
-        self.num_states = num_states
 
     def __eq__(self, other):
         if isinstance(other, Var):
@@ -133,21 +110,3 @@ class Var(object):
 
     def __str__(self):
         return '{}[{}]'.format(self.name, str(self.uuid))
-
-    def connect_factors(self, factors):
-        self.factors.extend(factors)
-
-    def get_id(self):
-        if self.type == "object":
-            return int(self.name[self.name.find('_') + 1:])
-        else:
-            raise TypeError("This method should only be used with object variables")
-
-    # TODO(?): Move this to a subclass of Var that explicitly represents relations (in scene_graph.py)
-    def get_objects(self):
-        # Returns objects connected to single relation
-        if self.type == "relation":
-            return [int(self.name[self.name.find('_', 1) + 1:self.name.find('_', 2)]),
-                    int(self.name[self.name.find('_', 2) + 1:])]
-        else:
-            raise TypeError("This method should only be used with relation variables")

@@ -25,14 +25,14 @@ class BlockWorldSensor(sense.BaseSensor):
 
             # Randomly choose objects from object list
             num_objs = random.randint(1, len(self._objs))
-            objs = [srp_md.Var(name='X_{}'.format(i + 1), uuid=i + 1, var_type="object", value=v) for i, v in
-                    enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+            objs = [srp_md.Object(id_num=i + 1, uuid=i + 1)
+                    for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
             # Generate a consistent scene graph
             scene_graph = srp_md.SceneGraph(objs)
 
             for relation in scene_graph.relations:
-                relation.assignment['value'] = random.choice(self._RELATIONS)
+                relation.value = random.choice(self._RELATIONS)
             consistent = scene_graph.check_consistency("block")
 
             # Set end condition for while loop depending on demo type we want
@@ -49,7 +49,6 @@ class BlockWorldSensor(sense.BaseSensor):
                 break
 
         self._logger.debug('What are object names? %s', scene_graph.get_obj_names())
-        self._logger.debug('What are object values? %s', scene_graph.get_obj_values())
         self._logger.debug('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.debug('What are relation values? %s', scene_graph.get_rel_values())
         self._logger.debug('Is this scene graph consistent? %s', consistent)

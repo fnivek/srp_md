@@ -1,10 +1,7 @@
 # Python
 import string
-from random import random
 import operator
 from functools import reduce
-from collections import OrderedDict, Counter
-from itertools import chain
 from math import log, exp
 
 # Graphviz
@@ -59,7 +56,7 @@ def assign_obj_val_indices(a):
     cur_index = 0
     for var, assignment in a.iteritems():
         num_props = len(assignment)
-        if var.type != 'object':
+        if isinstance(var, srp_md.Object):
             cur_index += num_props
             continue
         indicies += list(range(cur_index, cur_index + num_props))
@@ -257,8 +254,8 @@ class ClosedFormFactorLearner():
         if self._num_mb_props != 0:
             mb_getter = operator.itemgetter(*list(range(self._num_var_props, self._num_var_props + self._num_mb_props)))
             self._y_mb = mb_getter(self._canonical_assignment)
-            self._num_y_mb_samps = sum([count for assignment, count in self._joint_assignments.iteritems()
-                                       if mb_getter(assignment) == self._y_mb])
+            self._num_y_mb_samps = sum([count for ass, count in self._joint_assignments.iteritems()
+                                       if mb_getter(ass) == self._y_mb])
             self._y_mb = [x for x in self._y_mb]
         else:
             self._y_mb = []

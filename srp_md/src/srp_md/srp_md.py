@@ -234,17 +234,17 @@ class SrpMd(object):
 
             # Add the objects as graph nodes
             obj_names = scene_graph.get_obj_names()
-            node_labels = {obj_names[i]: r"$" + scene_graph.get_obj_values()[i] + "$"
+            node_labels = {obj_names[i]: r"$" + scene_graph.get_obj_names()[i] + "$"
                            for i in range(scene_graph.num_objs())}
             G.add_nodes_from(obj_names)
 
             # Add the relations
             edge_labels = {}
             for relation in scene_graph.relations:
-                if relation.assignment['value'] != "disjoint":
-                    object_ids = relation.get_objects()
+                if relation.value != "disjoint":
+                    object_ids = relation.get_objs()
                     e = tuple(["X_" + str(object_ids[0]), "X_" + str(object_ids[1])])
-                    edge_labels[e] = relation.assignment['value']
+                    edge_labels[e] = relation.value
                     G.add_edge(*e)
 
             # Get the layout of nodes

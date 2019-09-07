@@ -7,6 +7,8 @@ import copy
 
 # Project
 import srp_md
+from srp_md.msg import Factor as RosFactor
+from srp_md.msg import ObjectPair
 
 # Can not pickle an object (or deepcopy) with a logger
 logger = logging.getLogger(__name__)
@@ -16,12 +18,12 @@ class SceneGraph(srp_md.FactorGraph):
     # Class constants
     RELATION_STRS = ['disjoint', 'in', 'on', 'contain', 'support', 'proximity']
     REV_RELATION_DICT = {
-        "disjoint":  "disjoint",
+        "disjoint": "disjoint",
         "proximity": "proximity",
-        "on":        "support",
-        "support":   "on",
-        "in":        "contain",
-        "contain":   "in"
+        "on": "support",
+        "support": "on",
+        "in": "contain",
+        "contain": "in"
     }
 
     def __init__(self, objs=None):
@@ -42,20 +44,17 @@ class SceneGraph(srp_md.FactorGraph):
     def get_obj_names(self):
         return [obj.name for obj in self.objs]
 
-    def get_obj_values(self):
-        return [obj.assignment['value'] for obj in self.objs]
-
     def get_rel_names(self):
         return [rel.name for rel in self.relations]
 
     def get_rel_values(self):
-        return [rel.assignment['value'] for rel in self.relations]
+        return [rel.value for rel in self.relations]
 
     def get_rel_by_objs(self, obj1, obj2):
         for relation in self.relations:
-            if (relation.object1 == obj1) and (relation.object2 == obj2):
+            if (relation.obj1 == obj1) and (relation.obj2 == obj2):
                 return relation
-            elif (relation.object1 == obj2) and (relation.object2 == obj1):
+            elif (relation.obj1 == obj2) and (relation.obj2 == obj1):
                 return relation
         return None
 
@@ -63,33 +62,33 @@ class SceneGraph(srp_md.FactorGraph):
         if prop is None:
             raise ValueError("Property needs to be specified")
         else:
-            return [obj.assignment[prop] for obj in self.objs]
+            return [obj.properties[prop] for obj in self.objs]
 
     def get_rel_value_from_name(self, name):
         for rel in self.relations:
             if rel.name == name:
-                return rel.assignment['value']
+                return rel.value
         else:
             return None
 
-    def get_objects(self):
-        return [var for var in self._vars if var.type == "object"]
+    def generate_relations(self):
+        """ Generate all relation variables
 
-    def get_relations(self):
-        return [var for var in self._vars if var.type == "relation"]
-
-    @classmethod
-    def make_relation(cls, obj1, obj2):
-        """ Generates a new relation from an object pair.
-
-        WARNING: Does not give a uuid instead just 0. Function user must assign a uuid.
+        Generates all possible combinations of relations between objects.
 
         """
-        name = 'R_{}_{}'.format(obj1.name, obj2.name)
-        relation = srp_md.Var(name, uuid=0, var_type='relation', num_states=len(SceneGraph.RELATION_STRS))
-        setattr(relation, 'object1', obj1)
-        setattr(relation, 'object2', obj2)
-        return relation
+        # Generate all combos of objects
+        for pair in itertools.combinations(self.objs, 2):
+            relation = Relation(list(pair), uuid=self.get_new_uuid(), value=None, num_states=len(self.RELATION_STRS))
+            self.relations.append(relation)
+            self._vars.append(relation)
+            pair[0].add_relation(relation)
+            pair[1].add_relation(relation)
+
+    def reset_relations(self):
+        # Reset all relations
+        for relation in self.relations:
+            relation.value = None
 
     def gen_ordered_factors(self, configs=[]):
         # For each (obj, rel) config, do:
@@ -98,7 +97,7 @@ class SceneGraph(srp_md.FactorGraph):
             if config[1] != srp_md.tri_num(config[0] - 1):
                 continue
             # For each combination of objects and relations, do:
-            for obj_permu in itertools.permutations(self.get_objects(), config[0]):
+            for obj_permu in itertools.permutations(self.objs, config[0]):
                 # Initialize variable list as the permutated list of objects
                 var_list = list(obj_permu)
                 # For each pair of objects in the list, do:
@@ -108,15 +107,15 @@ class SceneGraph(srp_md.FactorGraph):
                     if relation is None:
                         raise ValueError("Expected Var but got None!")
                     # If reversed flip value
-                    if relation.object1 != obj_pair[0]:
+                    if relation.obj1 != obj_pair[0]:
                         relation = self.flip_rel(relation)
                     var_list.append(relation)
                 # Finally return the factor of this variables list
-                yield srp_md.Factor(variables=var_list)
+                yield srp_md.SgFactor(variables=var_list)
 
     def flip_rel(self, rel):
         rel_cp = copy.deepcopy(rel)
-        rel_cp.assignment['value'] = SceneGraph.REV_RELATION_DICT[rel.assignment['value']]
+        rel_cp.value = SceneGraph.REV_RELATION_DICT[rel.value]
         return rel_cp
 
     def markov_blanket(self, vars):
@@ -130,7 +129,7 @@ class SceneGraph(srp_md.FactorGraph):
         relations = []
         objs = []
         for var in vars:
-            if var.type == 'relation':
+            if isinstance(var, Relation):
                 relations.append(var)
             else:
                 objs.append(var)
@@ -139,11 +138,11 @@ class SceneGraph(srp_md.FactorGraph):
         for relation in self.relations:
             if relation in relations:
                 continue
-            if relation.object1 in objs:
-                mb.add(relation.object2)
+            if relation.obj1 in objs:
+                mb.add(relation.obj2)
                 mb.add(relation)
-            elif relation.object2 in objs:
-                mb.add(relation.object1)
+            elif relation.obj2 in objs:
+                mb.add(relation.obj1)
                 mb.add(relation)
 
         # logger.debug('Markov blanket of {} is {}'.format([var.name for var in vars], [var.name for var in mb]))
@@ -187,13 +186,8 @@ class SceneGraph(srp_md.FactorGraph):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
-        var_i = rel_1.name[rel_1.name.find('_', 1) + 1:rel_1.name.find('_', 2)]
-        var_j = rel_1.name[rel_1.name.find('_', 2) + 1:]
-        var_k = rel_2.name[rel_2.name.find('_', 1) + 1:rel_2.name.find('_', 2)]
-        var_l = rel_2.name[rel_2.name.find('_', 2) + 1:]
-
-        # Put the object ids into a set
-        ids = list(set([int(var_i), int(var_j), int(var_k), int(var_l)]))
+        objs = list(set(rel_1.get_objs() + rel_2.get_objs()))
+        ids = [int(obj.id) for obj in objs]
 
         # If rel_1 and rel_2 have common object id, do:
         if len(ids) == 3:
@@ -250,13 +244,8 @@ class SceneGraph(srp_md.FactorGraph):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
-        var_i = rel_1.name[rel_1.name.find('_', 1) + 1:rel_1.name.find('_', 2)]
-        var_j = rel_1.name[rel_1.name.find('_', 2) + 1:]
-        var_k = rel_2.name[rel_2.name.find('_', 1) + 1:rel_2.name.find('_', 2)]
-        var_l = rel_2.name[rel_2.name.find('_', 2) + 1:]
-
-        # Put the object ids into a set
-        ids = list(set([int(var_i), int(var_j), int(var_k), int(var_l)]))
+        objs = list(set(rel_1.get_objs() + rel_2.get_objs()))
+        ids = [int(obj.id) for obj in objs]
 
         # If rel_1 and rel_2 have common object id, do:
         if len(ids) == 3:
@@ -289,13 +278,8 @@ class SceneGraph(srp_md.FactorGraph):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
-        var_i = rel_1.name[rel_1.name.find('_', 1) + 1:rel_1.name.find('_', 2)]
-        var_j = rel_1.name[rel_1.name.find('_', 2) + 1:]
-        var_k = rel_2.name[rel_2.name.find('_', 1) + 1:rel_2.name.find('_', 2)]
-        var_l = rel_2.name[rel_2.name.find('_', 2) + 1:]
-
-        # Put the object ids into a set
-        ids = list(set([int(var_i), int(var_j), int(var_k), int(var_l)]))
+        objs = list(set(rel_1.get_objs() + rel_2.get_objs()))
+        ids = [int(obj.id) for obj in objs]
 
         # If rel_1 and rel_2 have common object id, do:
         if len(ids) == 3:
@@ -332,28 +316,67 @@ class SceneGraph(srp_md.FactorGraph):
 
         return consistency
 
-    def generate_relations(self, reset=True):
-        """ Generate all relation variables
 
-        Generates all possible combinations of relations between objects.
-
-        """
-        # Reset all relations
-        # TODO(?): Keep existing relations
-        if reset:
-            self._vars = [var for var in self._vars if var not in self.relations]
+class Object(srp_md.Var):
+    def __init__(self, id_num=0, uuid=0, properties=None, relations=None):
+        self.id = id_num
+        self.name = 'X_{}'.format(id_num)
+        self.uuid = uuid
+        self.properties = properties
+        self.relations = relations
+        if properties is None:
+            self.properties = {}
+        if relations is None:
             self.relations = []
+        self.num_states = 1
 
-        # Generate all combos of objects
-        for pair in itertools.combinations(self.objs, 2):
-            # Make a new relationship var
-            id_1 = pair[0].name[pair[0].name.find('_') + 1:]
-            id_2 = pair[1].name[pair[1].name.find('_') + 1:]
-            var = srp_md.Var(name='R_{}_{}'.format(id_1, id_2), uuid=self.get_new_uuid(), var_type="relation")
-            setattr(var, 'object1', pair[0])
-            setattr(var, 'object2', pair[1])
-            # TODO(Henry): Remove this magic number 6, it is the number of types of relations in scenegraph.cpp
-            #              this number should come from something like a config file that specifies our domain.
-            var.num_states = 6
-            self.relations.append(var)
-            self._vars.append(var)
+    def add_relation(self, relation):
+        self.relations.append(relation)
+
+
+class Relation(srp_md.Var):
+    def __init__(self, objs=None, uuid=0, value=None, num_states=len(SceneGraph.RELATION_STRS)):
+        if objs is None:
+            self.obj1 = None
+            self.obj2 = None
+        self.obj1 = objs[0]
+        self.obj2 = objs[1]
+        if isinstance(self.obj1, Object) and isinstance(self.obj2, Object):
+            self.name = 'R_{}_{}'.format(self.obj1.id, self.obj2.id)
+        else:
+            self.name = None
+        self.uuid = uuid
+        self.value = value
+        self.num_states = num_states
+
+    def get_objs(self):
+        return [self.obj1, self.obj2]
+
+
+class SgFactor(srp_md.Factor):
+    """
+    Factor that corresponds to scene graph.
+    """
+    def __init__(self, variables=None, probs=None):
+        self.vars = variables
+        if variables is None:
+            self.vars = []
+        self.objs = [var for var in self.vars if isinstance(var, srp_md.Object)]
+        self.relations = [var for var in self.vars if isinstance(var, srp_md.Relation)]
+        self.probs = probs
+
+    def connect_vars(self, vars):
+        self.vars.extend(vars)
+        self.objs.extend([var for var in self.vars if isinstance(var, srp_md.Object)])
+        self.relations.extend([var for var in self.vars if isinstance(var, srp_md.Relation)])
+
+    def to_ros_factor(self):
+        ros_factor = RosFactor()
+        ros_factor.objects = [obj.name for obj in self.objs]
+        for relation in self.relations:
+            pair = ObjectPair()
+            pair.object1 = relation.obj1.name
+            pair.object2 = relation.obj2.name
+            ros_factor.pairs.append(pair)
+        ros_factor.probs = self.probs
+        return ros_factor
