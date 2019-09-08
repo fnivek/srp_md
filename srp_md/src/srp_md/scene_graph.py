@@ -90,28 +90,27 @@ class SceneGraph(srp_md.FactorGraph):
         for relation in self.relations:
             relation.value = None
 
-    def gen_ordered_factors(self, configs=[]):
-        # For each (obj, rel) config, do:
-        for config in configs:
-            # If the number of relations do not match with corresponding number of objects, just skip
-            if config[1] != srp_md.tri_num(config[0] - 1):
-                continue
-            # For each combination of objects and relations, do:
-            for obj_permu in itertools.permutations(self.objs, config[0]):
-                # Initialize variable list as the permutated list of objects
-                var_list = list(obj_permu)
-                # For each pair of objects in the list, do:
-                for obj_pair in itertools.combinations(obj_permu, 2):
-                    # Get the relation of those obj_pair (in order)
-                    relation = self.get_rel_by_objs(obj_pair[0], obj_pair[1])
-                    if relation is None:
-                        raise ValueError("Expected Var but got None!")
-                    # If reversed flip value
-                    if relation.obj1 != obj_pair[0]:
-                        relation = self.flip_rel(relation)
-                    var_list.append(relation)
-                # Finally return the factor of this variables list
-                yield srp_md.SgFactor(variables=var_list)
+    def gen_ordered_factors(self, configs):
+        # For each permutation of the objects, calculate all factors:
+        for obj_permu in itertools.permutations(self.objs, self.num_objs()):
+            # For each (obj, rel) type of factor
+            for config in configs:
+                # If the number of relations do not match with corresponding number of objects, yell
+                if config[1] != srp_md.tri_num(config[0] - 1):
+                    raise ValueError('Can not make factors of type ({} objs, {} rels)'.format(config[0], config[1]))
+                # For each combination of config[0] objects get all relations between them
+                for objs in itertools.combinations(obj_permu, config[0]):
+                    # Get the relation for each pairing
+                    rels = []
+                    for obj_pair in itertools.combinations(objs, 2):
+                        # Get the relation of those objs (in order)
+                        relation = self.get_rel_by_objs(obj_pair[0], obj_pair[1])
+                        # If reversed flip value
+                        if relation.obj1 != obj_pair[0]:
+                            relation = self.flip_rel(relation)
+                        rels.append(relation)
+                    # Finally yield the factor of these variables list
+                    yield srp_md.SgFactor(variables=list(objs) + rels)
 
     def flip_rel(self, rel):
         rel_cp = copy.deepcopy(rel)
