@@ -28,51 +28,97 @@ class BlockTower2Sensor(sense.BaseSensor):
             [var_i, var_j] = relation.get_objs()
             prop_list = self._properties[goal_prop]
             if prop_list.index(var_i.assignment[goal_prop]) <= prop_list.index(var_j.assignment[goal_prop]):
-                if relation.value != "on":
+                if relation.value != "support":
                     return False
             elif prop_list.index(var_i.assignment[goal_prop]) > prop_list.index(var_j.assignment[goal_prop]):
-                if relation.value != "support":
+                if relation.value != "on":
                     return False
         return True
 
-    def process_data(self, demo_type, data):
-        satisfied = False
-        consistent = False
+    def gen_goal_demo(self, scene_graph):
+        # Get a list of integer ids for variables
+        bot_top = list(range(1, scene_graph.num_objs() + 1))
+
+        # If goal property is set to None
+        if self.goal_prop is None:
+            # Just randomly shuffle the objects
+            random.shuffle(bot_top)
+        # If a goal property is given
+        else:
+            # Sort the objects based on goal property
+            prop_list = self._properties[self.goal_prop]
+            prop_order = [prop_list.index(val) for val in scene_graph.get_prop_values(self.goal_prop)]
+            bot_top = [var_id for _, var_id in sorted(zip(prop_order, bot_top))]
+
+        # For each pair in bot_top list, set value for relation in correspondence
+        for relation in scene_graph.relations:
+            [id1, id2] = [obj.id for obj in relation.get_objs()]
+            if bot_top.index(id1) < bot_top.index(id2):
+                relation.value = "support"
+            elif bot_top.index(id1) > bot_top.index(id2):
+                relation.value = "on"
+            else:
+                self._logger.error('Something is terribly wrong!')
+
+        self._logger.debug('Tower Order from Bottom to Top %s', bot_top)
+
+        return scene_graph
+
+    def gen_not_goal_demo(self, scene_graph):
+        # Initialize variables
         count = 0
+        consistent = False
+        goal_cond = True
 
-        while (not satisfied or not consistent):
+        # While we get a demo that is either inconsistent or is a goal
+        while not consistent or goal_cond:
+            # Add to counter
             count += 1
-
-            # Randomly choose objects from object list
-            num_objs = random.randint(1, len(self._objs))
-            objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
-                    for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
-
-            # Generate a consistent scene graph
-            scene_graph = srp_md.SceneGraph(objs)
-
+            # Randomly set relation values
             for relation in scene_graph.relations:
                 relation.value = random.choice(self._RELATIONS)
-            goal_cond = self.check_property(scene_graph, self.goal_prop)
-            if (demo_type == "only_goal") and (goal_cond):
-                satisfied = True
-            elif (demo_type == "only_not_goal") and (not goal_cond):
-                satisfied = True
-            elif demo_type == "random":
-                satisfied = True
+            # Check the consistency of this graph
             consistent = scene_graph.check_consistency("block2")
-
+            # Pass if inconsistent
+            if not consistent:
+                pass
+            # If consistent, check if this graph is goal
+            else:
+                goal_cond = self.check_property(scene_graph, self.goal_prop)
+            # If iteration is over 100, then raise ValueError
             if count > 100:
-                self._logger.warning('Desired scene graph could not be generated during given time. \
-                    Please retry!')
-                break
+                raise ValueError()
+
+        self._logger.debug('What was the count? %s', count)
+
+        return scene_graph
+
+    def process_data(self, demo_type, data):
+        # Randomly choose objects from object list
+        # num_objs = random.randint(3, len(self._objs))
+        num_objs = 3
+        objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
+                for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
+
+        # Generate a consistent scene graph
+        scene_graph = srp_md.SceneGraph(objs)
+
+        # Depending on the demo type wanted, input relations accordingly
+        if demo_type == "only_goal":
+            demo_graph = self.gen_goal_demo(scene_graph)
+        elif demo_type == "only_not_goal":
+            demo_graph = self.gen_not_goal_demo(scene_graph)
+        elif demo_type == "random":
+            demo_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
+
+        # If error doesn't occur, check the scene graph's goal condition and print check up statements
+        scene_graph = demo_graph
+        goal_cond = self.check_property(scene_graph, self.goal_prop)
 
         self._logger.debug('What are object names? %s', scene_graph.get_obj_names())
         self._logger.debug('What are relation names? %s', scene_graph.get_rel_names())
         self._logger.debug('What are relation values? %s', scene_graph.get_rel_values())
-        self._logger.debug('Is this scene graph consistent? %s', consistent)
         self._logger.debug('Is goal condition satisfied? %s', goal_cond)
-        self._logger.debug('What was the count? %s', count)
 
         return scene_graph
 
