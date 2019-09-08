@@ -65,8 +65,8 @@ def main():
             srp.process_data()
             if srp.demo_type == 'only_not_goal':
                 num_noise += 1
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.warn('Failed to get a demo: {}'.format(e))
     logger.info('Completed {} demos with {} bad examples'.format(srp.get_num_demos(), num_noise))
     # Learn
     srp.learn()
