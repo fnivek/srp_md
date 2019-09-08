@@ -60,16 +60,8 @@ class FactorGraphLearner(learn.BaseLearner):
 
         return factors
 
-    def generate_ord_dict(self, var_list=[]):
-        ord_dict = []
-        for var in var_list:
-            if isinstance(var, srp_md.Object):
-                ord_dict.append((var, var.properties))
-            elif isinstance(var, srp_md.Relation):
-                ord_dict.append((var, {"value": var.value}))
-            else:
-                self._logger.error('Unidentified variable type detected!')
-        return OrderedDict(ord_dict)
+    def generate_ord_dict(self, vars):
+        return OrderedDict((var, var.assignment) for var in vars)
 
 
 class FactorHandler():
@@ -95,7 +87,7 @@ class FactorHandler():
         # Recursively determine every possible value for Factor.probs
         self._probs = [0 for _ in range(reduce(operator.mul, [var.num_states for var in vars]))]
         self._probs_index = 0
-        self._properties = OrderedDict([(var, None) for var in vars])
+        self._assignment = OrderedDict([(var, None) for var in vars])
         # libDAI uses specific ordering of permutations, which reversing the list will match
         self._vars = list(reversed(vars))
         self._recurse_generate_factor()
@@ -104,7 +96,7 @@ class FactorHandler():
     def _recurse_generate_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
-            self._probs[self._probs_index] = self._learner.predict(self._properties)
+            self._probs[self._probs_index] = self._learner.predict(self._assignment)
             self._probs_index += 1
             return
 
@@ -112,11 +104,11 @@ class FactorHandler():
         # Iterate over all relations
         if isinstance(var, srp_md.Relation):
             for relation in srp_md.SceneGraph.RELATION_STRS:
-                self._properties[var] = {'value': relation}
+                self._assignment[var] = {'value': relation}
                 self._recurse_generate_factor(var_index + 1)
         else:
             # Only has one state
-            self._properties[var] = var.properties
+            self._assignment[var] = var.assignment
             self._recurse_generate_factor(var_index + 1)
 
 

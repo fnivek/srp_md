@@ -69,8 +69,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
                 pairs = []
                 new_uuid = obs.get_new_uuid()
                 for pair in itertools.combinations(objects, 2):
-                    relation = srp_md.Relation(list(pair), uuid=new_uuid + len(pairs),
-                                               num_states=len(srp_md.SceneGraph.RELATION_STRS))
+                    relation = srp_md.Relation(list(pair), uuid=new_uuid + len(pairs))
                     pairs.append(relation)
                 # Use the LearnedFactor to generate a ros_factor for each combination
                 ros_factor = handler.generate_factor(objects + tuple(pairs)).to_ros_factor()

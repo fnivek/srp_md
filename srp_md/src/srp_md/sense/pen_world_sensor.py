@@ -31,10 +31,10 @@ class PenWorldSensor(sense.BaseSensor):
         for relation in scene_graph.relations:
             [var_i, var_j] = relation.get_objs()
             prop_list = self._properties[goal_prop]
-            if prop_list.index(var_i.properties[goal_prop]) <= prop_list.index(var_j.properties[goal_prop]):
+            if prop_list.index(var_i.assignment[goal_prop]) <= prop_list.index(var_j.assignment[goal_prop]):
                 if relation.value != "left":
                     return False
-            elif prop_list.index(var_i.properties[goal_prop]) > prop_list.index(var_j.properties[goal_prop]):
+            elif prop_list.index(var_i.assignment[goal_prop]) > prop_list.index(var_j.assignment[goal_prop]):
                 if relation.value != "right":
                     return False
         return True
@@ -49,7 +49,7 @@ class PenWorldSensor(sense.BaseSensor):
 
             # Randomly choose objects from object list
             num_objs = random.randint(1, len(self._objs))
-            objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, properties=self._ass_prop[v])
+            objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
                     for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
             # Generate a consistent scene graph

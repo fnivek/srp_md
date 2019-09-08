@@ -62,7 +62,7 @@ class SceneGraph(srp_md.FactorGraph):
         if prop is None:
             raise ValueError("Property needs to be specified")
         else:
-            return [obj.properties[prop] for obj in self.objs]
+            return [obj.assignment[prop] for obj in self.objs]
 
     def get_rel_value_from_name(self, name):
         for rel in self.relations:
@@ -79,7 +79,7 @@ class SceneGraph(srp_md.FactorGraph):
         """
         # Generate all combos of objects
         for pair in itertools.combinations(self.objs, 2):
-            relation = Relation(list(pair), uuid=self.get_new_uuid(), value=None, num_states=len(self.RELATION_STRS))
+            relation = Relation(list(pair), uuid=self.get_new_uuid(), value=None)
             self.relations.append(relation)
             self._vars.append(relation)
             pair[0].add_relation(relation)
@@ -318,39 +318,37 @@ class SceneGraph(srp_md.FactorGraph):
 
 
 class Object(srp_md.Var):
-    def __init__(self, id_num=0, uuid=0, properties=None, relations=None):
+    def __init__(self, id_num=0, uuid=0, assignment=None, relations=None):
+        super(Object, self).__init__(name='X_{}'.format(id_num), uuid=uuid, assignment=assignment, num_states=1)
         self.id = id_num
-        self.name = 'X_{}'.format(id_num)
-        self.uuid = uuid
-        self.properties = properties
         self.relations = relations
-        if properties is None:
-            self.properties = {}
         if relations is None:
             self.relations = []
-        self.num_states = 1
 
     def add_relation(self, relation):
         self.relations.append(relation)
 
 
 class Relation(srp_md.Var):
-    def __init__(self, objs=None, uuid=0, value=None, num_states=len(SceneGraph.RELATION_STRS)):
-        if objs is None:
-            self.obj1 = None
-            self.obj2 = None
+    def __init__(self, objs, uuid=0, value=None):
+        super(Relation, self).__init__(name=None, uuid=uuid, num_states=len(SceneGraph.RELATION_STRS))
+        if len(objs) != 2 or any([not isinstance(obj, Object) for obj in objs]):
+            raise TypeError('objs must be an itterable of 2 srp_md.Object classes')
         self.obj1 = objs[0]
         self.obj2 = objs[1]
-        if isinstance(self.obj1, Object) and isinstance(self.obj2, Object):
-            self.name = 'R_{}_{}'.format(self.obj1.id, self.obj2.id)
-        else:
-            self.name = None
-        self.uuid = uuid
+        self.name = 'R_{}_{}'.format(self.obj1.id, self.obj2.id)
         self.value = value
-        self.num_states = num_states
 
     def get_objs(self):
         return [self.obj1, self.obj2]
+
+    @property
+    def value(self):
+        return self.assignment['value']
+
+    @value.setter
+    def value(self, value):
+        self.assignment['value'] = value
 
 
 class SgFactor(srp_md.Factor):

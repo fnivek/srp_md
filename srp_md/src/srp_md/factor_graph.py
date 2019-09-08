@@ -90,9 +90,13 @@ class Factor(object):
 
 
 class Var(object):
-    def __init__(self, name=None, uuid=0):
+    def __init__(self, name=None, uuid=0, assignment=None, num_states=0):
         self.name = name
         self.uuid = uuid
+        self.num_states = num_states
+        self.assignment = assignment
+        if assignment is None:
+            self.assignment = {}
 
     def __eq__(self, other):
         if isinstance(other, Var):

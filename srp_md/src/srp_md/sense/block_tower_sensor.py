@@ -149,7 +149,7 @@ class BlockTowerSensor(sense.BaseSensor):
         # Randomly choose objects from object list
         # num_objs = random.randint(3, len(self._objs))
         num_objs = 3
-        objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, properties=self._ass_prop[v])
+        objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
         # Generate a consistent scene graph
