@@ -176,6 +176,10 @@ class SceneGraph(srp_md.FactorGraph):
                     # If not consistent with rel_2, then return False
                     if not self.abstract_consistent(rel_1, rel_2):
                         return False
+                elif world == "block2":
+                    # If not consistent with rel_2, then return False
+                    if not self.block2_consistent(rel_1, rel_2):
+                        return False
                 else:
                     return True
 
@@ -308,6 +312,40 @@ class SceneGraph(srp_md.FactorGraph):
             elif values[0] == 'bigger':
                 if values[1:] == [['equal', 'smaller'], ['equal', 'equal'],
                                   ['bigger', 'smaller'], ['bigger', 'equal']]:
+                    consistency = False
+
+        # If they have more than 1 common object id, then something is wrong
+        elif len(ids) <= 2:
+            raise IndexError('Something is wrong!')
+
+        return consistency
+
+    def block2_consistent(self, rel_1, rel_2):
+        consistency = True
+
+        # Get the object id's of rel_1 and rel_2
+        objs = list(set(rel_1.get_objs() + rel_2.get_objs()))
+        ids = [int(obj.id) for obj in objs]
+
+        # If rel_1 and rel_2 have common object id, do:
+        if len(ids) == 3:
+            # Make sure that rel_1 and rel_2 and rel_3 are in order: R_i_j, R_j_k, R_i_k, where i < j < k
+            ids.sort()
+
+            # Get existing relation values, and one or more doesn't exist yet, it is consistent except few cases
+            values = []
+            values.append(self.get_rel_value_from_name('R_' + str(ids[0]) + '_' + str(ids[1])))
+            values.append(self.get_rel_value_from_name('R_' + str(ids[1]) + '_' + str(ids[2])))
+            values.append(self.get_rel_value_from_name('R_' + str(ids[0]) + '_' + str(ids[2])))
+
+            # Do if statements for each cases
+            # Should work for now, try reducing the code later
+            if values[0] == 'on':
+                if values[1:] == ['on', 'support']:
+                    consistency = False
+
+            elif values[0] == 'support':
+                if values[1:] == ['support', 'on']:
                     consistency = False
 
         # If they have more than 1 common object id, then something is wrong

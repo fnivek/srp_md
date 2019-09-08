@@ -6,6 +6,7 @@ from .can_tower_sensor import CanTowerSensor
 from .posecnn_sensor import PoseCNNSensor
 from .block_world_sensor import BlockWorldSensor
 from .block_tower_sensor import BlockTowerSensor
+from .block_tower2_sensor import BlockTower2Sensor
 from .pen_world_sensor import PenWorldSensor
 from .book_world_sensor import BookWorldSensor
 from .abstract_world_sensor import AbstractWorldSensor
