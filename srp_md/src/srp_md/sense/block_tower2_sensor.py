@@ -25,14 +25,23 @@ class BlockTower2Sensor(sense.BaseSensor):
 
     def check_property(self, scene_graph, goal_prop):
         for relation in scene_graph.relations:
+            # All relations must be support or on
+            if relation.value not in ['support', 'on']:
+                return False
+            # Get the objects and the ordering of there properties
             [var_i, var_j] = relation.get_objs()
             prop_list = self._properties[goal_prop]
-            if prop_list.index(var_i.assignment[goal_prop]) <= prop_list.index(var_j.assignment[goal_prop]):
+            prop_index_i = prop_list.index(var_i.assignment[goal_prop])
+            prop_index_j = prop_list.index(var_j.assignment[goal_prop])
+            # If i is earlier in the list it must support
+            if prop_index_i < prop_index_j:
                 if relation.value != "support":
                     return False
-            elif prop_list.index(var_i.assignment[goal_prop]) > prop_list.index(var_j.assignment[goal_prop]):
+            # If i is latter in the list it must be on
+            elif prop_index_i > prop_index_j:
                 if relation.value != "on":
                     return False
+            # else they have the same index and can be sorted in any order
         return True
 
     def gen_goal_demo(self, scene_graph):
