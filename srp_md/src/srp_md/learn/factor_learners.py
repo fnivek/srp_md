@@ -7,6 +7,9 @@ from collections import OrderedDict, Counter
 from itertools import chain
 from math import log, exp
 
+# Graphviz
+import graphviz
+
 # Scikit
 from sklearn import linear_model, tree, preprocessing, svm
 from sklearn.pipeline import Pipeline
@@ -135,10 +138,10 @@ class SklearnFactorLearner(object):
     """ Learn factors by a decision  tree.
 
     TODO(Kevin): Get all possible categories so that we can use small numbers of examples and new novel objects
-    TODO(Kevin): Tune the paramaters of the decision tree
     TODO(Kevin): Add a feature removal stage to the pipeline
 
     """
+
     def __init__(self, clf):
         self._data = []
         self._target = []
@@ -160,12 +163,28 @@ class SklearnFactorLearner(object):
         # New data so will need to refit
         self._must_fit = True
 
+    viz_uuid = 0
+
+    def viz(self):
+        # Visualize the classifier (apparantly this works for trees and svm)
+        data = tree.export_graphviz(
+            self._clf,
+            out_file=None,
+            filled=True,
+            feature_names=[str(s) for s in self._enc.get_feature_names()],
+            class_names=[name for name in self._pipe.classes_],
+            impurity=False)
+        graph = graphviz.Source(data)
+        graph.render('classifier_dot_{}'.format(SklearnFactorLearner.viz_uuid))
+        SklearnFactorLearner.viz_uuid += 1
+
     def predict(self, assignment):
         # Fit data if needed
         if self._must_fit:
             self._must_fit = False
             self._last_vals = None
             self._pipe.fit(self._data, self._target)
+            self.viz()
         # Predict probability
         cur_vals = assign_obj_vals(assignment)
         if cur_vals != self._last_vals:
@@ -181,7 +200,9 @@ class SklearnFactorLearner(object):
 
 
 class DecisionTreeFactorLearner(SklearnFactorLearner):
+    # TODO(Kevin): Tune the paramaters of the decision tree
     def __init__(self):
+        clf = tree.DecisionTreeClassifier(class_weight='balanced', max_depth=3)
         clf = tree.DecisionTreeClassifier()
         super(DecisionTreeFactorLearner, self).__init__(clf)
 
