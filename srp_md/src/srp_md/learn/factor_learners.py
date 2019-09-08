@@ -32,22 +32,24 @@ def assign_eq(a, b):
 
 # def assign_obj_var_getter(a):
 #     """ Returns a function that will grab all indicies corresponding to object vars. """
-#     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if var.type == 'object'])
+#     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if isinstance(var, srp_md.Object)])
 
 
 # def assign_rel_var_getter(a):
 #     """ Returns a function that will grab all indicies corresponding to relation vars. """
-#     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if var.type == 'relation'])
+#     return operator.itemgetter(*[i for i, var in enumerate(a.keys()) if isinstance(var, srp_md.Relation)])
 
 
 def assign_obj_vals(a):
     """ Returns object vals. """
-    return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems() if var.type == 'object']))
+    return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems()
+                                      if isinstance(var, srp_md.Object)]))
 
 
 def assign_rel_vals(a):
     """ Returns object vals. """
-    return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems() if var.type == 'relation']))
+    return list(reduce(operator.add, [assign.values() for var, assign in a.iteritems()
+                                      if isinstance(var, srp_md.Relation)]))
 
 
 def assign_obj_val_indices(a):
