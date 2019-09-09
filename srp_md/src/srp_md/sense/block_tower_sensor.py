@@ -13,15 +13,17 @@ class BlockTowerSensor(sense.BaseSensor):
         self._logger = logging.getLogger(__name__)
 
         # Initialize basic info
-        self._objs = ["A", "B", "C", "D", "E"]
-        self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
-                            "material": ["metal", "wood", "plastic"]}
+        self._objs = [i % 3 for i in range(1000)]
+        # self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
+        #                     "material": ["metal", "wood", "plastic"]}
+        self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"]}
         self._RELATIONS = ['disjoint', 'on', 'support', 'proximity']
         self.goal_prop = "color"
         self._ass_prop = {}
         for obj in self._objs:
-            self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
-                                   "material": random.choice(self._properties["material"])}
+            # self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
+            #                        "material": random.choice(self._properties["material"])}
+            self._ass_prop[obj] = {"color": random.choice(self._properties["color"])}
 
     def check_property(self, scene_graph, goal_prop):
         # If the goal property is None, then this is automatically true
@@ -102,15 +104,21 @@ class BlockTowerSensor(sense.BaseSensor):
 
         # Initialize all relations to be "disjoint"
         for relation in scene_graph.relations:
-            relation.value = "disjoint"
+            relation.value = "on"
+            (_, obj1, obj2) = relation.name.split('_')
+            obj1 = int(obj1)
+            obj2 = int(obj2)
+            (ind1, ind2) = (bot_top.index(obj) for obj in [obj1, obj2])
+            if ind1 < ind2:
+                relation.value = 'support'
 
         # For each pair in bot_top list, set value for relation in correspondence
-        for i in range(len(bot_top) - 1):
-            for relation in scene_graph.relations:
-                if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
-                    relation.value = "support"
-                elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
-                    relation.value = "on"
+        # for i in range(len(bot_top) - 1):
+        #     for relation in scene_graph.relations:
+        #         if relation.name == 'R_' + str(bot_top[i]) + '_' + str(bot_top[i + 1]):
+        #             relation.value = "support"
+        #         elif relation.name == 'R_' + str(bot_top[i + 1]) + '_' + str(bot_top[i]):
+        #             relation.value = "on"
 
         self._logger.debug('Tower Order from Bottom to Top %s', bot_top)
 
@@ -147,7 +155,8 @@ class BlockTowerSensor(sense.BaseSensor):
 
     def process_data(self, demo_type, data):
         # Randomly choose objects from object list
-        # num_objs = random.randint(3, len(self._objs))
+        num_objs = random.randint(3, len(self._objs))
+        num_objs = random.randint(3, 4)
         num_objs = 3
         objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]

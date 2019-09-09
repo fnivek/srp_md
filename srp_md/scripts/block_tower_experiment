@@ -46,7 +46,7 @@ def main():
     rospy.init_node('block_tower_experiment')
 
     # Define the srp
-    srp = srp_md.SrpMd(learner='factor_graph_learner', sensor='block_tower_sensor',
+    srp = srp_md.SrpMd(learner='factor_graph_learner', sensor='block_tower2_sensor',
                        goal_generator='factor_graph_goal_generator')
     srp.demo_type = 'only_goal'
     srp.set_learner_attributes(factor_learner=learn.FACTOR_LEARNERS[args.factor_learner])
