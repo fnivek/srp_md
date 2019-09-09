@@ -154,6 +154,9 @@ class SrpMd(object):
             else:
                 self._goal_instance = self._goal_generator.generate_goal()
 
+    def use_priors(self, use_consistency=True, use_commonsense=False):
+        self._goal_generator.use_priors(use_consistency, use_commonsense)
+
     """ Goal Evaluator.
 
     Functions to evaluate generated goal.

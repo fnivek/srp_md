@@ -20,11 +20,19 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
     def __init__(self):
         self._logger = logging.getLogger(__name__)
         self._get_goal_client = None
+        self._prior_knowledge = [GetGoalRequest.CONSISTENCY_PRIOR]
         try:
             rospy.wait_for_service('get_goal', timeout=1)
             self._get_goal_client = rospy.ServiceProxy('get_goal', GetGoal)
         except rospy.ROSException as e:
             self._logger.error('Failed to get a client for /get_goal service: {}'.format(e))
+
+    def use_priors(self, use_consistency=True, use_commonsense=False):
+        self._prior_knowledge = []
+        if use_consistency:
+            self._prior_knowledge.append(GetGoalRequest.CONSISTENCY_PRIOR)
+        if use_commonsense:
+            self._prior_knowledge.append(GetGoalRequest.COMMON_SENSE_PRIOR)
 
     def generate_goal(self, factors, obs):
         self._logger.debug('Generating goal')
@@ -37,6 +45,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
 
         # Fill in the request
         req = GetGoalRequest()
+        req.prior_knowledge = self._prior_knowledge
         req.objects = obs.get_obj_names()
         # There are no relations because there is only one object therfore return that object
         if len(req.objects) <= 1:
