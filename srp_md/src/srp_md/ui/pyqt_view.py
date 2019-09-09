@@ -117,9 +117,9 @@ class PyQtView(view.BaseView):
 
     def update_demo_type(self):
         if self._gui.getDemoComboBox.currentText()[0] == " ":
-            self._model.demo_type = None
+            self._ctrl.update_sensor_config(demo_type='random')
         else:
-            self._model.demo_type = self._gui.getDemoComboBox.currentText()
+            self._ctrl.update_sensor_config(demo_type=self._gui.getDemoComboBox.currentText())
 
     def update_goal_generator(self):
         if self._gui.goalGeneratorComboBox.currentText()[0] == " ":

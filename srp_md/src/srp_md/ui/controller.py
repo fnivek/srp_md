@@ -28,6 +28,9 @@ class Controller(object):
     def set_sensor(self, sensor):
         self._model.set_sensor(sensor)
 
+    def update_sensor_config(self, **kwargs):
+        self._model.update_sensor_config(**kwargs)
+
     def generate_demo(self):
         self._model.accept_data([])
         self._model.process_data()

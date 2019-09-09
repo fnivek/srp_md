@@ -43,7 +43,6 @@ class SrpMd(object):
         self._undoed = []
         self._factors = None
         self.demo_types = ["only_goal", "only_not_goal", "random"]
-        self.demo_type = None
         self._current_graph = None
         self._sense_category = {'fake': ['fake_sensor'],
                                 'version': ['example_sensor', 'can_tower_sensor'],
@@ -106,6 +105,9 @@ class SrpMd(object):
         else:
             self._sensor = sense.sensors[sensor]()
 
+    def update_sensor_config(self, **kwargs):
+        self._sensor.update_config(**kwargs)
+
     def accept_data(self, data):
         """ Accept Raw Data.
 
@@ -120,11 +122,9 @@ class SrpMd(object):
     def process_data(self):
         if self._sensor is None:
             self._logger.error('Please select sensor!')
-        elif self.demo_type is None:
-            self._logger.error('Please select demo type!')
         else:
             self._logger.debug('Processing: ' + str(self._raw_data))
-            new_obs = self._sensor.process_data(self.demo_type, self._raw_data)
+            new_obs = self._sensor.process_data(self._raw_data)
             self._obs.append(new_obs)
             self._current_graph = new_obs
 
@@ -149,7 +149,7 @@ class SrpMd(object):
         else:
             if self.get_learner() == 'factor_graph_learner':
                 self._goal_instance = self._goal_generator.generate_goal(
-                    self._factors, self._sensor.process_data(self.demo_type, self._raw_data))
+                    self._factors, self._sensor.process_data(self._raw_data))
                 self._current_graph = self._goal_instance
             else:
                 self._goal_instance = self._goal_generator.generate_goal()

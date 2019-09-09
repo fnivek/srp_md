@@ -11,7 +11,11 @@ sensors = {}
 
 class BaseSensor(with_metaclass(ABCMeta, object)):
     def __init__(self):
-        pass
+        self._demo_type = 'only_goal'
+        self._min_num_objs = 3
+        self._max_num_objs = 10
+        self._allowed_config_keys = ['demo_type', 'min_num_objs', 'max_num_objs']
+        self._allowed_demo_types = ['only_goal', 'only_not_goal', 'random']
 
     @abstractmethod
     def process_data(self, demo_type, data):
@@ -21,3 +25,45 @@ class BaseSensor(with_metaclass(ABCMeta, object)):
 
         """
         pass
+
+    def update_config(self, **kwargs):
+        """ Set the sensors mode.
+
+        Inputs:
+          demo_type - a string that specifies what type of observations to generate expected values are 'only_goal',
+                      'only_not_goal', and 'random'
+          min_num_objs - the min number of objects to use per observation
+          max_num_objs - the max number of objects to use per observation
+          **kwargs - other keyword arguments for derived classes
+
+        """
+        for key, value in kwargs.iteritems():
+            if key not in self._allowed_config_keys:
+                raise KeyError('{} is not an allowed to be changed'.format(key))
+            setattr(self, key, value)
+
+    @property
+    def demo_type(self):
+        return self._demo_type
+
+    @demo_type.setter
+    def demo_type(self, mode):
+        if mode not in self._allowed_demo_types:
+            raise KeyError('{} is not an allowed demo type'.format(mode))
+        self._demo_type = mode
+
+    @property
+    def min_num_objs(self):
+        return self._min_num_objs
+
+    @min_num_objs.setter
+    def min_num_objs(self, min_num_objs):
+        self._min_num_objs = min_num_objs
+
+    @property
+    def max_num_objs(self):
+        return self._max_num_objs
+
+    @max_num_objs.setter
+    def max_num_objs(self, max_num_objs):
+        self._max_num_objs = max_num_objs

@@ -9,6 +9,7 @@ import srp_md
 
 class BlockTower2Sensor(sense.BaseSensor):
     def __init__(self):
+        super(BlockTower2Sensor, self).__init__()
         # Initialize logger
         self._logger = logging.getLogger(__name__)
 
@@ -22,6 +23,16 @@ class BlockTower2Sensor(sense.BaseSensor):
         for obj in self._objs:
             self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
                                    "material": random.choice(self._properties["material"])}
+
+    @property
+    def min_num_objs(self):
+        return self._min_num_objs
+
+    @min_num_objs.setter
+    def min_num_objs(self, num_objs):
+        if num_objs < 3:
+            raise ValueError('Must have at least 3 objects')
+        self._min_num_objs = num_objs
 
     def check_property(self, scene_graph, goal_prop):
         for relation in scene_graph.relations:
@@ -102,10 +113,10 @@ class BlockTower2Sensor(sense.BaseSensor):
 
         return scene_graph
 
-    def process_data(self, demo_type, data):
+    def process_data(self, data):
         # Randomly choose objects from object list
-        # num_objs = random.randint(3, len(self._objs))
-        num_objs = 3
+        max_num_objs = min(len(self._objs), self._max_num_objs)
+        num_objs = random.randint(self._min_num_objs, max_num_objs)
         objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
@@ -113,11 +124,11 @@ class BlockTower2Sensor(sense.BaseSensor):
         scene_graph = srp_md.SceneGraph(objs)
 
         # Depending on the demo type wanted, input relations accordingly
-        if demo_type == "only_goal":
+        if self._demo_type == "only_goal":
             demo_graph = self.gen_goal_demo(scene_graph)
-        elif demo_type == "only_not_goal":
+        elif self._demo_type == "only_not_goal":
             demo_graph = self.gen_not_goal_demo(scene_graph)
-        elif demo_type == "random":
+        elif self._demo_type == "random":
             demo_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
 
         # If error doesn't occur, check the scene graph's goal condition and print check up statements
