@@ -36,6 +36,10 @@ class FactorGraphLearner(learn.BaseLearner):
     @factors_to_learn.setter
     def factors_to_learn(self, factors):
         """ Should be an iterable with each element an int representing the number of objects per factor. """
+        for num_objs in factors:
+            if num_objs > 4:
+                self._logger.warn('{0} object factors must evaluate 6^(ncr({0}, 2)) = {1} probabilities'.format(
+                    num_objs, pow(6, srp_md.ncr(num_objs, 2))))
         self._factors_to_learn = factors
 
     def learn(self, obs):
