@@ -154,7 +154,7 @@ class PyQtView(view.BaseView):
         main_menu.addMenu(config_menu)
         action = main_menu.exec_(self._gui.learnerComboBox.mapToGlobal(pos))
         if action in actions:
-            self._ctrl.set_learner_attributes(factor_learner=actions[action])
+            self._ctrl.update_learner_config(factor_learner=actions[action])
 
     def run_once(self):
         self.update_from_model()

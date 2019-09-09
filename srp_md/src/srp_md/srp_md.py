@@ -73,8 +73,8 @@ class SrpMd(object):
         else:
             self._learner = learn.learners[learner]()
 
-    def set_learner_attributes(self, **kwargs):
-        self._learner.set_attributes(**kwargs)
+    def update_learner_config(self, **kwargs):
+        self._learner.update_config(**kwargs)
 
     def learn(self):
         if self._learner is None:

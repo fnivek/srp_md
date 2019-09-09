@@ -47,10 +47,14 @@ def parse_args():
     parser.add_argument('--max_num_objs', help='The max number of objects to use in sensor', default=10, type=int)
     parser.add_argument('--num_objs', help='The exact number of objects to use in sensor, overrides min and max',
                         default=None, type=int)
+    parser.add_argument('-f', '--factors_to_learn', type=int, action='append',
+                        help='A factor designated by number of objects in the factor multiple -f can be specified')
     args = parser.parse_args()
     if args.num_objs is not None:
         args.min_num_objs = args.num_objs
         args.max_num_objs = args.num_objs
+    if args.factors_to_learn is None:
+        args.factors_to_learn = [2]
     return args
 
 
@@ -67,7 +71,7 @@ def main():
     srp = srp_md.SrpMd(learner='factor_graph_learner', sensor='block_tower2_sensor',
                        goal_generator='factor_graph_goal_generator')
     srp.update_sensor_config(demo_type='only_goal', min_num_objs=args.min_num_objs, max_num_objs=args.max_num_objs)
-    srp.set_learner_attributes(factor_learner=learn.FACTOR_LEARNERS[args.factor_learner])
+    srp.update_learner_config(factor_learner=args.factor_learner, factors_to_learn=args.factors_to_learn)
     srp.use_priors(args.use_consistency, args.use_commonsense)
 
     # Experiment

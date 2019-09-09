@@ -11,7 +11,7 @@ learners = {}
 
 class BaseLearner(with_metaclass(ABCMeta, object)):
     def __init__(self):
-        pass
+        self._allowed_config_keys = []
 
     @abstractmethod
     def learn(self, obs):
@@ -22,3 +22,15 @@ class BaseLearner(with_metaclass(ABCMeta, object)):
 
         """
         pass
+
+    def update_config(self, **kwargs):
+        """ Set the learners mode.
+
+        Inputs:
+          **kwargs - other keyword arguments for derived classes
+
+        """
+        for key, value in kwargs.iteritems():
+            if key not in self._allowed_config_keys:
+                raise KeyError('{} is not an allowed to be changed'.format(key))
+            setattr(self, key, value)

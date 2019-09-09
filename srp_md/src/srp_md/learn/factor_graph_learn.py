@@ -6,20 +6,37 @@ from collections import OrderedDict
 
 # SRP MD imports
 from . import learn
-from .factor_learners import FreqFactorLearner
+from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS
 import srp_md
 
 
 class FactorGraphLearner(learn.BaseLearner):
     def __init__(self):
+        super(FactorGraphLearner, self).__init__()
         self._logger = logging.getLogger(__name__)
-        self._config_list = [(2, 1), (3, 3)]
-        self.factor_learner = FreqFactorLearner
+        self._factors_to_learn = [2]
+        self._factor_learner = FACTOR_LEARNERS.keys()[0]
+        self._allowed_config_keys.extend(['factor_learner', 'factors_to_learn'])
 
-    def set_attributes(self, **kwargs):
-        for key, value in kwargs.iteritems():
-            self._logger.debug('Setting {} to {}'.format(key, value))
-            setattr(self, key, value)
+    @property
+    def factor_learner(self):
+        for key, value in FACTOR_LEARNERS.iteritems():
+            if value == self._factor_learner:
+                return key
+        return None
+
+    @factor_learner.setter
+    def factor_learner(self, factor_learner):
+        self._factor_learner = FACTOR_LEARNERS[factor_learner]
+
+    @property
+    def factors_to_learn(self):
+        return self._factors_to_learn
+
+    @factors_to_learn.setter
+    def factors_to_learn(self, factors):
+        """ Should be an iterable with each element an int representing the number of objects per factor. """
+        self._factors_to_learn = factors
 
     def learn(self, obs):
         """ Learn.
@@ -46,12 +63,13 @@ class FactorGraphLearner(learn.BaseLearner):
         # Loop through all examples
         for graph in obs:
             # Loop through individual factors for one observation
-            for factor in graph.gen_ordered_factors(configs=self._config_list):
+            configs = [(num_objs, srp_md.ncr(num_objs, 2)) for num_objs in self._factors_to_learn]
+            for factor in graph.gen_ordered_factors(configs=configs):
                 # Find the appropriate FactorHandler to udpate
                 index = (len(factor.objs), len(factor.relations))
                 if index not in factors:
                     self._logger.debug('Learning a new factor of type {}'.format(index))
-                    factors[index] = FactorHandler(self.factor_learner())
+                    factors[index] = FactorHandler(self._factor_learner())
 
                 # Update the learned factor
                 mb = graph.markov_blanket(factor.vars)
