@@ -13,6 +13,7 @@ import sys
 import signal
 import random
 import csv
+from datetime import datetime
 
 # Get a logger
 logger = logging.getLogger('srp_md')
@@ -51,6 +52,8 @@ def parse_args():
     parser.add_argument('-f', '--factors_to_learn', type=int, action='append',
                         help='A factor designated by number of objects in the factor multiple -f can be specified')
     parser.add_argument('--file', type=argparse.FileType('ab'), help='output csv file', default='out.csv')
+    parser.add_argument('--experiment', type=str, help='Which experiment to run', default='single',
+                        choices=['single', 'num_demos'])
     args = parser.parse_args()
     if args.num_objs is not None:
         args.min_num_objs = args.num_objs
@@ -67,24 +70,66 @@ def main():
     logger.info('Running block tower experiment with these args: {}'.format(args))
 
     # Setup ros
-    rospy.init_node('block_tower_experiment')
+    rospy.init_node('block_tower_experiment', anonymous=True)
 
+    # Writ results to a file
+    with args.file:
+        # Setup csv file
+        file_writer = csv.writer(args.file)
+        if args.experiment == 'single':
+            single_experiment(args.min_num_objs,
+                              args.max_num_objs,
+                              args.factor_learner,
+                              args.factors_to_learn,
+                              args.use_consistency,
+                              args.use_commonsense,
+                              args.num_demos,
+                              args.percent_noise,
+                              args.num_goals,
+                              file_writer,
+                              args.num_objs)
+        elif args.experiment == 'num_demos':
+            for num_demos in xrange(1, 26):
+                single_experiment(args.min_num_objs,
+                                  args.max_num_objs,
+                                  args.factor_learner,
+                                  args.factors_to_learn,
+                                  args.use_consistency,
+                                  args.use_commonsense,
+                                  num_demos,
+                                  args.percent_noise,
+                                  args.num_goals,
+                                  file_writer,
+                                  args.num_objs)
+
+
+def single_experiment(min_num_objs,
+                      max_num_objs,
+                      factor_learner,
+                      factors_to_learn,
+                      use_consistency,
+                      use_commonsense,
+                      num_demos,
+                      percent_noise,
+                      num_goals,
+                      file_writer,
+                      num_objs):
     # Define the srp
     srp = srp_md.SrpMd(learner='factor_graph_learner', sensor='block_tower2_sensor',
                        goal_generator='factor_graph_goal_generator')
-    srp.update_sensor_config(demo_type='only_goal', min_num_objs=args.min_num_objs, max_num_objs=args.max_num_objs)
-    srp.update_learner_config(factor_learner=args.factor_learner, factors_to_learn=args.factors_to_learn)
-    srp.use_priors(args.use_consistency, args.use_commonsense)
+    srp.update_sensor_config(demo_type='only_goal', min_num_objs=min_num_objs, max_num_objs=max_num_objs)
+    srp.update_learner_config(factor_learner=factor_learner, factors_to_learn=factors_to_learn)
+    srp.use_priors(use_consistency, use_commonsense)
 
     # Experiment
     # init
     num_correct = 0
     num_noise = 0
     # Get demos
-    while srp.get_num_demos() < args.num_demos:
+    while srp.get_num_demos() < num_demos:
         try:
             demo_type = 'only_goal'
-            if random.random() < args.percent_noise:
+            if random.random() < percent_noise:
                 demo_type = 'only_not_goal'
             srp.update_sensor_config(demo_type=demo_type)
             srp.process_data()
@@ -98,12 +143,12 @@ def main():
     logger.info('Learned')
     # Generate goals from random observations
     srp.demo_type = 'random'
-    num_goals = 0
-    while num_goals < args.num_goals:
+    num_gen_goals = 0
+    while num_gen_goals < num_goals:
         try:
+            num_gen_goals += 1
             srp.generate_goal()
-            num_goals += 1
-        except ValueError as e:
+        except (ValueError, rospy.ServiceException) as e:
             logger.warn('Failed to generate goal trying again: ' + str(e))
             continue
         try:
@@ -114,26 +159,23 @@ def main():
     logger.info('Number of examples {}\n\t'
                 'Number of bad examples {}\n\t'
                 'Generated and evaluated {} goals with {}%% correct'.format(
-                    args.num_demos, num_noise, args.num_goals, 100.0 * num_correct / args.num_goals))
+                    num_demos, num_noise, num_gen_goals, 100.0 * num_correct / num_gen_goals))
 
-    # Writ results to a file
-    with args.file:
-        # Setup csv file
-        file_writer = csv.writer(args.file)
-        # file_writer.writerow(['factors', 'consistency', 'commonsense', 'factor_learner', 'min_num_objs',
-        #                       'max_num_objs', 'num_objs', 'demos', 'bad_demos', 'goals', 'correct'])
-        file_writer.writerow(
-            [args.factors_to_learn[0],
-             args.use_consistency,
-             args.use_commonsense,
-             args.factor_learner,
-             args.min_num_objs,
-             args.max_num_objs,
-             args.num_objs,
-             args.num_demos,
-             num_noise,
-             args.num_goals,
-             num_correct])
+    # file_writer.writerow(['time', 'factors', 'consistency', 'commonsense', 'factor_learner', 'min_num_objs',
+    #                       'max_num_objs', 'num_objs', 'demos', 'bad_demos', 'goals', 'correct'])
+    file_writer.writerow(
+        [datetime.now(),
+         factors_to_learn[0],
+         use_consistency,
+         use_commonsense,
+         factor_learner,
+         min_num_objs,
+         max_num_objs,
+         num_objs,
+         num_demos,
+         num_noise,
+         num_goals,
+         num_correct])
 
 
 if __name__ == '__main__':
