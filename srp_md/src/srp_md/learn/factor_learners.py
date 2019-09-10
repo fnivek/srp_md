@@ -146,7 +146,7 @@ class SklearnFactorLearner(object):
         self._target = []
         self._must_fit = True
         self._clf = clf
-        self._enc = preprocessing.OneHotEncoder()
+        self._enc = preprocessing.OneHotEncoder(categories=[['red'], ['wood'], ['green'], ['plastic']])
         self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
         self._last_vals = None
         self._last_probs = None

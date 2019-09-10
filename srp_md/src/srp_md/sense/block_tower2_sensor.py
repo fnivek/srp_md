@@ -24,6 +24,9 @@ class BlockTower2Sensor(sense.BaseSensor):
             self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
                                    "material": random.choice(self._properties["material"])}
 
+    def get_domain(self):
+        return dict(self._properties)
+
     @property
     def min_num_objs(self):
         return self._min_num_objs

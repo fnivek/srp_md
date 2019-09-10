@@ -16,7 +16,7 @@ class FactorGraphLearner(learn.BaseLearner):
         self._logger = logging.getLogger(__name__)
         self._factors_to_learn = [2]
         self._factor_learner = FACTOR_LEARNERS.keys()[0]
-        self._allowed_config_keys.extend(['factor_learner', 'factors_to_learn'])
+        self._allowed_config_keys.extend(['factor_learner', 'factors_to_learn', 'domain'])
 
     @property
     def factor_learner(self):

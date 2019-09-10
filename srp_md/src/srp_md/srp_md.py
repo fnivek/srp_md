@@ -72,6 +72,10 @@ class SrpMd(object):
             self._learner = None
         else:
             self._learner = learn.learners[learner]()
+            try:
+                self._learner.update_config(domain=self._sensor.get_domain())
+            except AttributeError:
+                pass
 
     def update_learner_config(self, **kwargs):
         self._learner.update_config(**kwargs)
@@ -104,6 +108,10 @@ class SrpMd(object):
             self._sensor = None
         else:
             self._sensor = sense.sensors[sensor]()
+            try:
+                self._learner.update_config(domain=self._sensor.get_domain())
+            except AttributeError:
+                pass
 
     def update_sensor_config(self, **kwargs):
         self._sensor.update_config(**kwargs)
@@ -194,7 +202,7 @@ class SrpMd(object):
         self._obs = pickle.load(open(filename, 'rb'))
         self._logger.info('Success loading demos from file {}\n'.format(filename))
         if len(self._obs) != 0:
-                self._current_graph = self._obs[-1]
+            self._current_graph = self._obs[-1]
         else:
             self._current_graph = None
 
