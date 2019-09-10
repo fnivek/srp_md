@@ -12,6 +12,7 @@ import argparse
 import sys
 import signal
 import random
+import csv
 
 # Get a logger
 logger = logging.getLogger('srp_md')
@@ -49,6 +50,7 @@ def parse_args():
                         default=None, type=int)
     parser.add_argument('-f', '--factors_to_learn', type=int, action='append',
                         help='A factor designated by number of objects in the factor multiple -f can be specified')
+    parser.add_argument('--file', type=argparse.FileType('ab'), help='output csv file', default='out.csv')
     args = parser.parse_args()
     if args.num_objs is not None:
         args.min_num_objs = args.num_objs
@@ -113,6 +115,25 @@ def main():
                 'Number of bad examples {}\n\t'
                 'Generated and evaluated {} goals with {}%% correct'.format(
                     args.num_demos, num_noise, args.num_goals, 100.0 * num_correct / args.num_goals))
+
+    # Writ results to a file
+    with args.file:
+        # Setup csv file
+        file_writer = csv.writer(args.file)
+        # file_writer.writerow(['factors', 'consistency', 'commonsense', 'factor_learner', 'min_num_objs',
+        #                       'max_num_objs', 'num_objs', 'demos', 'bad_demos', 'goals', 'correct'])
+        file_writer.writerow(
+            [args.factors_to_learn[0],
+             args.use_consistency,
+             args.use_commonsense,
+             args.factor_learner,
+             args.min_num_objs,
+             args.max_num_objs,
+             args.num_objs,
+             args.num_demos,
+             num_noise,
+             args.num_goals,
+             num_correct])
 
 
 if __name__ == '__main__':
