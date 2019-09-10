@@ -92,7 +92,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             resp = self._get_goal_client(req)
         except rospy.ServiceException as e:
             self._logger.error('Failed when calling /get_goal service: {}'.format(e))
-            return None
+            raise
 
         self._logger.debug('/get_goal response:\n{}'.format(resp))
 
