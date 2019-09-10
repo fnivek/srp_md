@@ -15,7 +15,7 @@ class BlockTower2Sensor(sense.BaseSensor):
         # Initialize basic info
         self._objs = ["A", "B", "C", "D", "E"]
         self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
-                            "material": ["metal", "wood", "plastic"]}
+                            "material": ["wood"]}
         self._RELATIONS = ['disjoint', 'on', 'support', 'proximity']
         self.goal_prop = "color"
         self._ass_prop = {}
