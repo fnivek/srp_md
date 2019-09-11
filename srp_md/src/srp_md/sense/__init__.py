@@ -1,4 +1,5 @@
 from .sense import sensors
+from .sense import goal_types
 from .sense import BaseSensor
 from .fake_sense import FakeSensor
 from .known_example import ExampleSensor

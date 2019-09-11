@@ -37,7 +37,7 @@ class CanTowerSensor(sense.BaseSensor):
     def preds_to_bin_vec(self, preds):
         return [True if pred in preds else False for pred in self._predicates]
 
-    def process_data(self, demo_type, data):
+    def process_data(self, data):
         to_place = []
         cans = list(self._cans)
         positive = False

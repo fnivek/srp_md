@@ -6,9 +6,9 @@ import random
 
 class FakeSensor(sense.BaseSensor):
     def __init__(self):
-        pass
+        super(FakeSensor, self).__init__()
 
-    def process_data(self, demo_type, data):
+    def process_data(self, data):
         return ([random.choice([True, False]) for _ in range(4)],
                 random.choice([True, False]))
 

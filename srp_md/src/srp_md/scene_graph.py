@@ -41,6 +41,12 @@ class SceneGraph(srp_md.FactorGraph):
     def num_relations(self):
         return len(self.relations)
 
+    def print_objs(self):
+        return {obj.name: [(ass, obj.assignment[ass]) for ass in obj.assignment.keys()] for obj in self.objs}
+
+    def print_rels(self):
+        return {rel.name: rel.value for rel in self.relations}
+
     def get_obj_names(self):
         return [obj.name for obj in self.objs]
 
@@ -175,9 +181,9 @@ class SceneGraph(srp_md.FactorGraph):
                     # If not consistent with rel_2, then return False
                     if not self.abstract_consistent(rel_1, rel_2):
                         return False
-                elif world == "block2":
+                elif world == "block_strict":
                     # If not consistent with rel_2, then return False
-                    if not self.block2_consistent(rel_1, rel_2):
+                    if not self.block_strict_consistent(rel_1, rel_2):
                         return False
                 else:
                     return True
@@ -185,7 +191,7 @@ class SceneGraph(srp_md.FactorGraph):
         # If all relations are consistent with each other, then return True
         return True
 
-    def block_consistent(self, rel_1, rel_2):
+    def block_strict_consistent(self, rel_1, rel_2):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
@@ -319,7 +325,7 @@ class SceneGraph(srp_md.FactorGraph):
 
         return consistency
 
-    def block2_consistent(self, rel_1, rel_2):
+    def block_consistent(self, rel_1, rel_2):
         consistency = True
 
         # Get the object id's of rel_1 and rel_2
@@ -339,12 +345,21 @@ class SceneGraph(srp_md.FactorGraph):
 
             # Do if statements for each cases
             # Should work for now, try reducing the code later
-            if values[0] == 'on':
-                if values[1:] == ['on', 'support']:
+            if values[0] == 'disjoint':
+                if values[1:] in [['on', 'on'], ['on', 'support'],
+                                  ['support', 'on'], ['support', 'support']]:
+                    consistency = False
+
+            elif values[0] == 'on':
+                if values[1:] in [['on', 'support'], ['on', 'disjoint'],
+                                  ['support', 'disjoint'],
+                                  ['disjoint', 'on'], ['disjoint', 'support']]:
                     consistency = False
 
             elif values[0] == 'support':
-                if values[1:] == ['support', 'on']:
+                if values[1:] in [['on', 'disjoint'],
+                                  ['support', 'on'], ['support', 'disjoint'],
+                                  ['disjoint', 'on'], ['disjoint', 'support']]:
                     consistency = False
 
         # If they have more than 1 common object id, then something is wrong

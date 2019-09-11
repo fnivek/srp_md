@@ -6,6 +6,7 @@ import logging
 
 class ExampleSensor(sense.BaseSensor):
     def __init__(self):
+        super(ExampleSensor, self).__init__()
         not_A_and_C = [
             ([True, True, True], False), ([True, True, False], False),
             ([True, False, True], False), ([True, False, False], False),
@@ -35,7 +36,7 @@ class ExampleSensor(sense.BaseSensor):
         self._num_examples = len(self._known_examples)
         self._index = -1
 
-    def process_data(self, demo_type, data):
+    def process_data(self, data):
         self._index += 1
         if self._index >= self._num_examples:
             self._logger.debug('We have viewd all examples')

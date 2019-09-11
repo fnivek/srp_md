@@ -7,6 +7,7 @@ from future.utils import with_metaclass
 # Each subclass must register itself by adding its name and pointer to class
 # in the dictionary i.e. sensors['base_sensor'] = BaseSensor
 sensors = {}
+goal_types = {}
 
 
 class BaseSensor(with_metaclass(ABCMeta, object)):
@@ -14,11 +15,11 @@ class BaseSensor(with_metaclass(ABCMeta, object)):
         self._demo_type = 'only_goal'
         self._min_num_objs = 3
         self._max_num_objs = 10
-        self._allowed_config_keys = ['demo_type', 'min_num_objs', 'max_num_objs']
+        self._allowed_config_keys = ['demo_type', 'goal_type', 'min_num_objs', 'max_num_objs']
         self._allowed_demo_types = ['only_goal', 'only_not_goal', 'random']
 
     @abstractmethod
-    def process_data(self, demo_type, data):
+    def process_data(self, data):
         """ Process data.
 
         Processes data and return the world state.

@@ -9,6 +9,7 @@ import srp_md
 
 class BookWorldSensor(sense.BaseSensor):
     def __init__(self):
+        super(BookWorldSensor, self).__init__()
         # Initialize logger
         self._logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class BookWorldSensor(sense.BaseSensor):
                     return False
         return True
 
-    def process_data(self, demo_type, data):
+    def process_data(self, data):
         satisfied = False
         consistent = False
         count = 0
@@ -60,11 +61,11 @@ class BookWorldSensor(sense.BaseSensor):
             for relation in scene_graph.relations:
                 relation.value = random.choice(self._RELATIONS)
             goal_cond = self.check_property(scene_graph, self.goal_prop)
-            if (demo_type == "only_goal") and (goal_cond):
+            if (self._demo_type == "only_goal") and (goal_cond):
                 satisfied = True
-            elif (demo_type == "only_not_goal") and (not goal_cond):
+            elif (self._demo_type == "only_not_goal") and (not goal_cond):
                 satisfied = True
-            elif demo_type == "random":
+            elif self._demo_type == "random":
                 satisfied = True
             consistent = scene_graph.check_consistency("book")
 
@@ -84,3 +85,6 @@ class BookWorldSensor(sense.BaseSensor):
 
 
 sense.sensors['book_world_sensor'] = BookWorldSensor
+
+goal_types = ["single line by color"]
+sense.goal_types['book_world_sensor'] = goal_types
