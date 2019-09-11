@@ -13,6 +13,7 @@ goal_types = {}
 class BaseSensor(with_metaclass(ABCMeta, object)):
     def __init__(self):
         self._demo_type = 'only_goal'
+        self._goal_type = None
         self._min_num_objs = 3
         self._max_num_objs = 10
         self._allowed_config_keys = ['demo_type', 'goal_type', 'min_num_objs', 'max_num_objs']
@@ -52,6 +53,14 @@ class BaseSensor(with_metaclass(ABCMeta, object)):
         if mode not in self._allowed_demo_types:
             raise KeyError('{} is not an allowed demo type'.format(mode))
         self._demo_type = mode
+
+    @property
+    def goal_type(self):
+        return self._goal_type
+
+    @goal_type.setter
+    def goal_type(self, mode):
+        self._goal_type = mode
 
     @property
     def min_num_objs(self):

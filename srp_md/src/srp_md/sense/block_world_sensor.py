@@ -27,7 +27,17 @@ class BlockWorldSensor(sense.BaseSensor):
                                    "material": random.choice(self._properties["material"]),
                                    "letter": random.choice(self._properties["letter"])}
 
-    def single_stack(self, scene_graph, goal_prop):
+    def single_stack(self, scene_graph, goal_prop, dir_config):
+        # Decide which direction of the color spectrum blocks are stacked
+        if dir_config == "bothway":
+            direction = random.choice(["bot_left", "top_left"])
+        elif dir_config == "oneway":
+            direction = "top_left"
+        else:
+            self._logger.error('Please specify correct direction config.')
+            raise ValueError()
+        self._logger.debug('Which way is direction? %s', direction)
+
         # Get a list of integer ids for variables
         bot_top = list(range(1, scene_graph.num_objs() + 1))
 
@@ -36,7 +46,10 @@ class BlockWorldSensor(sense.BaseSensor):
             random.shuffle(bot_top)
         else:
             # Sort the objects based on goal property
-            prop_list = self._properties[goal_prop]
+            prop_list = list(self._properties[goal_prop])
+            # If reversed direction, then reverse the property list order
+            if direction == "bot_left":
+                prop_list.reverse()
             prop_order = [prop_list.index(val) for val in scene_graph.get_prop_values(goal_prop)]
             bot_top = [var_id for _, var_id in sorted(zip(prop_order, bot_top))]
 
@@ -54,8 +67,20 @@ class BlockWorldSensor(sense.BaseSensor):
 
         return scene_graph
 
-    def single_stack_checker(self, scene_graph, goal_prop):
-        for relation in scene_graph.relations:
+    def single_stack_checker(self, scene_graph, goal_prop, dir_config):
+        # Decide which direction of the color spectrum blocks are stacked
+        if dir_config == "bothway":
+            check_both = True
+        elif dir_config == "oneway":
+            check_both = False
+        else:
+            self._logger.error('Please specify correct direction config.')
+            raise ValueError()
+
+        # Keep a list of 0s and 1s to determine for each relation the order is reversed
+        dir_list = [0] * scene_graph.num_relations()
+        for ind in range(scene_graph.num_relations()):
+            relation = scene_graph.relations[ind]
             # All relations must be support or on
             if relation.value not in ['on', 'support']:
                 return False
@@ -67,13 +92,29 @@ class BlockWorldSensor(sense.BaseSensor):
             # If i is earlier in the list it must support
             if prop_index_i < prop_index_j:
                 if relation.value != "on":
-                    return False
+                    dir_list[ind] = 1
             # If i is latter in the list it must be on
             elif prop_index_i > prop_index_j:
                 if relation.value != "support":
-                    return False
+                    dir_list[ind] = 1
             # else they have the same index and can be sorted in any order
-        return True
+            else:
+                dir_list[ind] = 2
+
+        # Take out 2's which order doesn't matter
+        dir_list = filter(lambda a: a != 2, dir_list)
+
+        # If we need to check both directions, then see if all elements are same
+        if check_both:
+            first_ele = dir_list[0]
+        # If we need to check only top_left case, then check if all entries are 0
+        else:
+            first_ele = 0
+
+        if all(x == first_ele for x in dir_list):
+            return True
+        else:
+            return False
 
     def check_goal(self, scene_graph, goal_type):
         checking = True
@@ -82,13 +123,13 @@ class BlockWorldSensor(sense.BaseSensor):
             return checking
 
         elif goal_type == "single stack order by color":
-            checking = self.single_stack_checker(scene_graph, "color")
+            checking = self.single_stack_checker(scene_graph, "color", "oneway")
 
         elif goal_type == "single stack order by material":
-            checking = self.single_stack_checker(scene_graph, "material")
+            checking = self.single_stack_checker(scene_graph, "material", "oneway")
 
         elif goal_type == "single stack order by color both ways":
-            pass
+            checking = self.single_stack_checker(scene_graph, "color", "bothway")
 
         elif goal_type == "stacks by material order by color":
             pass
@@ -119,13 +160,13 @@ class BlockWorldSensor(sense.BaseSensor):
     def gen_goal_demo(self, scene_graph, goal_type):
         # Run appropriate goal generation function depending on the goal type
         if goal_type == "single stack order by color":
-            scene_graph = self.single_stack(scene_graph, "color")
+            scene_graph = self.single_stack(scene_graph, "color", "oneway")
 
         elif goal_type == "single stack order by material":
-            scene_graph = self.single_stack(scene_graph, "material")
+            scene_graph = self.single_stack(scene_graph, "material", "oneway")
 
         elif goal_type == "single stack order by color both ways":
-            pass
+            scene_graph = self.single_stack(scene_graph, "color", "bothway")
 
         elif goal_type == "stacks by material order by color":
             pass
@@ -212,7 +253,7 @@ class BlockWorldSensor(sense.BaseSensor):
 
 sense.sensors['block_world_sensor'] = BlockWorldSensor
 
-goal_types = ["single stack order by color", "single stack order by material", "single stack order by color both ways"
+goal_types = ["single stack order by color", "single stack order by material", "single stack order by color both ways",
               "stacks by material order by color", "stacks by random order by random",
               "most stacks of 3", "highest bipartite tower",
               "single stack order by material", "multiple stack",
