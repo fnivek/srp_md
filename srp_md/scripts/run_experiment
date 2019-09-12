@@ -94,21 +94,21 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                 '\tuse_commonsense: {}\n'
                 '\tpercent_noise: {}\n'
                 '\tfile_writer: {}\n'.format(goal_type,
-                                           num_objs,
-                                           num_demos,
-                                           num_goals,
-                                           sensor_name,
-                                           learner_name,
-                                           goal_generator_name,
-                                           goal_evaluator_name,
-                                           factor_learner,
-                                           factors_to_learn,
-                                           min_num_objs,
-                                           max_num_objs,
-                                           use_consistency,
-                                           use_commonsense,
-                                           percent_noise,
-                                           file_writer))
+                                             num_objs,
+                                             num_demos,
+                                             num_goals,
+                                             sensor_name,
+                                             learner_name,
+                                             goal_generator_name,
+                                             goal_evaluator_name,
+                                             factor_learner,
+                                             factors_to_learn,
+                                             min_num_objs,
+                                             max_num_objs,
+                                             use_consistency,
+                                             use_commonsense,
+                                             percent_noise,
+                                             file_writer))
 
     # Initialize and configure srp
     srp = srp_md.SrpMd(sensor=sensor_name, learner=learner_name, goal_generator=goal_generator_name,
@@ -172,6 +172,47 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
          use_consistency, use_commonsense])
 
 
+def paper_experiment_generator(file_writer):
+    # Set what is constant
+    kwargs = {'num_goals': 100, 'sensor_name': 'block_world_sensor', 'learner_name': 'factor_graph_learner',
+              'goal_generator_name': 'factor_graph_goal_generator', 'goal_evaluator_name': 'adapt_goal_evaluator',
+              'use_commonsense': False, 'file_writer': file_writer}
+    for goal_type in sense.goal_types['block_world_sensor'][:3]:
+        kwargs['goal_type'] = goal_type
+        for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
+            factors_to_learn = [[2]]
+            min_num_objs = 3
+            max_num_objs = 3
+            if isinstance(num_objs, list):
+                min_num_objs = num_objs[0]
+                max_num_objs = num_objs[1]
+            else:
+                if num_objs < 5:  # Don't learn joint factors greater than 4 because it takes to long
+                    factors_to_learn.append([num_objs])
+                min_num_objs = num_objs
+                max_num_objs = num_objs
+            kwargs['num_objs'] = num_objs
+            kwargs['min_num_objs'] = min_num_objs
+            kwargs['max_num_objs'] = max_num_objs
+            for factor_to_learn in factors_to_learn:
+                kwargs['factors_to_learn'] = factor_to_learn
+                for num_demos in list(xrange(1, 11)) + [50, 100]:
+                    kwargs['num_demos'] = num_demos
+                    for factor_learner in learn.FACTOR_LEARNERS.keys():
+                        kwargs['factor_learner'] = factor_learner
+                        for use_consistency in [False, True]:
+                            kwargs['use_consistency'] = use_consistency
+                            for percent_noise in [0.0]:
+                                kwargs['percent_noise'] = percent_noise
+                                for i in xrange(10):
+                                    yield dict(kwargs)
+
+
+def paper_experiment(file_writer):
+    for kwargs in paper_experiment_generator(file_writer):
+        single_experiment(**kwargs)
+
+
 def main():
     # Get arguments
     args = parse_args()
@@ -205,33 +246,7 @@ def main():
                                   args.percent_noise,
                                   file_writer)
         elif args.experiment == 'paper':
-            for goal_type in sense.goal_types['block_world_sensor'][:3]:
-                for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
-                    factors_to_learn = [[2]]
-                    min_num_objs = 3
-                    max_num_objs = 3
-                    if isinstance(num_objs, list):
-                        min_num_objs = num_objs[0]
-                        max_num_objs = num_objs[1]
-                    else:
-                        if num_objs < 5:  # Don't learn joint factors greater than 4 because it takes to long
-                            factors_to_learn.append([num_objs])
-                        min_num_objs = num_objs
-                        max_num_objs = num_objs
-                    for factor_to_learn in factors_to_learn:
-                        for num_demos in list(xrange(1, 11)) + [50, 100]:
-                            for factor_learner in learn.FACTOR_LEARNERS.keys():
-                                for use_consistency in [False, True]:
-                                    for percent_noise in [0.0]:
-                                        for i in xrange(10):
-                                            single_experiment(goal_type, num_objs, num_demos, 100,
-                                                              "block_world_sensor", "factor_graph_learner",
-                                                              "factor_graph_goal_generator", "adapt_goal_evaluator",
-                                                              factor_learner, factor_to_learn,
-                                                              min_num_objs, max_num_objs,
-                                                              use_consistency, False,
-                                                              percent_noise,
-                                                              file_writer)
+            paper_experiment(file_writer)
 
 
 if __name__ == '__main__':
