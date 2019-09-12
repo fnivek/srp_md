@@ -13,6 +13,7 @@ import sys
 import random
 import csv
 from datetime import datetime
+import time
 
 # Get a logger
 logger = logging.getLogger('srp_md')
@@ -176,7 +177,7 @@ def paper_experiment_generator(file_writer):
     # Set what is constant
     kwargs = {'num_goals': 100, 'sensor_name': 'block_world_sensor', 'learner_name': 'factor_graph_learner',
               'goal_generator_name': 'factor_graph_goal_generator', 'goal_evaluator_name': 'adapt_goal_evaluator',
-              'use_commonsense': False, 'file_writer': file_writer}
+              'use_commonsense': False, 'file_writer': file_writer, 'percent_noise': 0.0, 'use_consistency': True}
     for goal_type in sense.goal_types['block_world_sensor'][:3]:
         kwargs['goal_type'] = goal_type
         for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
@@ -196,21 +197,33 @@ def paper_experiment_generator(file_writer):
             kwargs['max_num_objs'] = max_num_objs
             for factor_to_learn in factors_to_learn:
                 kwargs['factors_to_learn'] = factor_to_learn
-                for num_demos in list(xrange(1, 11)) + [50, 100]:
-                    kwargs['num_demos'] = num_demos
-                    for factor_learner in learn.FACTOR_LEARNERS.keys():
-                        kwargs['factor_learner'] = factor_learner
-                        for use_consistency in [False, True]:
-                            kwargs['use_consistency'] = use_consistency
-                            for percent_noise in [0.0]:
-                                kwargs['percent_noise'] = percent_noise
-                                for i in xrange(10):
-                                    yield dict(kwargs)
+                for factor_learner in learn.FACTOR_LEARNERS.keys():
+                    kwargs['factor_learner'] = factor_learner
+                    for num_demos in list(xrange(1, 11)) + [50, 100]:
+                        kwargs['num_demos'] = num_demos
+                        for i in xrange(10):
+                            yield dict(kwargs)
 
 
 def paper_experiment(file_writer):
+    num_experiments = len(list(paper_experiment_generator(file_writer)))
+    num_completed = 0
+    start = time.time()
+    average_runtime = 0
     for kwargs in paper_experiment_generator(file_writer):
+        cur_start = time.time()
         single_experiment(**kwargs)
+        cur_end = time.time()
+
+        num_completed += 1
+        cur_diff = cur_end - cur_start
+        average_runtime = (cur_diff + (num_completed - 1) * average_runtime) / num_completed
+        elapsed = time.time() - start
+        expected_remaining = average_runtime * (num_experiments - num_completed)
+        print ('---------------------------\n'
+               'Completed {} of {} ({}%)\nCurrent time {}\nAverage time {}\nElapsed time {}\nExpected remaining time {}'
+               .format(num_completed, num_experiments, float(num_completed) / num_experiments, cur_diff,
+                       average_runtime, elapsed, expected_remaining))
 
 
 def main():
