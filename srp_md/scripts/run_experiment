@@ -77,6 +77,38 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                       use_consistency=False, use_commonsense=False,
                       percent_noise=0.0,
                       file_writer='out.csv'):
+    logger.info('Experiment configured as:\n'
+                '\tgoal_type: {}\n'
+                '\tnum_objs: {}\n'
+                '\tnum_demos: {}\n'
+                '\tnum_goals: {}\n'
+                '\tsensor_name: {}\n'
+                '\tlearner_name: {}\n'
+                '\tgoal_generator_name: {}\n'
+                '\tgoal_evaluator_name: {}\n'
+                '\tfactor_learner: {}\n'
+                '\tfactors_to_learn: {}\n'
+                '\tmin_num_objs: {}\n'
+                '\tmax_num_objs: {}\n'
+                '\tuse_consistency: {}\n'
+                '\tuse_commonsense: {}\n'
+                '\tpercent_noise: {}\n'
+                '\tfile_writer: {}\n'.format(goal_type,
+                                           num_objs,
+                                           num_demos,
+                                           num_goals,
+                                           sensor_name,
+                                           learner_name,
+                                           goal_generator_name,
+                                           goal_evaluator_name,
+                                           factor_learner,
+                                           factors_to_learn,
+                                           min_num_objs,
+                                           max_num_objs,
+                                           use_consistency,
+                                           use_commonsense,
+                                           percent_noise,
+                                           file_writer))
 
     # Initialize and configure srp
     srp = srp_md.SrpMd(sensor=sensor_name, learner=learner_name, goal_generator=goal_generator_name,
@@ -174,20 +206,32 @@ def main():
                                   file_writer)
         elif args.experiment == 'paper':
             for goal_type in sense.goal_types['block_world_sensor'][:3]:
-                for num_objs in [3, 4, 5]:
-                    for num_demos in list(xrange(1, 11)) + [50, 100]:
-                        for factor_learner in learn.FACTOR_LEARNERS.keys():
-                            for use_consistency in [False, True]:
-                                for percent_noise in [0.0]:
-                                    for i in xrange(10):
-                                        single_experiment(goal_type, num_objs, num_demos, 100,
-                                                          "block_world_sensor", "factor_graph_learner",
-                                                          "factor_graph_goal_generator", "adapt_goal_evaluator",
-                                                          factor_learner, list(xrange(2, num_objs + 1)),
-                                                          args.min_num_objs, args.max_num_objs,
-                                                          use_consistency, False,
-                                                          percent_noise,
-                                                          file_writer)
+                for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
+                    factors_to_learn = [[2]]
+                    min_num_objs = 3
+                    max_num_objs = 3
+                    if isinstance(num_objs, list):
+                        min_num_objs = num_objs[0]
+                        max_num_objs = num_objs[1]
+                    else:
+                        if num_objs < 5:  # Don't learn joint factors greater than 4 because it takes to long
+                            factors_to_learn.append([num_objs])
+                        min_num_objs = num_objs
+                        max_num_objs = num_objs
+                    for factor_to_learn in factors_to_learn:
+                        for num_demos in list(xrange(1, 11)) + [50, 100]:
+                            for factor_learner in learn.FACTOR_LEARNERS.keys():
+                                for use_consistency in [False, True]:
+                                    for percent_noise in [0.0]:
+                                        for i in xrange(10):
+                                            single_experiment(goal_type, num_objs, num_demos, 100,
+                                                              "block_world_sensor", "factor_graph_learner",
+                                                              "factor_graph_goal_generator", "adapt_goal_evaluator",
+                                                              factor_learner, factor_to_learn,
+                                                              min_num_objs, max_num_objs,
+                                                              use_consistency, False,
+                                                              percent_noise,
+                                                              file_writer)
 
 
 if __name__ == '__main__':
