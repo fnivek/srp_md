@@ -146,8 +146,8 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
     num_gen_goals = 0
     while num_gen_goals < num_goals:
         try:
-            srp.generate_goal()
             num_gen_goals += 1
+            srp.generate_goal()
         except (ValueError, rospy.ServiceException) as e:
             logger.warn('Failed to generate goal trying again: ' + str(e))
             continue
