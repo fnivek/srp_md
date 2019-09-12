@@ -18,6 +18,7 @@ import srp_md
 
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
     def __init__(self):
+        super(FactorGraphGoalGenerator, self).__init__()
         self._logger = logging.getLogger(__name__)
         self._get_goal_client = None
         self._prior_knowledge = [GetGoalRequest.CONSISTENCY_PRIOR]
