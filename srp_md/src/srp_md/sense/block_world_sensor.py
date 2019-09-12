@@ -15,7 +15,7 @@ class BlockWorldSensor(sense.BaseSensor):
 
         # Initialize basic info
         self._goal_type = "single stack order by color"
-        self._objs = range(5)
+        self._objs = range(50)
         self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
                             "material": ["metal", "wood", "plastic", "iron", "zinc"],
                             "letter": ["A", "B", "C", "D", "E"]}
@@ -26,6 +26,16 @@ class BlockWorldSensor(sense.BaseSensor):
             self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
                                    "material": random.choice(self._properties["material"]),
                                    "letter": random.choice(self._properties["letter"])}
+
+    @property
+    def min_num_objs(self):
+        return self._min_num_objs
+
+    @min_num_objs.setter
+    def min_num_objs(self, num_objs):
+        if num_objs < 3:
+            raise ValueError('Must have at least 3 objects')
+        self._min_num_objs = num_objs
 
     def single_stack(self, scene_graph, goal_prop, dir_config):
         # Decide which direction of the color spectrum blocks are stacked
@@ -237,7 +247,8 @@ class BlockWorldSensor(sense.BaseSensor):
 
     def process_data(self, data):
         # Randomly choose objects from object list
-        num_objs = random.randint(self._min_num_objs, len(self._objs))
+        max_num_objs = min(len(self._objs), self._max_num_objs)
+        num_objs = random.randint(self._min_num_objs, max_num_objs)
         objs = [srp_md.Object(id_num=i + 1, uuid=i + 1, assignment=self._ass_prop[v])
                 for i, v in enumerate(srp_md.reservoir_sample(self._objs, num_objs))]
 
