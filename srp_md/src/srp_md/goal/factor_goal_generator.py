@@ -19,34 +19,44 @@ import srp_md
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
     def __init__(self):
         super(FactorGraphGoalGenerator, self).__init__()
+        self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense'])
         self._logger = logging.getLogger(__name__)
-        self._get_goal_client = None
-        self._prior_knowledge = [GetGoalRequest.CONSISTENCY_PRIOR]
-        try:
-            rospy.wait_for_service('get_goal', timeout=1)
-            self._get_goal_client = rospy.ServiceProxy('get_goal', GetGoal)
-        except rospy.ROSException as e:
-            self._logger.error('Failed to get a client for /get_goal service: {}'.format(e))
+        self._goal_client = None
+        self._goal_client_name = '/get_goal'
+        self._goal_client_changed = True
+        self.use_consistency = True
+        self.use_commonsense = False
 
-    def use_priors(self, use_consistency=True, use_commonsense=False):
-        self._prior_knowledge = []
-        if use_consistency:
-            self._prior_knowledge.append(GetGoalRequest.CONSISTENCY_PRIOR)
-        if use_commonsense:
-            self._prior_knowledge.append(GetGoalRequest.COMMON_SENSE_PRIOR)
+    @property
+    def goal_client(self):
+        return self._goal_client_name
+
+    @goal_client.setter
+    def goal_client(self, name):
+        self._goal_client_name = name
+        self._goal_client_changed = True
+
+    def connect_goal_client(self):
+        # This can raise a rospy.ServiceException
+        rospy.wait_for_service(self._goal_client_name, timeout=1)
+        self._goal_client = rospy.ServiceProxy(self._goal_client_name, GetGoal)
+        self._goal_client_changed = False
+
+    def make_prior_knowledge_msg(self):
+        prior_knowledge = []
+        if self.use_consistency:
+            prior_knowledge.append(GetGoalRequest.CONSISTENCY_PRIOR)
+        if self.use_commonsense:
+            prior_knowledge.append(GetGoalRequest.COMMON_SENSE_PRIOR)
+        return prior_knowledge
 
     def generate_goal(self, factors, obs):
         self._logger.debug('Generating goal')
-
-        if self._get_goal_client is None:
-            self._logger.error('/get_goal service not avaliable cannot generate goal')
-            return None
-
         self._logger.debug('Took factors %s', factors.keys())
 
         # Fill in the request
         req = GetGoalRequest()
-        req.prior_knowledge = self._prior_knowledge
+        req.prior_knowledge = self.make_prior_knowledge_msg()
         req.objects = obs.get_obj_names()
         # There are no relations because there is only one object therfore return that object
         if len(req.objects) <= 1:
@@ -90,7 +100,9 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         # Get the response
         resp = None
         try:
-            resp = self._get_goal_client(req)
+            if self._goal_client_changed:
+                self.connect_goal_client()
+            resp = self._goal_client(req)
         except rospy.ServiceException as e:
             self._logger.error('Failed when calling /get_goal service: {}'.format(e))
             raise

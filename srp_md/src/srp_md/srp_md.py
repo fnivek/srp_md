@@ -156,8 +156,8 @@ class SrpMd(object):
             else:
                 self._goal_instance = self._goal_generator.generate_goal()
 
-    def use_priors(self, use_consistency=True, use_commonsense=False):
-        self._goal_generator.use_priors(use_consistency, use_commonsense)
+    def update_goal_generator_config(self, **kwargs):
+        self._goal_generator.update_config(**kwargs)
 
     """ Goal Evaluator.
 
