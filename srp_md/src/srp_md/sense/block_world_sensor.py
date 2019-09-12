@@ -68,6 +68,10 @@ class BlockWorldSensor(sense.BaseSensor):
         return scene_graph
 
     def single_stack_checker(self, scene_graph, goal_prop, dir_config):
+        # Return True if only one object in the scene
+        if scene_graph.num_objs() == 1:
+            return True
+
         # Decide which direction of the color spectrum blocks are stacked
         if dir_config == "bothway":
             check_both = True
@@ -101,6 +105,10 @@ class BlockWorldSensor(sense.BaseSensor):
             else:
                 dir_list[ind] = 2
 
+        # If all are 2, return True
+        if all(x == 2 for x in dir_list):
+            return True
+
         # Take out 2's which order doesn't matter
         dir_list = filter(lambda a: a != 2, dir_list)
 
@@ -132,10 +140,12 @@ class BlockWorldSensor(sense.BaseSensor):
             checking = self.single_stack_checker(scene_graph, "color", "bothway")
 
         elif goal_type == "stacks by material order by color":
-            pass
+            checking = self.multiple_stack_checker(scene_graph, "oneway", sort="material",
+                                                   order="color")
 
         elif goal_type == "stacks by random order by random":
-            pass
+            checking = self.multiple_stack_checker(scene_graph, "bothway", sort="random",
+                                                   order="random")
 
         elif goal_type == "most stacks of 3":
             pass
@@ -169,10 +179,12 @@ class BlockWorldSensor(sense.BaseSensor):
             scene_graph = self.single_stack(scene_graph, "color", "bothway")
 
         elif goal_type == "stacks by material order by color":
-            pass
+            scene_graph = self.multiple_stack(scene_graph, "oneway", sort="material",
+                                              order="color")
 
         elif goal_type == "stacks by random order by random":
-            pass
+            scene_graph = self.multiple_stack(scene_graph, "bothway", sort="random",
+                                              order="random")
 
         elif goal_type == "most stacks of 3":
             pass
