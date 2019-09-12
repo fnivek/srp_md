@@ -4,6 +4,7 @@ from builtins import str
 import itertools
 import logging
 import copy
+from collections import OrderedDict
 
 # Project
 import srp_md
@@ -42,10 +43,11 @@ class SceneGraph(srp_md.FactorGraph):
         return len(self.relations)
 
     def print_objs(self):
-        return {obj.name: [(ass, obj.assignment[ass]) for ass in obj.assignment.keys()] for obj in self.objs}
+        return OrderedDict((obj.name, [(ass, obj.assignment[ass]) for ass in obj.assignment.keys()])
+                           for obj in self.objs)
 
     def print_rels(self):
-        return {rel.name: rel.value for rel in self.relations}
+        return OrderedDict((rel.name, rel.value) for rel in self.relations)
 
     def get_obj_names(self):
         return [obj.name for obj in self.objs]

@@ -16,16 +16,16 @@ class BlockWorldSensor(sense.BaseSensor):
         # Initialize basic info
         self._goal_type = "single stack order by color"
         self._objs = range(50)
-        self._properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
-                            "material": ["metal", "wood", "plastic", "iron", "zinc"],
-                            "letter": ["A", "B", "C", "D", "E"]}
+        self.properties = {"color": ["red", "orange", "yellow", "green", "blue", "indigo", "purple"],
+                           "material": ["metal", "wood", "plastic", "iron", "zinc"],
+                           "letter": ["A", "B", "C", "D", "E"]}
         self._RELATIONS = ['disjoint', 'on', 'support', 'proximity']
         self.goal_prop = None
         self._ass_prop = {}
         for obj in self._objs:
-            self._ass_prop[obj] = {"color": random.choice(self._properties["color"]),
-                                   "material": random.choice(self._properties["material"]),
-                                   "letter": random.choice(self._properties["letter"])}
+            self._ass_prop[obj] = {"color": random.choice(self.properties["color"]),
+                                   "material": random.choice(self.properties["material"]),
+                                   "letter": random.choice(self.properties["letter"])}
 
     @property
     def min_num_objs(self):
@@ -56,7 +56,7 @@ class BlockWorldSensor(sense.BaseSensor):
             random.shuffle(bot_top)
         else:
             # Sort the objects based on goal property
-            prop_list = list(self._properties[goal_prop])
+            prop_list = list(self.properties[goal_prop])
             # If reversed direction, then reverse the property list order
             if direction == "bot_left":
                 prop_list.reverse()
@@ -100,7 +100,7 @@ class BlockWorldSensor(sense.BaseSensor):
                 return False
             # Get the objects and the ordering of there properties
             [var_i, var_j] = relation.get_objs()
-            prop_list = self._properties[goal_prop]
+            prop_list = self.properties[goal_prop]
             prop_index_i = prop_list.index(var_i.assignment[goal_prop])
             prop_index_j = prop_list.index(var_j.assignment[goal_prop])
             # If i is earlier in the list it must support

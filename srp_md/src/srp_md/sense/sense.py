@@ -15,7 +15,7 @@ class BaseSensor(with_metaclass(ABCMeta, object)):
         self._demo_type = 'only_goal'
         self._goal_type = None
         self._min_num_objs = 3
-        self._max_num_objs = 10
+        self._max_num_objs = 5
         self._allowed_config_keys = ['demo_type', 'goal_type', 'min_num_objs', 'max_num_objs']
         self._allowed_demo_types = ['only_goal', 'only_not_goal', 'random']
 

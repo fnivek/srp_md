@@ -47,7 +47,7 @@ class SrpMd(object):
         self._sense_category = {'fake': ['fake_sensor'],
                                 'version': ['example_sensor', 'can_tower_sensor'],
                                 'factor': ['posecnn_sensor', 'block_world_sensor', 'pen_world_sensor',
-                                           'book_world_sensor', 'abstract_world_sensor', 'block_tower_sensor']}
+                                           'book_world_sensor', 'abstract_world_sensor']}
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -77,6 +77,8 @@ class SrpMd(object):
         self._learner.update_config(**kwargs)
 
     def learn(self):
+        if self._sensor is None:
+            self._logger.error('Please select sensor!')
         if self._learner is None:
             self._logger.error('Please select learner!')
         else:
@@ -84,7 +86,7 @@ class SrpMd(object):
             if len(self._obs) == 0:
                 self._logger.warning('No demo to be learned from!')
             elif self.get_learner() == 'factor_graph_learner':
-                self._factors = self._learner.learn(self._obs)
+                self._factors = self._learner.learn(self._obs, self._sensor.properties)
                 self._logger.debug('Factors learned: %s', self._factors.keys())
             else:
                 self._goal = self._learner.learn(self._obs)
@@ -254,7 +256,7 @@ class SrpMd(object):
             pos = nx.spring_layout(G)
 
             # Draw the graph
-            nx.draw_networkx_nodes(G, pos, node_color=scene_graph.get_prop_values(self._sensor.goal_prop),
+            nx.draw_networkx_nodes(G, pos, node_color=scene_graph.get_prop_values("color"),
                                    node_size=500)
             nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
             nx.draw_networkx_labels(G, pos, node_labels, font_size=16)

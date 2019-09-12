@@ -141,12 +141,12 @@ class SklearnFactorLearner(object):
 
     """
 
-    def __init__(self, clf):
+    def __init__(self, clf, category):
         self._data = []
         self._target = []
         self._must_fit = True
         self._clf = clf
-        self._enc = preprocessing.OneHotEncoder()
+        self._enc = preprocessing.OneHotEncoder(categories=category)
         self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
         self._last_vals = None
         self._last_probs = None
@@ -200,19 +200,19 @@ class SklearnFactorLearner(object):
 
 class DecisionTreeFactorLearner(SklearnFactorLearner):
     # TODO(Kevin): Tune the paramaters of the decision tree
-    def __init__(self):
+    def __init__(self, category):
         clf = tree.DecisionTreeClassifier(class_weight='balanced', max_depth=3)
         clf = tree.DecisionTreeClassifier()
-        super(DecisionTreeFactorLearner, self).__init__(clf)
+        super(DecisionTreeFactorLearner, self).__init__(clf, category)
 
 
 FACTOR_LEARNERS['decision_tree'] = DecisionTreeFactorLearner
 
 
 class SvmFactorLearner(SklearnFactorLearner):
-    def __init__(self):
+    def __init__(self, category):
         clf = svm.SVC(gamma='auto', probability=True)
-        super(SvmFactorLearner, self).__init__(clf)
+        super(SvmFactorLearner, self).__init__(clf, category)
 
 
 FACTOR_LEARNERS['svm'] = SvmFactorLearner

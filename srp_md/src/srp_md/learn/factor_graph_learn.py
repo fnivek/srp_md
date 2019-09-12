@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 # SRP MD imports
 from . import learn
-from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS
+from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS, SklearnFactorLearner
 import srp_md
 
 
@@ -42,7 +42,10 @@ class FactorGraphLearner(learn.BaseLearner):
                     num_objs, pow(6, srp_md.ncr(num_objs, 2))))
         self._factors_to_learn = factors
 
-    def learn(self, obs):
+    def prop_to_cats(self, properties, num_objs):
+        return [properties[key] for key in properties.keys()] * num_objs
+
+    def learn(self, obs, properties):
         """ Learn.
 
         Transforms a set of scene graphs into learned factors that can be used to build scene graphs. Each factor in the
@@ -73,7 +76,11 @@ class FactorGraphLearner(learn.BaseLearner):
                 index = (len(factor.objs), len(factor.relations))
                 if index not in factors:
                     self._logger.debug('Learning a new factor of type {}'.format(index))
-                    factors[index] = FactorHandler(self._factor_learner())
+                    if issubclass(self._factor_learner, SklearnFactorLearner):
+                        category = self.prop_to_cats(properties, len(factor.objs))
+                        factors[index] = FactorHandler(self._factor_learner(category=category))
+                    else:
+                        factors[index] = FactorHandler(self._factor_learner())
 
                 # Update the learned factor
                 mb = graph.markov_blanket(factor.vars)
