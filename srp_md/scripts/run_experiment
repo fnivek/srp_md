@@ -81,7 +81,7 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                       min_num_objs, max_num_objs,
                       use_consistency=False, use_commonsense=False,
                       percent_noise=0.0,
-                      file_name='out.csv'):
+                      file_name='out.csv', goal_client='/get_goal'):
     logger.info('Experiment configured as:\n'
                 '\tgoal_type: {}\n'
                 '\tnum_objs: {}\n'
@@ -98,7 +98,8 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                 '\tuse_consistency: {}\n'
                 '\tuse_commonsense: {}\n'
                 '\tpercent_noise: {}\n'
-                '\tfile_name: {}\n'.format(goal_type,
+                '\tfile_name: {}\n'
+                '\tgoal_client: {}'.format(goal_type,
                                            num_objs,
                                            num_demos,
                                            num_goals,
@@ -113,14 +114,16 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                                            use_consistency,
                                            use_commonsense,
                                            percent_noise,
-                                           file_name))
+                                           file_name,
+                                           goal_client))
 
     # Initialize and configure srp
     srp = srp_md.SrpMd(sensor=sensor_name, learner=learner_name, goal_generator=goal_generator_name,
                        goal_evaluator=goal_evaluator_name)
     srp.update_sensor_config(goal_type=goal_type, min_num_objs=min_num_objs, max_num_objs=max_num_objs)
     srp.update_learner_config(factor_learner=factor_learner, factors_to_learn=factors_to_learn)
-    srp.use_priors(use_consistency, use_commonsense)
+    srp.update_goal_generator_config(use_consistency=use_consistency, use_commonsense=use_commonsense,
+                                     goal_client=goal_client)
 
     # Initialize variables
     num_correct = 0
@@ -217,7 +220,7 @@ class PaperThread(threading.Thread):
     num_completed = 0
     start_time = None
     average_runtime = 0
-    NUM_THREADS = 4
+    NUM_THREADS = 32
 
     def __init__(self, name, experiment_gen, lock):
         # super(PaperThread, self).__init__(self, =None)
@@ -225,17 +228,23 @@ class PaperThread(threading.Thread):
         self._name = name
         self._experiment_gen = experiment_gen
         self._lock = lock
+        self._get_goal_client = '/get_goal_{}'.format(self._name)
 
     def run(self):
         kwargs = None
         gen_empty = False
+        # Keep working until there is nothing left to do
         while not gen_empty:
+            # Get the next job
             try:
                 with self._lock:
                     kwargs = next(self._experiment_gen)
             except StopIteration:
+                # If there are no jobs left finish
                 gen_empty = True
                 continue
+            # Set the goal client and run the experiment
+            kwargs['goal_client'] = self._get_goal_client
             cur_start = time.time()
             single_experiment(**kwargs)
             cur_end = time.time()
