@@ -24,6 +24,50 @@ def parse_args():
     return args
 
 
+class Datum(object):
+    def __init__(self, num_demos, num_goals, num_correct):
+        self.num_demos = num_demos
+        self.num_goals = num_goals
+        self.num_correct = num_correct
+
+
+class Aggregate(object):
+    def __init__(self, datums):
+        self.total_num_goals = sum([d.num_goals for d in datums])
+        self.weights = np.array([float(d.num_goals) / self.total_num_goals for d in datums])
+        self.percent_correct = np.array([float(d.num_correct) / d.num_goals for d in datums])
+        self.average = np.average(self.percent_correct, weights=self.weights)
+        self.std_dev = np.sqrt(np.average(np.abs(self.percent_correct - self.average)**2))
+
+
+class Experiment(object):
+    def __init__(self):
+        self._data = {}
+
+    def insert(self, datum):
+        try:
+            self._data[datum.num_demos].append(datum)
+        except KeyError:
+            self._data[datum.num_demos] = [datum]
+
+    def aggregate(self):
+        self._num_demos = []
+        self._aggregates = []
+        keys = sorted(self._data.keys())
+        for key in keys:
+            self._num_demos.append(key)
+            self._aggregates.append(Aggregate(self._data[key]))
+
+    def demos(self):
+        return list(self._num_demos)
+
+    def averages(self):
+        return [agg.average for agg in self._aggregates]
+
+    def std_devs(self):
+        return [agg.std_dev for agg in self._aggregates]
+
+
 def main():
     # Get arguments
     args = parse_args()
@@ -31,7 +75,7 @@ def main():
     # Initialize lists of independent and dependent variables
     input_order = ['Time Stamp', 'Goal Type', 'Object #s', 'Demo #s', 'Goal #s', 'Noise %', 'Correct Demo #s',
                    'Factor Learner', 'Factors', 'Min Object #s', 'Max Object #s', 'Consistency', 'Commonsense']
-    input_independent = ['Goal Type', 'Object #s', 'Factor Learner', 'Factors', 'Consistency']
+    input_independent = ['Goal Type', 'Object #s', 'Factor Learner', 'Factors', 'Consistency', 'Noise %']
     num_run = 10
 
     # Initialize dictionaries
@@ -59,20 +103,18 @@ def main():
 
             # Fill in data_dict and data_count
             num_demo = int(row[input_order.index('Demo #s')])
+            num_goals = int(row[input_order.index('Goal #s')])
             num_correct = int(row[input_order.index('Correct Demo #s')])
-            if key_list in data_dict.keys():
-                if num_demo not in data_dict[key_list][0]:
-                    data_dict[key_list][0].append(num_demo)
-                    data_dict[key_list][1].append(num_correct)
-                else:
-                    ind = data_dict[key_list][0].index(num_demo)
-                    data_dict[key_list][1][ind] += num_correct
-            else:
-                data_dict[key_list] = [[num_demo], [num_correct]]
+            datum = Datum(num_demo, num_goals, num_correct)
+            try:
+                data_dict[key_list].insert(datum)
+            except KeyError:
+                data_dict[key_list] = Experiment()
+                data_dict[key_list].insert(datum)
 
         # Average the entries in data_dict by value in data_count
-        for key_ls in data_dict.keys():
-            data_dict[key_ls][1] = [correct_bef / float(num_run) for correct_bef in data_dict[key_ls][1]]
+        for value in data_dict.values():
+            value.aggregate()
 
     # Now plot the graphs!
     # For each independent variables, do
@@ -83,7 +125,7 @@ def main():
             # For each entry in data_dict:
             for key_list in data_dict.keys():
                 if key_list[i] == val:
-                    plt.plot(data_dict[key_list][0], data_dict[key_list][1],
+                    plt.plot(data_dict[key_list].demos(), data_dict[key_list].averages(),
                              marker='o', linewidth=2, linestyle='dashed', label=key_list)
 
             plt.title(var + ": " + val, fontsize=14)
@@ -96,7 +138,7 @@ def main():
             plt.clf()
 
     for key_list in data_dict.keys():
-        plt.plot(data_dict[key_list][0], data_dict[key_list][1],
+        plt.plot(data_dict[key_list].demos(), data_dict[key_list].averages(),
                  marker='o', linewidth=2, linestyle='dashed', label=key_list)
 
     plt.title("EVERYTHING", fontsize=14)
