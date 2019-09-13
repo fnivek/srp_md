@@ -17,9 +17,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Plot the results')
 
     # Main arguments
-    parser.add_argument('--file', help='Specify the directory of file',
+    parser.add_argument('-i', '--in_file', help='Specify the directory of in_file',
                         default="/home/jihwangk/Downloads/test.csv", type=str)
-
+    parser.add_argument('-o', '--out_file', help='Write statistics to files named <out_file>_<key>.csv',
+                        type=str, default=None)
     args = parser.parse_args()
     return args
 
@@ -82,8 +83,8 @@ def main():
     category = {var: [] for var in input_independent}  # includes set of values that independent variables can take
     data_dict = {}  # includes the average correct demo for each run
 
-    # Read in the file
-    with open(args.file) as csvfile:
+    # Read in the in_file
+    with open(args.in_file) as csvfile:
         data = csv.reader(csvfile, delimiter=',')
 
         for row in data:
@@ -112,9 +113,29 @@ def main():
                 data_dict[key_list] = Experiment()
                 data_dict[key_list].insert(datum)
 
-        # Average the entries in data_dict by value in data_count
-        for value in data_dict.values():
-            value.aggregate()
+    # Average the entries in data_dict by value in data_count
+    for value in data_dict.values():
+        value.aggregate()
+
+    # Write aggregated data to out file
+    if args.out_file is not None:
+        demos = list(range(1, 11)) + [50, 100]
+        with open(args.out_file, 'wb') as out_file:
+            writer = csv.writer(out_file)
+            title_row = list(input_independent)
+            for i in demos:
+                title_row.append('Avg {}'.format(i))
+            for i in demos:
+                title_row.append('Std dev {}'.format(i))
+            writer.writerow(title_row)
+            for key, data in data_dict.iteritems():
+                experiment = [item for item in key]
+                aggregates = [None] * 2 * len(demos)
+                for num_demos, avg, std_dev in zip(data.demos(), data.averages(), data.std_devs()):
+                    i = demos.index(num_demos)
+                    aggregates[i] = avg
+                    aggregates[len(demos) + i] = std_dev
+                writer.writerow(experiment + aggregates)
 
     # Now plot the graphs!
     # For each independent variables, do
