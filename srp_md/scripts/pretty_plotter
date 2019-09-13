@@ -125,8 +125,9 @@ def main():
             # For each entry in data_dict:
             for key_list in data_dict.keys():
                 if key_list[i] == val:
-                    plt.plot(data_dict[key_list].demos(), data_dict[key_list].averages(),
-                             marker='o', linewidth=2, linestyle='dashed', label=key_list)
+                    plt.errorbar(data_dict[key_list].demos(), data_dict[key_list].averages(),
+                                 yerr=data_dict[key_list].std_devs(), marker='o', linewidth=2, linestyle='dashed',
+                                 label=key_list)
 
             plt.title(var + ": " + val, fontsize=14)
             plt.xlabel("Number of Demos", fontsize=14)
@@ -138,8 +139,8 @@ def main():
             plt.clf()
 
     for key_list in data_dict.keys():
-        plt.plot(data_dict[key_list].demos(), data_dict[key_list].averages(),
-                 marker='o', linewidth=2, linestyle='dashed', label=key_list)
+        plt.errorbar(data_dict[key_list].demos(), data_dict[key_list].averages(),
+                     yerr=data_dict[key_list].std_devs(), marker='o', linewidth=2, linestyle='dashed', label=key_list)
 
     plt.title("EVERYTHING", fontsize=14)
     plt.xlabel("Number of Demos", fontsize=14)
