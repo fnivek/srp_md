@@ -1,7 +1,10 @@
+from __future__ import absolute_import
 from builtins import object
 import abc
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
+
+from srp_md.utils import ConfigMixin
 
 # List of all sensors
 # Each subclass must register itself by adding its name and pointer to class
@@ -10,13 +13,14 @@ sensors = {}
 goal_types = {}
 
 
-class BaseSensor(with_metaclass(ABCMeta, object)):
+class BaseSensor(with_metaclass(ABCMeta, object, ConfigMixin)):
     def __init__(self):
+        super(BaseSensor, self).__init__()
         self._demo_type = 'only_goal'
         self._goal_type = None
         self._min_num_objs = 3
         self._max_num_objs = 5
-        self._allowed_config_keys = ['demo_type', 'goal_type', 'min_num_objs', 'max_num_objs']
+        self._allowed_config_keys.extend(['demo_type', 'goal_type', 'min_num_objs', 'max_num_objs'])
         self._allowed_demo_types = ['only_goal', 'only_not_goal', 'random']
 
     @abstractmethod
@@ -27,22 +31,6 @@ class BaseSensor(with_metaclass(ABCMeta, object)):
 
         """
         pass
-
-    def update_config(self, **kwargs):
-        """ Set the sensors mode.
-
-        Inputs:
-          demo_type - a string that specifies what type of observations to generate expected values are 'only_goal',
-                      'only_not_goal', and 'random'
-          min_num_objs - the min number of objects to use per observation
-          max_num_objs - the max number of objects to use per observation
-          **kwargs - other keyword arguments for derived classes
-
-        """
-        for key, value in kwargs.iteritems():
-            if key not in self._allowed_config_keys:
-                raise KeyError('{} is not an allowed to be changed'.format(key))
-            setattr(self, key, value)
 
     @property
     def demo_type(self):

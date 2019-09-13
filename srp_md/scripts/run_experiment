@@ -14,10 +14,15 @@ import random
 import csv
 from datetime import datetime
 import time
+import multiprocessing
+import Queue
 
 # Get a logger
 logger = logging.getLogger('srp_md')
 logger.setLevel(logging.INFO)
+
+# Global locks
+file_lock = multiprocessing.Lock()
 
 
 def str2bool(v):
@@ -48,7 +53,7 @@ def parse_args():
     parser.add_argument('--factor_learner', help='Specify the factor learner', default='joint_frequency', type=str,
                         choices=learn.FACTOR_LEARNERS.keys())
     parser.add_argument('--use_consistency', help='Choose to use consistency prior', default=True, type=str2bool)
-    parser.add_argument('--file', type=argparse.FileType('ab'), help='output csv file', default='out.csv')
+    parser.add_argument('--file', type=str, help='output csv file', default='out.csv')
     parser.add_argument('--experiment', type=str, help='Which experiment to run', default='single',
                         choices=['single', 'num_demos', 'paper'])
 
@@ -77,7 +82,7 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                       min_num_objs, max_num_objs,
                       use_consistency=False, use_commonsense=False,
                       percent_noise=0.0,
-                      file_writer='out.csv'):
+                      file_name='out.csv', goal_client='/get_goal'):
     logger.info('Experiment configured as:\n'
                 '\tgoal_type: {}\n'
                 '\tnum_objs: {}\n'
@@ -94,29 +99,32 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                 '\tuse_consistency: {}\n'
                 '\tuse_commonsense: {}\n'
                 '\tpercent_noise: {}\n'
-                '\tfile_writer: {}\n'.format(goal_type,
-                                             num_objs,
-                                             num_demos,
-                                             num_goals,
-                                             sensor_name,
-                                             learner_name,
-                                             goal_generator_name,
-                                             goal_evaluator_name,
-                                             factor_learner,
-                                             factors_to_learn,
-                                             min_num_objs,
-                                             max_num_objs,
-                                             use_consistency,
-                                             use_commonsense,
-                                             percent_noise,
-                                             file_writer))
+                '\tfile_name: {}\n'
+                '\tgoal_client: {}'.format(goal_type,
+                                           num_objs,
+                                           num_demos,
+                                           num_goals,
+                                           sensor_name,
+                                           learner_name,
+                                           goal_generator_name,
+                                           goal_evaluator_name,
+                                           factor_learner,
+                                           factors_to_learn,
+                                           min_num_objs,
+                                           max_num_objs,
+                                           use_consistency,
+                                           use_commonsense,
+                                           percent_noise,
+                                           file_name,
+                                           goal_client))
 
     # Initialize and configure srp
     srp = srp_md.SrpMd(sensor=sensor_name, learner=learner_name, goal_generator=goal_generator_name,
                        goal_evaluator=goal_evaluator_name)
     srp.update_sensor_config(goal_type=goal_type, min_num_objs=min_num_objs, max_num_objs=max_num_objs)
     srp.update_learner_config(factor_learner=factor_learner, factors_to_learn=factors_to_learn)
-    srp.use_priors(use_consistency, use_commonsense)
+    srp.update_goal_generator_config(use_consistency=use_consistency, use_commonsense=use_commonsense,
+                                     goal_client=goal_client)
 
     # Initialize variables
     num_correct = 0
@@ -163,21 +171,23 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
                 'Generated and evaluated {} goals with {}%% correct'.format(
                     num_demos, num_noise, num_gen_goals, 100.0 * num_correct / num_gen_goals))
 
-    # file_writer.writerow(['time', 'goal_type', 'num_objs', 'num_demos', 'bad_demos', 'correct_demos',
-    #                       'factor_learner', 'factors', 'min_num_objs', 'max_num_objs', 'consistency', 'commonsense')
-    file_writer.writerow(
-        [datetime.now(),
-         goal_type, num_objs, num_demos, num_goals, num_noise, num_correct,
-         factor_learner, factors_to_learn[0],
-         min_num_objs, max_num_objs,
-         use_consistency, use_commonsense])
+    with file_lock:
+        with open(file_name, mode='ab') as csv_file:
+            # Setup csv file
+            file_writer = csv.writer(csv_file)
+            file_writer.writerow(
+                [datetime.now(),
+                 goal_type, num_objs, num_demos, num_goals, num_noise, num_correct,
+                 factor_learner, factors_to_learn[0],
+                 min_num_objs, max_num_objs,
+                 use_consistency, use_commonsense])
 
 
-def paper_experiment_generator(file_writer):
+def paper_experiment_generator(file_name):
     # Set what is constant
     kwargs = {'num_goals': 100, 'sensor_name': 'block_world_sensor', 'learner_name': 'factor_graph_learner',
               'goal_generator_name': 'factor_graph_goal_generator', 'goal_evaluator_name': 'adapt_goal_evaluator',
-              'use_commonsense': False, 'file_writer': file_writer, 'percent_noise': 0.0, 'use_consistency': True}
+              'use_commonsense': False, 'file_name': file_name, 'percent_noise': 0.0, 'use_consistency': True}
     for goal_type in sense.goal_types['block_world_sensor'][:3]:
         kwargs['goal_type'] = goal_type
         for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
@@ -205,25 +215,71 @@ def paper_experiment_generator(file_writer):
                             yield dict(kwargs)
 
 
-def paper_experiment(file_writer):
-    num_experiments = len(list(paper_experiment_generator(file_writer)))
-    num_completed = 0
-    start = time.time()
-    average_runtime = 0
-    for kwargs in paper_experiment_generator(file_writer):
-        cur_start = time.time()
-        single_experiment(**kwargs)
-        cur_end = time.time()
+class PaperThread(multiprocessing.Process):
+    # Tracking variables
+    num_experiments = len(list(paper_experiment_generator(None)))
+    num_completed = multiprocessing.Value('i', 0)
+    start_time = None
+    average_runtime = multiprocessing.Value('d', 0)
+    NUM_THREADS = 32
 
-        num_completed += 1
-        cur_diff = cur_end - cur_start
-        average_runtime = (cur_diff + (num_completed - 1) * average_runtime) / num_completed
-        elapsed = time.time() - start
-        expected_remaining = average_runtime * (num_experiments - num_completed)
-        print ('---------------------------\n'
-               'Completed {} of {} ({}%)\nCurrent time {}\nAverage time {}\nElapsed time {}\nExpected remaining time {}'
-               .format(num_completed, num_experiments, float(num_completed) / num_experiments, cur_diff,
-                       average_runtime, elapsed, expected_remaining))
+    def __init__(self, name, experiment_queue, lock):
+        multiprocessing.Process.__init__(self)
+        self._name = name
+        self._experiment_queue = experiment_queue
+        self._lock = lock
+        self._get_goal_client = '/get_goal_{}'.format(self._name)
+
+    def run(self):
+        kwargs = None
+        gen_empty = False
+        # Keep working until there is nothing left to do
+        while not gen_empty:
+            # Get the next job
+            try:
+                kwargs = self._experiment_queue.get_nowait()
+            except Queue.Empty:
+                # If there are no jobs left finish
+                gen_empty = True
+                continue
+            # Set the goal client and run the experiment
+            kwargs['goal_client'] = self._get_goal_client
+            cur_start = time.time()
+            single_experiment(**kwargs)
+            cur_end = time.time()
+            cur_diff = cur_end - cur_start
+
+            # Update and print statistics
+            with self._lock:
+                PaperThread.num_completed.value += 1
+                PaperThread.average_runtime.value = ((cur_diff + (PaperThread.num_completed.value - 1) *
+                                                     PaperThread.average_runtime.value) /
+                                                     PaperThread.num_completed.value)
+                elapsed = time.time() - PaperThread.start_time
+                expected_remaining = (PaperThread.average_runtime.value * (
+                    PaperThread.num_experiments - PaperThread.num_completed.value) / PaperThread.NUM_THREADS)
+                print ('---------------------------\n'
+                       'Completed {} of {} ({}%)\nCurrent time {}\nAverage time {}\nElapsed time {}\n'
+                       'Expected remaining time {}'
+                       .format(PaperThread.num_completed.value, PaperThread.num_experiments,
+                               float(PaperThread.num_completed.value) / PaperThread.num_experiments, cur_diff,
+                               PaperThread.average_runtime.value, elapsed, expected_remaining))
+
+
+def paper_experiment(file_name):
+    experiment_queue = multiprocessing.Queue()
+    for kwargs in paper_experiment_generator(file_name):
+        experiment_queue.put(kwargs)
+    lock = multiprocessing.Lock()
+    thread_pool = []
+    PaperThread.start_time = time.time()
+    for i in xrange(PaperThread.NUM_THREADS):
+        thread = PaperThread(i + 1, experiment_queue, lock)
+        thread.start()
+        thread_pool.append(thread)
+
+    for thread in thread_pool:
+        thread.join()
 
 
 def main():
@@ -235,11 +291,17 @@ def main():
     # Setup ros
     rospy.init_node('run_experiment', anonymous=True)
 
-    # Writ results to a file
-    with args.file:
-        # Setup csv file
-        file_writer = csv.writer(args.file)
-        if args.experiment == 'single':
+    if args.experiment == 'single':
+        single_experiment(args.goal_type, args.num_objs, args.num_demos, args.num_goals,
+                          "block_world_sensor", "factor_graph_learner",
+                          "factor_graph_goal_generator", "adapt_goal_evaluator",
+                          args.factor_learner, args.factors_to_learn,
+                          args.min_num_objs, args.max_num_objs,
+                          args.use_consistency, args.use_commonsense,
+                          args.percent_noise,
+                          args.file)
+    elif args.experiment == 'num_demos':
+        for num_demos in xrange(1, 26):
             single_experiment(args.goal_type, args.num_objs, args.num_demos, args.num_goals,
                               "block_world_sensor", "factor_graph_learner",
                               "factor_graph_goal_generator", "adapt_goal_evaluator",
@@ -247,19 +309,9 @@ def main():
                               args.min_num_objs, args.max_num_objs,
                               args.use_consistency, args.use_commonsense,
                               args.percent_noise,
-                              file_writer)
-        elif args.experiment == 'num_demos':
-            for num_demos in xrange(1, 26):
-                single_experiment(args.goal_type, args.num_objs, args.num_demos, args.num_goals,
-                                  "block_world_sensor", "factor_graph_learner",
-                                  "factor_graph_goal_generator", "adapt_goal_evaluator",
-                                  args.factor_learner, args.factors_to_learn,
-                                  args.min_num_objs, args.max_num_objs,
-                                  args.use_consistency, args.use_commonsense,
-                                  args.percent_noise,
-                                  file_writer)
-        elif args.experiment == 'paper':
-            paper_experiment(file_writer)
+                              args.file)
+    elif args.experiment == 'paper':
+        paper_experiment(args.file)
 
 
 if __name__ == '__main__':
