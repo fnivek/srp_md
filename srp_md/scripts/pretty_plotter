@@ -5,7 +5,6 @@
 # Python imports
 import csv
 import argparse
-import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -25,11 +24,27 @@ def parse_args():
     return args
 
 
+def get_noise_bin(per_noise):
+    noise_range = 3
+    if per_noise < 0:
+        raise ValueError()
+    if per_noise > 1:
+        raise ValueError()
+    if per_noise == 0:
+        return "Noise 0%"
+    for i in range(100 / noise_range):
+        if per_noise * 100 <= i * noise_range:
+            return "Noise {}-{}%".format((i - 1) * noise_range, i * noise_range)
+    return "Noise 100%"
+
+
 class Datum(object):
-    def __init__(self, num_demos, num_goals, num_correct):
+    def __init__(self, num_demos, num_goals, num_correct, num_bad):
         self.num_demos = num_demos
         self.num_goals = num_goals
         self.num_correct = num_correct
+        self.num_bad = num_bad
+        self.per_bad = float(self.num_bad) / self.num_goals
 
 
 class Aggregate(object):
@@ -74,10 +89,9 @@ def main():
     args = parse_args()
 
     # Initialize lists of independent and dependent variables
-    input_order = ['Time Stamp', 'Goal Type', 'Object #s', 'Demo #s', 'Goal #s', 'Noise %', 'Correct Demo #s',
+    input_order = ['Time Stamp', 'Goal Type', 'Object #s', 'Demo #s', 'Goal #s', 'Bad Demo #s', 'Correct Demo #s',
                    'Factor Learner', 'Factors', 'Min Object #s', 'Max Object #s', 'Consistency', 'Commonsense']
     input_independent = ['Goal Type', 'Object #s', 'Factor Learner', 'Factors', 'Consistency', 'Noise %']
-    num_run = 10
 
     # Initialize dictionaries
     category = {var: [] for var in input_independent}  # includes set of values that independent variables can take
@@ -88,12 +102,21 @@ def main():
         data = csv.reader(csvfile, delimiter=',')
 
         for row in data:
+            # Fill in data_dict and data_count
+            num_demo = int(row[input_order.index('Demo #s')])
+            num_goals = int(row[input_order.index('Goal #s')])
+            num_correct = int(row[input_order.index('Correct Demo #s')])
+            num_bad = int(row[input_order.index('Bad Demo #s')])
+            datum = Datum(num_demo, num_goals, num_correct, num_bad)
+
             # Initialize key for data_dict
             key_list = []
 
             for var in input_independent:
-                # Fill in the key with values of independent variables
-                ele = row[input_order.index(var)]
+                if var == "Noise %":
+                    ele = get_noise_bin(datum.per_bad)
+                else:
+                    ele = row[input_order.index(var)]
                 key_list.append(ele)
 
                 # Fill in the categories
@@ -102,11 +125,6 @@ def main():
 
             key_list = tuple(key_list)
 
-            # Fill in data_dict and data_count
-            num_demo = int(row[input_order.index('Demo #s')])
-            num_goals = int(row[input_order.index('Goal #s')])
-            num_correct = int(row[input_order.index('Correct Demo #s')])
-            datum = Datum(num_demo, num_goals, num_correct)
             try:
                 data_dict[key_list].insert(datum)
             except KeyError:
