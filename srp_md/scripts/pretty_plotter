@@ -25,7 +25,7 @@ def parse_args():
 
 
 def get_noise_bin(per_noise):
-    noise_range = 3
+    noise_range = 25
     if per_noise < 0:
         raise ValueError()
     if per_noise > 1:
@@ -44,7 +44,7 @@ class Datum(object):
         self.num_goals = num_goals
         self.num_correct = num_correct
         self.num_bad = num_bad
-        self.per_bad = float(self.num_bad) / self.num_goals
+        self.per_bad = float(self.num_bad) / self.num_demos
 
 
 class Aggregate(object):
