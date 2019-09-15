@@ -17,7 +17,9 @@ def parse_args():
 
     # Main arguments
     parser.add_argument('-i', '--in_file', help='Specify the directory of in_file',
-                        default="/home/jihwangk/Downloads/test.csv", type=str)
+                        default=None, type=str)
+    parser.add_argument('-n', '--in_file_name', help='Specify the file name in default dir',
+                        default=None, type=str)
     parser.add_argument('-o', '--out_file', help='Write statistics to files named <out_file>_<key>.csv',
                         type=str, default=None)
     args = parser.parse_args()
@@ -97,8 +99,17 @@ def main():
     category = {var: [] for var in input_independent}  # includes set of values that independent variables can take
     data_dict = {}  # includes the average correct demo for each run
 
+    # Set file directory based on input args
+    if args.in_file_name is not None:
+        directory = "/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/" + args.in_file_name
+    elif args.in_file is not None:
+        directory = args.in_file
+    else:
+        print "Error! Specify directory"
+        return
+
     # Read in the in_file
-    with open(args.in_file) as csvfile:
+    with open(directory) as csvfile:
         data = csv.reader(csvfile, delimiter=',')
 
         for row in data:
