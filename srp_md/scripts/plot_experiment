@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+# In project imports
+
+
+# Python imports
+import csv
+import matplotlib.pyplot as plt
+
+
+def main():
+    # Specify directory where csv files are in
+    default_dir = "/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/"
+    exp_dir_ls = [default_dir + "paper_experiments_trial_" + str(num) + "_aggregated.csv"
+                  for num in range(15, 20)]
+    dict_keys = ['Goal Type', 'Object #s', 'Factor Learner', 'Factors', 'Consistency', 'Noise %',
+                 'Avgs', 'Std devs']
+    demo_ls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50, 100]
+
+    # Read in the files and store all data in data_ls
+    data_ls = []
+    for exp_dir in exp_dir_ls:
+        with open(exp_dir) as csvfile:
+            data_dict = {key: [] for key in dict_keys}
+            data = csv.reader(csvfile, delimiter=',')
+            for row in data:
+                if row[0] == 'Goal Type':
+                    continue
+                if row[0] == 'single stack order by color':
+                    data_dict['Goal Type'].append('Sort Ascending by Color')
+                elif row[0] == 'single stack order by color both ways':
+                    data_dict['Goal Type'].append('Sort Ascending or Descending by Color')
+                data_dict['Object #s'].append(int(row[1]))
+                if row[2] == 'decision_tree':
+                    data_dict['Factor Learner'].append('Decision Tree')
+                elif row[2] == 'svm':
+                    data_dict['Factor Learner'].append('SVM')
+                data_dict['Factors'].append(int(row[3]))
+                data_dict['Consistency'].append(row[4])
+                data_dict['Noise %'].append(row[5])
+                avg = [[], []]
+                devs = [[], []]
+                for i in range(12):
+                    if row[i + 6] != '':
+                        avg[0].append(demo_ls[i])
+                        avg[1].append(float(row[i + 6]))
+                    if row[i + 18] != '':
+                        devs[0].append(demo_ls[i])
+                        devs[1].append(float(row[i + 18]))
+                data_dict['Avgs'].append(avg)
+                data_dict['Std devs'].append(devs)
+            data_dict['Count'] = len(data_dict['Goal Type'])
+            data_ls.append(data_dict)
+
+    # 6 Graphs in Total
+
+    # First 4: Baseline vs Ours
+    #   size 3 objs, svm & dt, stack by color oneway (4 lines)
+    #   size 4 objs, svm & dt, stack by color oneway (4 lines)
+    #   size 3 objs, svm & dt, stack by color bothway (4 lines)
+    #   size 4 objs, svm & dt, stack by color bothway (4 lines)
+    # Use paper_experiments_trial_15_aggregated.csv
+    data = data_ls[0]
+    for goal in ['Sort Ascending by Color', 'Sort Ascending or Descending by Color']:
+        for num_objs in [3, 4]:
+            for i in range(data['Count']):
+                if data['Goal Type'][i] == goal and data['Object #s'][i] == num_objs:
+                    if data['Factors'][i] == num_objs:
+                        label = "Baseline " + data['Factor Learner'][i]
+                        linestyle = 'dashed'
+                    else:
+                        label = "SRP-MD " + data['Factor Learner'][i]
+                        linestyle = 'solid'
+                    if data['Factor Learner'][i] == 'Decision Tree':
+                        color = 'dodgerblue'
+                    elif data['Factor Learner'][i] == 'SVM':
+                        color = 'darkorange'
+                    else:
+                        print 'Error! Unspecified factor learner'
+                        return
+                    marker = 'o'
+                    plt.plot(data['Avgs'][i][0], data['Avgs'][i][1], marker=marker, markersize=10,
+                             color=color, linewidth=3, linestyle=linestyle, label=label)
+                else:
+                    continue
+            title = "SRP-MD vs Baseline for " + goal + " with " + str(num_objs) + " Objects"
+            fontsize = 20
+            plt.title(title, fontsize=fontsize)
+            plt.xlabel("Number of Demos", fontsize=fontsize)
+            plt.xticks(fontsize=fontsize)
+            plt.ylabel("Percentage of Correct Goals", fontsize=fontsize)
+            plt.yticks(fontsize=fontsize)
+            # Sort the legend
+            ax = plt.gca()
+            handles, labels = ax.get_legend_handles_labels()
+            labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
+            plt.legend(handles, labels, handlelength=5, fontsize=fontsize)
+
+            plt.show()
+            plt.clf()
+
+    # Next: Noise graph, only want 25 ~ 50% bin
+    #   size 3, 4, 5 objs, svm & dt, stack by color oneway (6 lines)
+    data = data_ls[3]
+    for i in range(data['Count']):
+        if data['Noise %'][i] == "Noise 25-50%":
+            label = data['Factor Learner'][i] + " with " + str(data['Object #s'][i]) + " Objects"
+            if data['Factor Learner'][i] == 'Decision Tree':
+                linestyle = 'solid'
+            elif data['Factor Learner'][i] == 'SVM':
+                linestyle = 'dashed'
+            else:
+                print 'Error! Unspecified factor learner'
+                return
+            if data['Object #s'][i] == 3:
+                color = 'orangered'
+            elif data['Object #s'][i] == 4:
+                color = 'turquoise'
+            elif data['Object #s'][i] == 5:
+                color = 'mediumorchid'
+            marker = 'o'
+            plt.plot(data['Avgs'][i][0], data['Avgs'][i][1], marker=marker, markersize=10,
+                     color=color, linewidth=3, linestyle=linestyle, label=label)
+        else:
+            continue
+    title = "25 ~ 50% Noise with 3 ~ 5 Objects"
+    fontsize = 20
+    plt.title(title, fontsize=fontsize)
+    plt.xlabel("Number of Demos", fontsize=fontsize)
+    plt.xticks(fontsize=fontsize)
+    plt.ylabel("Percentage of Correct Goals", fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    # Sort the legend
+    ax = plt.gca()
+    handles, labels = ax.get_legend_handles_labels()
+    labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
+    plt.legend(handles, labels, handlelength=5, fontsize=fontsize)
+    plt.show()
+    plt.clf()
+
+    # Final: Generalizing to new objs graph
+    #   size 3, 4 objs to 6 objs, svm & dt, stack by color oneway (4 lines)
+    data = data_ls[4]
+    for i in range(data['Count']):
+        label = data['Factor Learner'][i] + " with " + str(data['Object #s'][i]) + " Objects"
+        if data['Factor Learner'][i] == 'Decision Tree':
+            linestyle = 'solid'
+        elif data['Factor Learner'][i] == 'SVM':
+            linestyle = 'dashed'
+        else:
+            print 'Error! Unspecified factor learner'
+            return
+        if data['Object #s'][i] == 3:
+            color = 'orangered'
+        elif data['Object #s'][i] == 4:
+            color = 'mediumorchid'
+        marker = 'o'
+        plt.plot(data['Avgs'][i][0], data['Avgs'][i][1], marker=marker, markersize=10,
+                 color=color, linewidth=3, linestyle=linestyle, label=label)
+    title = "Generalizing to 6 Objects when Learning on 3 ~ 4 Objects"
+    fontsize = 20
+    plt.title(title, fontsize=fontsize)
+    plt.xlabel("Number of Demos", fontsize=fontsize)
+    plt.xticks(fontsize=fontsize)
+    plt.ylabel("Percentage of Correct Goals", fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    # Sort the legend
+    ax = plt.gca()
+    handles, labels = ax.get_legend_handles_labels()
+    labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
+    plt.legend(handles, labels, handlelength=5, fontsize=fontsize)
+    plt.show()
+    plt.clf()
+
+    # Colors from: https://matplotlib.org/3.1.1/gallery/color/named_colors.html#sphx-glr-gallery-color-named-colors-py
+
+
+if __name__ == '__main__':
+    main()
