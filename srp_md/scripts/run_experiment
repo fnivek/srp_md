@@ -128,23 +128,24 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
 
     # Initialize variables
     num_correct = 0
-    num_noise = 0
+    total_noise = int(num_demos * percent_noise)
+    num_noise = total_noise
 
     # Sense: generate needed demos
     while srp.get_num_demos() < num_demos:
         # Set demo type to be only goal, unless we get in the noise range
         demo_type = 'only_goal'
-        if random.random() < percent_noise:
+        if num_noise > 0:
             demo_type = 'only_not_goal'
         srp.update_sensor_config(demo_type=demo_type)
         # Try producing demo and see if any failure occurs
         try:
             srp.process_data()
             if demo_type == 'only_not_goal':
-                num_noise += 1
+                num_noise -= 1
         except ValueError as e:
             logger.warn('Failed to get a demo: {}'.format(e))
-    logger.info('Completed {} demos with {} bad examples'.format(srp.get_num_demos(), num_noise))
+    logger.info('Completed {} demos with {} bad examples'.format(srp.get_num_demos(), total_noise))
 
     # Learn: learn from demos
     srp.learn()
@@ -169,7 +170,7 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
     logger.info('Number of examples {}\n\t'
                 'Number of bad examples {}\n\t'
                 'Generated and evaluated {} goals with {}%% correct'.format(
-                    num_demos, num_noise, num_gen_goals, 100.0 * num_correct / num_gen_goals))
+                    num_demos, total_noise, num_gen_goals, 100.0 * num_correct / num_gen_goals))
 
     with file_lock:
         with open(file_name, mode='ab') as csv_file:
@@ -177,7 +178,7 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
             file_writer = csv.writer(csv_file)
             file_writer.writerow(
                 [datetime.now(),
-                 goal_type, num_objs, num_demos, num_goals, num_noise, num_correct,
+                 goal_type, num_objs, num_demos, num_goals, total_noise, num_correct,
                  factor_learner, factors_to_learn[0],
                  min_num_objs, max_num_objs,
                  use_consistency, use_commonsense])
