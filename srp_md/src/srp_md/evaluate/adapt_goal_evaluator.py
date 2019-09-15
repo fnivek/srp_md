@@ -28,7 +28,7 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
             evaluation = None
 
         elif sensor_name in self._sense_category[2]:
-            if sensor_name is 'block_world_sensor':
+            if sensor_name == 'block_world_sensor':
                 self._logger.debug('Cheked consistency {}'.format(evaluation))
                 evaluation = goal_instance.check_consistency("block") and \
                     current_sensor.check_goal(goal_instance)
