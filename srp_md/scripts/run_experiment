@@ -186,34 +186,28 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
 
 def paper_experiment_generator(file_name):
     # Set what is constant
-    kwargs = {'num_goals': 100, 'sensor_name': 'block_world_sensor', 'learner_name': 'factor_graph_learner',
+    kwargs = {'num_goals': 50, 'sensor_name': 'block_world_sensor', 'learner_name': 'factor_graph_learner',
               'goal_generator_name': 'factor_graph_goal_generator', 'goal_evaluator_name': 'adapt_goal_evaluator',
               'use_commonsense': False, 'file_name': file_name, 'percent_noise': 0.0, 'use_consistency': True}
-    for goal_type in sense.goal_types['block_world_sensor'][:3]:
+    for goal_type in sense.goal_types['block_world_sensor'][:1]:
         kwargs['goal_type'] = goal_type
-        for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
+        for num_objs in [5, 4, 3]:
             factors_to_learn = [[2]]
-            min_num_objs = 3
-            max_num_objs = 3
-            if isinstance(num_objs, list):
-                min_num_objs = num_objs[0]
-                max_num_objs = num_objs[1]
-            else:
-                if num_objs < 5:  # Don't learn joint factors greater than 4 because it takes to long
-                    factors_to_learn.append([num_objs])
-                min_num_objs = num_objs
-                max_num_objs = num_objs
+            min_num_objs = num_objs
+            max_num_objs = num_objs
             kwargs['num_objs'] = num_objs
             kwargs['min_num_objs'] = min_num_objs
             kwargs['max_num_objs'] = max_num_objs
             for factor_to_learn in factors_to_learn:
                 kwargs['factors_to_learn'] = factor_to_learn
-                for factor_learner in learn.FACTOR_LEARNERS.keys():
+                for factor_learner in ['svm', 'decision_tree']:
                     kwargs['factor_learner'] = factor_learner
-                    for num_demos in list(xrange(1, 11)) + [50, 100]:
-                        kwargs['num_demos'] = num_demos
-                        for i in xrange(10):
-                            yield dict(kwargs)
+                    for percent_noise in [.75, .5, .2, 0]:
+                        kwargs['percent_noise'] = percent_noise
+                        for num_demos in list(xrange(1, 11)):
+                            kwargs['num_demos'] = num_demos
+                            for i in xrange(5):
+                                yield dict(kwargs)
 
 
 class PaperThread(multiprocessing.Process):
