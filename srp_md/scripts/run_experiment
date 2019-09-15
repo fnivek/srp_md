@@ -152,7 +152,7 @@ def single_experiment(goal_type, num_objs, num_demos, num_goals,
     logger.info('Learned')
 
     # Goal generate: generate goals from random observations
-    srp.update_sensor_config(demo_type="random")
+    srp.update_sensor_config(demo_type="only_goal")
     num_gen_goals = 0
     while num_gen_goals < num_goals:
         try:
