@@ -14,8 +14,7 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
         self._logger = logging.getLogger(__name__)
         self._sense_category = [['fake_sensor'], ['example_sensor', 'can_tower_sensor'],
                                 ['posecnn_sensor', 'block_world_sensor', 'pen_world_sensor',
-                                 'book_world_sensor', 'abstract_world_sensor', 'block_tower_sensor',
-                                 'block_tower2_sensor']]
+                                 'book_world_sensor', 'abstract_world_sensor']]
 
     def evaluate_goal(self, current_sensor, sensor_name, goal_instance):
         evaluation = True
@@ -29,11 +28,10 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
             evaluation = None
 
         elif sensor_name in self._sense_category[2]:
-            if sensor_name in ['block_world_sensor', 'block_tower_sensor']:
-                evaluation = goal_instance.check_consistency("block")
-                if sensor_name == 'block_tower_sensor':
-                    evaluation = goal_instance.check_consistency("block") and \
-                        current_sensor.check_property(goal_instance, current_sensor.goal_prop)
+            if sensor_name is 'block_world_sensor':
+                self._logger.debug('Cheked consistency {}'.format(evaluation))
+                evaluation = goal_instance.check_consistency("block") and \
+                    current_sensor.check_goal(goal_instance)
 
             elif sensor_name in ['pen_world_sensor', 'book_world_sensor']:
                 evaluation = goal_instance.check_consistency("pen") and \
@@ -41,10 +39,6 @@ class AdaptGoalEvaluator(goal_evaluator.BaseGoalEvaluator):
 
             elif sensor_name == 'abstract_world_sensor':
                 evaluation = goal_instance.check_consistency("abstract") and \
-                    current_sensor.check_property(goal_instance, current_sensor.goal_prop)
-
-            elif sensor_name == 'block_tower2_sensor':
-                evaluation = goal_instance.check_consistency("block2") and \
                     current_sensor.check_property(goal_instance, current_sensor.goal_prop)
 
             else:

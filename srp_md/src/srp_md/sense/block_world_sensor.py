@@ -134,89 +134,89 @@ class BlockWorldSensor(sense.BaseSensor):
         else:
             return False
 
-    def check_goal(self, scene_graph, goal_type):
+    def check_goal(self, scene_graph):
         checking = True
         # If the goal type is None, then this is automatically true
-        if goal_type is None:
+        if self._goal_type is None:
             return checking
 
-        elif goal_type == "single stack order by color":
+        elif self._goal_type == "single stack order by color":
             checking = self.single_stack_checker(scene_graph, "color", "oneway")
 
-        elif goal_type == "single stack order by material":
+        elif self._goal_type == "single stack order by material":
             checking = self.single_stack_checker(scene_graph, "material", "oneway")
 
-        elif goal_type == "single stack order by color both ways":
+        elif self._goal_type == "single stack order by color both ways":
             checking = self.single_stack_checker(scene_graph, "color", "bothway")
 
-        elif goal_type == "stacks by material order by color":
+        elif self._goal_type == "stacks by material order by color":
             checking = self.multiple_stack_checker(scene_graph, "oneway", sort="material",
                                                    order="color")
 
-        elif goal_type == "stacks by random order by random":
+        elif self._goal_type == "stacks by random order by random":
             checking = self.multiple_stack_checker(scene_graph, "bothway", sort="random",
                                                    order="random")
 
-        elif goal_type == "most stacks of 3":
+        elif self._goal_type == "most stacks of 3":
             pass
 
-        elif goal_type == "highest bipartite tower":
+        elif self._goal_type == "highest bipartite tower":
             pass
 
-        elif goal_type == "single stack order by material":
+        elif self._goal_type == "single stack order by material":
             pass
 
-        elif goal_type == "multiple stack":
+        elif self._goal_type == "multiple stack":
             pass
 
-        elif goal_type == "alone most unique, stack rest":
+        elif self._goal_type == "alone most unique, stack rest":
             pass
 
-        elif goal_type == "alone most common, stack rest":
+        elif self._goal_type == "alone most common, stack rest":
             pass
 
         return checking
 
-    def gen_goal_demo(self, scene_graph, goal_type):
+    def gen_goal_demo(self, scene_graph):
         # Run appropriate goal generation function depending on the goal type
-        if goal_type == "single stack order by color":
+        if self._goal_type == "single stack order by color":
             scene_graph = self.single_stack(scene_graph, "color", "oneway")
 
-        elif goal_type == "single stack order by material":
+        elif self._goal_type == "single stack order by material":
             scene_graph = self.single_stack(scene_graph, "material", "oneway")
 
-        elif goal_type == "single stack order by color both ways":
+        elif self._goal_type == "single stack order by color both ways":
             scene_graph = self.single_stack(scene_graph, "color", "bothway")
 
-        elif goal_type == "stacks by material order by color":
+        elif self._goal_type == "stacks by material order by color":
             scene_graph = self.multiple_stack(scene_graph, "oneway", sort="material",
                                               order="color")
 
-        elif goal_type == "stacks by random order by random":
+        elif self._goal_type == "stacks by random order by random":
             scene_graph = self.multiple_stack(scene_graph, "bothway", sort="random",
                                               order="random")
 
-        elif goal_type == "most stacks of 3":
+        elif self._goal_type == "most stacks of 3":
             pass
 
-        elif goal_type == "highest bipartite tower":
+        elif self._goal_type == "highest bipartite tower":
             pass
 
-        elif goal_type == "single stack order by material":
+        elif self._goal_type == "single stack order by material":
             pass
 
-        elif goal_type == "multiple stack":
+        elif self._goal_type == "multiple stack":
             pass
 
-        elif goal_type == "alone most unique, stack rest":
+        elif self._goal_type == "alone most unique, stack rest":
             pass
 
-        elif goal_type == "alone most common, stack rest":
+        elif self._goal_type == "alone most common, stack rest":
             pass
 
         return scene_graph
 
-    def gen_not_goal_demo(self, scene_graph, goal_type):
+    def gen_not_goal_demo(self, scene_graph):
         # Initialize variables
         count = 0
         consistent = False
@@ -236,7 +236,7 @@ class BlockWorldSensor(sense.BaseSensor):
                 pass
             # If consistent, check if this graph is goal
             else:
-                goal_cond = self.check_goal(scene_graph, goal_type)
+                goal_cond = self.check_goal(scene_graph)
             # If iteration is over 100, then raise ValueError
             if count > 100:
                 raise ValueError()
@@ -257,15 +257,15 @@ class BlockWorldSensor(sense.BaseSensor):
 
         # Depending on the demo type wanted, input relations accordingly
         if self._demo_type == "only_goal":
-            demo_graph = self.gen_goal_demo(scene_graph, self._goal_type)
+            demo_graph = self.gen_goal_demo(scene_graph)
         elif self._demo_type == "only_not_goal":
-            demo_graph = self.gen_not_goal_demo(scene_graph, self._goal_type)
+            demo_graph = self.gen_not_goal_demo(scene_graph)
         elif self._demo_type == "random":
-            demo_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph, self._goal_type)
+            demo_graph = random.choice([self.gen_goal_demo, self.gen_not_goal_demo])(scene_graph)
 
         # If error doesn't occur, check the scene graph's goal condition and print check up statements
         scene_graph = demo_graph
-        goal_cond = self.check_goal(scene_graph, self._goal_type)
+        goal_cond = self.check_goal(scene_graph)
 
         self._logger.debug('Objects: \n{}'.format(scene_graph.print_objs()))
         self._logger.debug('Relations: \n{}'.format(scene_graph.print_rels()))
