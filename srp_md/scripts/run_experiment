@@ -189,9 +189,9 @@ def paper_experiment_generator(file_name):
     kwargs = {'num_goals': 100, 'sensor_name': 'block_world_sensor', 'learner_name': 'factor_graph_learner',
               'goal_generator_name': 'factor_graph_goal_generator', 'goal_evaluator_name': 'adapt_goal_evaluator',
               'use_commonsense': False, 'file_name': file_name, 'percent_noise': 0.0, 'use_consistency': True}
-    for goal_type in sense.goal_types['block_world_sensor'][:3]:
+    for goal_type in sense.goal_types['block_world_sensor'][:1]:
         kwargs['goal_type'] = goal_type
-        for num_objs in [3, 4, 5, [3, 4], [3, 5]]:
+        for num_objs in [3, 4, 5]:
             factors_to_learn = [[2]]
             min_num_objs = 3
             max_num_objs = 3
@@ -208,9 +208,11 @@ def paper_experiment_generator(file_name):
             kwargs['max_num_objs'] = max_num_objs
             for factor_to_learn in factors_to_learn:
                 kwargs['factors_to_learn'] = factor_to_learn
-                for factor_learner in learn.FACTOR_LEARNERS.keys():
+                for factor_learner in ['svm', 'decision_tree']:  # learn.FACTOR_LEARNERS.keys():
                     kwargs['factor_learner'] = factor_learner
-                    for num_demos in list(xrange(1, 11)) + [50, 100]:
+                    # for percent_noise in [.75, .5, .2, 0]:
+                    #     kwargs['percent_noise'] = percent_noise
+                    for num_demos in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
                         kwargs['num_demos'] = num_demos
                         for i in xrange(10):
                             yield dict(kwargs)
