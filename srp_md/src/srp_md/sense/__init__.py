@@ -9,3 +9,4 @@ from .block_world_sensor import BlockWorldSensor
 from .pen_world_sensor import PenWorldSensor
 from .book_world_sensor import BookWorldSensor
 from .abstract_world_sensor import AbstractWorldSensor
+from .dope_sense import DopeSensor
