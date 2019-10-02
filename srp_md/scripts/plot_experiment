@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 def main():
     # Specify directory where csv files are in
-    default_dir = "/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/"
+    default_dir = "./"
     exp_dir_ls = [default_dir + "paper_experiments_trial_" + str(num) + "_aggregated.csv"
                   for num in range(15, 20)]
     dict_keys = ['Goal Type', 'Object #s', 'Factor Learner', 'Factors', 'Consistency', 'Noise %',
