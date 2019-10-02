@@ -43,12 +43,11 @@ class SrpMd(object):
         self._undoed = []
         self._factors = None
         self.demo_types = ["only_goal", "only_not_goal", "random"]
-        self.demo_type = None
         self._current_graph = None
         self._sense_category = {'fake': ['fake_sensor'],
                                 'version': ['example_sensor', 'can_tower_sensor'],
                                 'factor': ['posecnn_sensor', 'block_world_sensor', 'pen_world_sensor',
-                                           'book_world_sensor', 'abstract_world_sensor', 'block_tower_sensor']}
+                                           'book_world_sensor', 'abstract_world_sensor']}
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -74,10 +73,12 @@ class SrpMd(object):
         else:
             self._learner = learn.learners[learner]()
 
-    def set_learner_attributes(self, **kwargs):
-        self._learner.set_attributes(**kwargs)
+    def update_learner_config(self, **kwargs):
+        self._learner.update_config(**kwargs)
 
     def learn(self):
+        if self._sensor is None:
+            self._logger.error('Please select sensor!')
         if self._learner is None:
             self._logger.error('Please select learner!')
         else:
@@ -85,7 +86,7 @@ class SrpMd(object):
             if len(self._obs) == 0:
                 self._logger.warning('No demo to be learned from!')
             elif self.get_learner() == 'factor_graph_learner':
-                self._factors = self._learner.learn(self._obs)
+                self._factors = self._learner.learn(self._obs, self._sensor.properties)
                 self._logger.debug('Factors learned: %s', self._factors.keys())
             else:
                 self._goal = self._learner.learn(self._obs)
@@ -106,6 +107,9 @@ class SrpMd(object):
         else:
             self._sensor = sense.sensors[sensor]()
 
+    def update_sensor_config(self, **kwargs):
+        self._sensor.update_config(**kwargs)
+
     def accept_data(self, data):
         """ Accept Raw Data.
 
@@ -120,11 +124,9 @@ class SrpMd(object):
     def process_data(self):
         if self._sensor is None:
             self._logger.error('Please select sensor!')
-        elif self.demo_type is None:
-            self._logger.error('Please select demo type!')
         else:
             self._logger.debug('Processing: ' + str(self._raw_data))
-            new_obs = self._sensor.process_data(self.demo_type, self._raw_data)
+            new_obs = self._sensor.process_data(self._raw_data)
             self._obs.append(new_obs)
             self._current_graph = new_obs
 
@@ -149,10 +151,13 @@ class SrpMd(object):
         else:
             if self.get_learner() == 'factor_graph_learner':
                 self._goal_instance = self._goal_generator.generate_goal(
-                    self._factors, self._sensor.process_data(self.demo_type, self._raw_data))
+                    self._factors, self._sensor.process_data(self._raw_data))
                 self._current_graph = self._goal_instance
             else:
                 self._goal_instance = self._goal_generator.generate_goal()
+
+    def update_goal_generator_config(self, **kwargs):
+        self._goal_generator.update_config(**kwargs)
 
     """ Goal Evaluator.
 
@@ -251,7 +256,7 @@ class SrpMd(object):
             pos = nx.spring_layout(G)
 
             # Draw the graph
-            nx.draw_networkx_nodes(G, pos, node_color=scene_graph.get_prop_values(self._sensor.goal_prop),
+            nx.draw_networkx_nodes(G, pos, node_color=scene_graph.get_prop_values("color"),
                                    node_size=500)
             nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
             nx.draw_networkx_labels(G, pos, node_labels, font_size=16)

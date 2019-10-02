@@ -13,6 +13,11 @@ uint64[] num_states
 
 # All learned factors
 srp_md/Factor[] factors
+
+# Forms of prior knowledge to use, each of the enumerated priors below must be in the prior knowledge list to be used
+uint8 CONSISTENCY_PRIOR=0
+uint8 COMMON_SENSE_PRIOR=1
+uint8[] prior_knowledge
 ---
 # Response
 string[] object1

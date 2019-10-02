@@ -55,7 +55,7 @@ class PyQtView(view.BaseView):
 
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
         self._gui.learnerComboBox.addItems(list(learn.learners.keys()))
-        self._gui.getDemoComboBox.addItems(list(self._model.demo_types))
+        # self._gui.getDemoComboBox.addItems(list(sense.goal_types[self._model._sensor]))
         self._gui.goalGeneratorComboBox.addItems(list(srp_md.goal.goal_generators.keys()))
 
         # Connect the buttons to actions
@@ -67,14 +67,21 @@ class PyQtView(view.BaseView):
         self._gui.redo_demo.triggered.connect(self._ctrl.redo_demo)
         self._gui.learn.pressed.connect(self._ctrl.learn)
         self._gui.show_graph.pressed.connect(self._ctrl.show_graph)
+        self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
+        self._gui.evaluate_goal.pressed.connect(self._ctrl.evaluate_goal)
+
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
+        self._gui.sensorComboBox.currentIndexChanged.connect(self.update_goal_type_list)
+
         self._gui.learnerComboBox.currentIndexChanged.connect(self.update_learner)
         self._gui.learnerComboBox.setContextMenuPolicy(Qt.CustomContextMenu)
         self._gui.learnerComboBox.customContextMenuRequested.connect(self.configure_learner)
-        self._gui.getDemoComboBox.currentIndexChanged.connect(self.update_demo_type)
+
+        self._gui.getDemoComboBox.currentIndexChanged.connect(self.update_goal_type)
+        self._gui.getDemoComboBox.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._gui.getDemoComboBox.customContextMenuRequested.connect(self.configure_demo_type)
+
         self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
-        self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
-        self._gui.evaluate_goal.pressed.connect(self._ctrl.evaluate_goal)
 
         # Display the GUI
         self._gui.show()
@@ -109,17 +116,27 @@ class PyQtView(view.BaseView):
         else:
             self._ctrl.set_sensor(self._gui.sensorComboBox.currentText())
 
+    def update_goal_type_list(self):
+        self._gui.getDemoComboBox.setCurrentIndex(0)
+        for item in range(self._gui.getDemoComboBox.count() - 1):
+            self._gui.getDemoComboBox.removeItem(1)
+        if self._model._sensor_name in sense.goal_types.keys():
+            self._gui.getDemoComboBox.addItems(list(sense.goal_types[self._model._sensor_name]))
+        else:
+            pass
+
     def update_learner(self):
         if self._gui.learnerComboBox.currentText()[0] == " ":
             self._ctrl.set_learner(None)
         else:
             self._ctrl.set_learner(self._gui.learnerComboBox.currentText())
 
-    def update_demo_type(self):
+    def update_goal_type(self):
         if self._gui.getDemoComboBox.currentText()[0] == " ":
-            self._model.demo_type = None
+            self._ctrl.update_sensor_config(goal_type='random')
         else:
-            self._model.demo_type = self._gui.getDemoComboBox.currentText()
+            self._logger.debug('Setting goal type to {}'.format(self._gui.getDemoComboBox.currentText()))
+            self._ctrl.update_sensor_config(goal_type=self._gui.getDemoComboBox.currentText())
 
     def update_goal_generator(self):
         if self._gui.goalGeneratorComboBox.currentText()[0] == " ":
@@ -149,12 +166,26 @@ class PyQtView(view.BaseView):
             return
 
         main_menu = QMenu('Configure {}'.format(self._gui.learnerComboBox.currentText()))
-        config_menu = QMenu('Factor learner')
-        actions = {config_menu.addAction(name): cls for name, cls in learn.FACTOR_LEARNERS.iteritems()}
+        config_menu = QMenu('Factor Learner')
+        actions = {config_menu.addAction(name): name for name, cls in learn.FACTOR_LEARNERS.iteritems()}
         main_menu.addMenu(config_menu)
         action = main_menu.exec_(self._gui.learnerComboBox.mapToGlobal(pos))
         if action in actions:
-            self._ctrl.set_learner_attributes(factor_learner=actions[action])
+            self._logger.debug('Setting factor learner to {}'.format(actions[action]))
+            self._ctrl.update_learner_config(factor_learner=actions[action])
+
+    def configure_demo_type(self, pos):
+        # Currently only factor_graph_learner is configurable
+        main_menu = QMenu('Configure {}'.format(self._gui.getDemoComboBox.currentText()))
+        config_menu = QMenu('Demo Type')
+        actions = {config_menu.addAction(name): name for name in self._model.demo_types}
+        main_menu.addMenu(config_menu)
+        action = main_menu.exec_(self._gui.getDemoComboBox.mapToGlobal(pos))
+        if self._model._sensor is None:
+            self._logger.error('Please select sensor!')
+        elif action in actions:
+            self._logger.debug('Setting demo type to {}'.format(actions[action]))
+            self._ctrl.update_sensor_config(demo_type=actions[action])
 
     def run_once(self):
         self.update_from_model()

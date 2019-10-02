@@ -84,3 +84,21 @@ def powerset(it):
     # Copy to list
     it2 = list(it)
     return chain.from_iterable(combinations(it2, r) for r in range(len(it2) + 1))
+
+
+class ConfigMixin(object):
+    def __init__(self):
+        super(ConfigMixin, self).__init__()
+        self._allowed_config_keys = []
+
+    def update_config(self, **kwargs):
+        """ Set the sensors mode.
+
+        Inputs:
+          **kwargs - other keyword arguments for derived classes
+
+        """
+        for key, value in kwargs.iteritems():
+            if key not in self._allowed_config_keys:
+                raise KeyError('{} is not an allowed to be changed'.format(key))
+            setattr(self, key, value)

@@ -19,14 +19,17 @@ class Controller(object):
     def set_learner(self, learner):
         self._model.set_learner(learner)
 
-    def set_learner_attributes(self, **kwargs):
-        self._model.set_learner_attributes(**kwargs)
+    def update_learner_config(self, **kwargs):
+        self._model.update_learner_config(**kwargs)
 
     def learn(self):
         self._model.learn()
 
     def set_sensor(self, sensor):
         self._model.set_sensor(sensor)
+
+    def update_sensor_config(self, **kwargs):
+        self._model.update_sensor_config(**kwargs)
 
     def generate_demo(self):
         self._model.accept_data([])
