@@ -5,6 +5,7 @@
 # Python imports
 import csv
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def main():
@@ -80,6 +81,7 @@ def main():
                     marker = 'o'
                     plt.plot(data['Avgs'][i][0], data['Avgs'][i][1], marker=marker, markersize=10,
                              color=color, linewidth=3, linestyle=linestyle, label=label)
+                    plt.xticks(np.arange(1, 11, 1.0))
                 else:
                     continue
             title = "SRP-MD vs Baseline for " + goal + " with " + str(num_objs) + " Objects"
@@ -120,6 +122,7 @@ def main():
             marker = 'o'
             plt.plot(data['Avgs'][i][0], data['Avgs'][i][1], marker=marker, markersize=10,
                      color=color, linewidth=3, linestyle=linestyle, label=label)
+            plt.xticks(np.arange(1, 11, 1.0))
         else:
             continue
     title = "25 ~ 50% Noise with 3 ~ 5 Objects"
@@ -156,6 +159,7 @@ def main():
         marker = 'o'
         plt.plot(data['Avgs'][i][0], data['Avgs'][i][1], marker=marker, markersize=10,
                  color=color, linewidth=3, linestyle=linestyle, label=label)
+        plt.xticks(np.arange(1, 11, 1.0))
     title = "Generalizing to 6 Objects when Learning on 3 ~ 4 Objects"
     fontsize = 20
     plt.title(title, fontsize=fontsize)
