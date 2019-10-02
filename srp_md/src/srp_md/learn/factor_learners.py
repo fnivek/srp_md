@@ -8,7 +8,7 @@ from math import log, exp
 import graphviz
 
 # Scikit
-from sklearn import linear_model, tree, preprocessing, svm, feature_selection
+from sklearn import linear_model, tree, preprocessing, svm
 from sklearn.pipeline import Pipeline
 
 # Numpy
@@ -147,9 +147,7 @@ class SklearnFactorLearner(object):
         self._must_fit = True
         self._clf = clf
         self._enc = preprocessing.OneHotEncoder()
-        self._feat_select = feature_selection.VarianceThreshold(threshold=(.8 * (1 - .8)))
-        self._pipe = Pipeline([('enc', self._enc), ('feat_select', self._feat_select),
-                               ('tree', self._clf)])
+        self._pipe = Pipeline([('enc', self._enc), ('tree', self._clf)])
         self._last_vals = None
         self._last_probs = None
 
