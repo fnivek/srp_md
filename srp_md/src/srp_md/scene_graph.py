@@ -8,8 +8,8 @@ from collections import OrderedDict
 
 # Project
 import srp_md
-from srp_md.msg import Factor as RosFactor
-from srp_md.msg import ObjectPair
+from srp_md_msgs.msg import Factor as RosFactor
+from srp_md_msgs.msg import ObjectPair
 
 # Can not pickle an object (or deepcopy) with a logger
 logger = logging.getLogger(__name__)

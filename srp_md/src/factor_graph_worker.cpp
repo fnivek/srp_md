@@ -10,7 +10,7 @@ void FactorGraphWorker::Setup()
     goal_server_ = nh.advertiseService("get_goal", &FactorGraphWorker::GetGoal, this);
 }
 
-bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResponse& resp)
+bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::GetGoalResponse& resp)
 {
     // Build scene graph from objects
     dai::sceneGraph scene_graph;
@@ -22,13 +22,13 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
         dai::ObjectClass cls;
         switch (req.classes[i])
         {
-            case srp_md::GetGoalRequest::CLASS_CONTAINER:
+            case srp_md_msgs::GetGoalRequest::CLASS_CONTAINER:
                 cls = dai::ObjectClass::kContainer;
                 break;
-            case srp_md::GetGoalRequest::CLASS_SUPPORTER:
+            case srp_md_msgs::GetGoalRequest::CLASS_SUPPORTER:
                 cls = dai::ObjectClass::kSupporter;
                 break;
-            case srp_md::GetGoalRequest::CLASS_PROP:
+            case srp_md_msgs::GetGoalRequest::CLASS_PROP:
             default:
                 cls = dai::ObjectClass::kProp;
                 break;
@@ -73,10 +73,10 @@ bool FactorGraphWorker::GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResp
     {
         switch (prior)
         {
-            case srp_md::GetGoalRequest::CONSISTENCY_PRIOR:
+            case srp_md_msgs::GetGoalRequest::CONSISTENCY_PRIOR:
                 use_consistency = true;
                 break;
-            case srp_md::GetGoalRequest::COMMON_SENSE_PRIOR:
+            case srp_md_msgs::GetGoalRequest::COMMON_SENSE_PRIOR:
                 use_commensense = true;
                 break;
         }

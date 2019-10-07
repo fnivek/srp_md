@@ -11,7 +11,7 @@
 #include <vector>
 
 // Project includes
-#include "srp_md/GetGoal.h"
+#include "srp_md_msgs/GetGoal.h"
 
 class FactorGraphWorker
 {
@@ -20,7 +20,7 @@ class FactorGraphWorker
     void Setup();
 
   private:
-    bool GetGoal(srp_md::GetGoalRequest& req, srp_md::GetGoalResponse& resp);
+    bool GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::GetGoalResponse& resp);
 
   private:
     ros::ServiceServer goal_server_;

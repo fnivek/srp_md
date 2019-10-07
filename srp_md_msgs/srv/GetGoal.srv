@@ -12,7 +12,7 @@ uint8[] classes
 uint64[] num_states
 
 # All learned factors
-srp_md/Factor[] factors
+srp_md_msgs/Factor[] factors
 
 # Forms of prior knowledge to use, each of the enumerated priors below must be in the prior knowledge list to be used
 uint8 CONSISTENCY_PRIOR=0
