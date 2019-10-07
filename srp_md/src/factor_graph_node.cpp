@@ -4,8 +4,8 @@
 // ROS
 #include <ros/ros.h>
 
-
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     // Start ROS
     ros::init(argc, argv, "fg_worker");
     ros::NodeHandle nh;
@@ -16,7 +16,8 @@ int main(int argc, char** argv) {
 
     // Loop forever
     ros::Rate sleep_rate(10);
-    while(ros::ok()) {
+    while (ros::ok())
+    {
         ros::spinOnce();
         sleep_rate.sleep();
     }
