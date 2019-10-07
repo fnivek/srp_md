@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     worker.Setup();
 
     // Loop forever
-    ros::Rate sleep_rate(10);
+    ros::Rate sleep_rate(100);
     while (ros::ok())
     {
         ros::spinOnce();
