@@ -1,0 +1,14 @@
+# Goal
+# Topic of the point cloud to find a plane in
+string pc_topic
+# The frame of reference for the pose of the plane, if left empty the frame_id from the point cloud is used
+string frame_id
+---
+# Result
+std_msgs/Header header
+# The pose of the plane in frame_id, the center of the plane is used as the zero position, the orientation will be x along the shortest dimension and y along the longest dimension
+geometry_msgs/Pose pose
+# The size of the plane z will be zero
+geometry_msgs/Vector3 size
+---
+# Feedback

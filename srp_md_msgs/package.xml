@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>srp_md_msgs</name>
+  <version>0.0.0</version>
+  <description>Finds a table and returns its pose and shape</description>
+  <maintainer email="kdfrench@umich.edu">Kevin French</maintainer>
+  <license>TODO</license>
+  <author email="kdfrench@umich.edu">Kevin French</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <depend>actionlib_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>
