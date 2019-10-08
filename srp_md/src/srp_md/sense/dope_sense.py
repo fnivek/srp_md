@@ -6,6 +6,7 @@ import actionlib
 import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
 from dope_msgs.msg import DopeAction, DopeGoal
+from srp_md_msgs.msg import DetectPlaneAction, DetectPlaneGoal
 
 
 class DopeSensor(sense.BaseSensor):
@@ -15,13 +16,18 @@ class DopeSensor(sense.BaseSensor):
         # Initialize logger
         self._logger = logging.getLogger(__name__)
 
-        # Action client
-        self._goal = None
-        self._client = actionlib.SimpleActionClient('dope', DopeAction)
+        # Timing
+        self._timeout = 5
 
-    def get_next_image(self, timeout=5):
+        # Action client
+        self._dope_goal = None
+        self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
+        self._plane_goal = None
+        self._plane_client = actionlib.SimpleActionClient('plane_detector', DetectPlaneAction)
+
+    def get_next_image(self, timeout=None):
         # Reset goal
-        self._goal = None
+        self._dope_goal = None
 
         # Start ROS subscribers
         image_sub = message_filters.Subscriber(
@@ -37,13 +43,16 @@ class DopeSensor(sense.BaseSensor):
 
         # Wait for message with timeout
         start = rospy.get_rostime()
-        timeout = rospy.Duration(timeout)
+        if timeout is None:
+            timeout = 0
+        else:
+            timeout = rospy.Duration(timeout)
         rate = rospy.Rate(100)
-        while (self._goal is None and (not rospy.is_shutdown()) and
-                                      (timeout == 0 or rospy.get_rostime() - start < timeout)):
+        while (self._dope_goal is None and (not rospy.is_shutdown()) and
+                                           (timeout == 0 or rospy.get_rostime() - start < timeout)):
             rate.sleep()
 
-        if self._goal is None:
+        if self._dope_goal is None:
             self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
 
         # Unregister image subscription
@@ -51,24 +60,38 @@ class DopeSensor(sense.BaseSensor):
         info_sub.unregister()
 
     def image_callback(self, image, info):
-        self._goal = DopeGoal()
-        self._goal.image = image
-        self._goal.cam_info = info
+        self._dope_goal = DopeGoal()
+        self._dope_goal.image = image
+        self._dope_goal.cam_info = info
 
     def process_data(self, data):
-        # Get the current image
-        self.get_next_image()
-        if self._goal is None:
-            return None
+        # Start looking for the table
+        self._plane_client.send_goal(self._plane_goal)
 
         # Get Dope detections
-        self._client.send_goal(self._goal)
-        self._client.wait_for_result(rospy.Duration(5))
-        result = self._client.get_result()
-        if result is None:
-            self._logger.error('Failed to get result within 5s')
+        #   First get the current image
+        self.get_next_image(self._timeout)
+        if self._dope_goal is None:
             return None
-        self._logger.debug('Dope result is {}'.format(result))
+        self._dope_client.send_goal(self._dope_goal)
+
+        # Wait for action servers to return
+        self._dope_client.wait_for_result(rospy.Duration(5))
+        self._plane_client.wait_for_result(rospy.Duration(5))
+
+        # Get Dope result
+        dope_result = self._dope_client.get_result()
+        if dope_result is None:
+            self._logger.error('Failed to get result from Dope within {}s'.format(self._timeout))
+            return None
+        self._logger.debug('Dope result is {}'.format(dope_result))
+
+        # Get table result
+        plane_result = self._plane_client.get_result()
+        if plane_result is None:
+            self._logger.error('Failed to get result from plane detector within {}s'.format(self._timeout))
+            return None
+        self._logger.debug('Plane detector result is {}'.format(plane_result))
 
         # Build scene graph
 

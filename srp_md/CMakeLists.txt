@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   srp_md_msgs
+  actionlib
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -81,6 +82,20 @@ target_link_libraries(factor_graph_node
   gmp
 )
 add_dependencies(factor_graph_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+# Plane detector node
+add_executable(plane_detector_node
+  src/plane_detector.cpp
+  src/plane_detector_node.cpp
+)
+# Note order should be if depends on another then must go higher in list
+target_link_libraries(plane_detector_node
+  ${catkin_LIBRARIES}
+)
+add_dependencies(plane_detector_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )

@@ -1,4 +1,5 @@
 <launch>
   <node pkg="srp_md" name="srp_md" type="srp_md_node" output="screen"/>
   <node pkg="srp_md" name="factor_graph_node" type="factor_graph_node" output="screen"/>
+  <node pkg="srp_md" name="plane_detector_node" type="plane_detector_node" output="screen"/>
 </launch>
