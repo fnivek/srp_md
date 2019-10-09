@@ -11,7 +11,7 @@ import rospy
 
 # Project
 from . import goal_generator
-from srp_md.srv import GetGoal, GetGoalRequest
+from srp_md_msgs.srv import GetGoal, GetGoalRequest
 from srp_md_msgs.msg import Factor
 import srp_md
 
