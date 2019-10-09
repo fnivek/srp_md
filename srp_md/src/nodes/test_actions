@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+import functools
+import sys
+
+import rospy
+
+import py_trees
+import py_trees_ros
+
+from srp_md.act import Reset
+
+
+TICKPERIOD = 1000  # ms
+
+
+def build_tree():
+    root = py_trees.composites.Sequence(name='srp_md_actions_test')
+    root.add_children([
+        Reset('reset'),
+        Reset('reset2')
+    ])
+    return py_trees_ros.trees.BehaviourTree(root)
+
+
+def shutdown(tree):
+    """Stop the tree."""
+    tree.interrupt()
+
+
+def main():
+    # Init ros
+    rospy.init_node('srp_md_actions_test')
+
+    # This is a test tree so initilize set debug level
+    py_trees.logging.level = py_trees.logging.Level.DEBUG
+
+    # Build a tree
+    tree = build_tree()
+
+    # Make sure the tree gets shutdown when ros does
+    rospy.on_shutdown(functools.partial(shutdown, tree))
+
+    # Setup the tree
+    #   Give it 10 seconds to start
+    timeout = 10
+    print 'Waiting {}s for tree to start'.format(timeout)
+    if not tree.setup(timeout=timeout):
+        rospy.logerr("failed to setup the tree, aborting.")
+        sys.exit(1)
+
+    # Start ticking tree at 1 / TICKPERIOD(ms)
+    tree.tick_tock(TICKPERIOD)
+
+
+if __name__ == '__main__':
+    main()
