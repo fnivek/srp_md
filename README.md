@@ -2,30 +2,10 @@
 This is a repo for semantic robot programing with multiple goal demonstrations.
 
 ## TODO
-- [ ] Use libDAI to perform inference on a goal
-  - [ ] Send an observation and learned factors to factor_graph_node
-  - [ ] Send back scene graph representation
-- [ ] Use libDAI to perform inference on an observation
-- [ ] Learn factors from block world sensor (factor_graph_learn.py)
-  - [x] Frequentist
-  - [ ] Research other methods (Scikit learn good starting point)
-- [x] Produce logically consistent scenes in block world sensor
-- [ ] Make a PoseCNN sensor (or switch to a different object detector)
-- [ ] Convert a goal and initial scene to a plan
-- [ ] Use mobile manipulation to execute the plan
-- [ ] Visualize factor graphs (could use graphviz or matplotlib)
-- [ ] Consider [networkx](https://github.com/NetworkX/NetworkX) for use in the project
-- [ ] Think about how to do evaluation code (if any is needed at all)
-- [ ] TODO's in code:
-  - [ ] CMakeLists.txt 46: # TODO(Kevin): Use a find_package or some other way to get these libraries
-  - [ ] scene_graph.py 35: # TODO(?): Keep existing relations
-  - [ ] goal_generator.py 20: TODO(Kevin)
-- [ ] Add error handling to controller.py
-- [ ] Update term_view.py to have all the features of pyqt_view.py
-- [ ] Add a web interface
+Please see the [issues](https://progress-gitlab.eecs.umich.edu/4progress/srp-md/issues) page.
 
 ## Install
-TODO (maybe never)
+TODO explain how to build docker images or install dependencies
 
 ## Dependencies
 * libDAI
