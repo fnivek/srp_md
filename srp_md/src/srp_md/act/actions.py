@@ -6,7 +6,7 @@ Define the actions used in srp_md.
 import py_trees
 
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
-                                                                   FullyExtendTorso)
+                                                                   FullyCollapseTorso)
 
 
 def Reset(name):
@@ -21,7 +21,7 @@ def Reset(name):
         synchronize=True,
         allow_failure=False)
     root.add_children([
-        FullyExtendTorso('act_{}_lift_torso'.format(name)),
+        FullyCollapseTorso('act_{}_collapse_torso'.format(name)),
         TuckWithCondBehavior('act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
         HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight')
     ])

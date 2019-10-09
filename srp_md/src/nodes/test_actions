@@ -10,14 +10,13 @@ import py_trees_ros
 from srp_md.act import Reset
 
 
-TICKPERIOD = 1000  # ms
+TICKPERIOD = 100  # ms
 
 
 def build_tree():
     root = py_trees.composites.Sequence(name='srp_md_actions_test')
     root.add_children([
-        Reset('reset'),
-        Reset('reset2')
+        Reset('reset')
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
