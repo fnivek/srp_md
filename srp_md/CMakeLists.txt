@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
   geometry_msgs
+  pcl_ros
+  pcl_conversions
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
