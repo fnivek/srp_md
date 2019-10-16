@@ -52,11 +52,18 @@ class PyQtView(view.BaseView):
         self._gui.learnerComboBox.addItems(['  --- Choose Learner ---  '])
         self._gui.getDemoComboBox.addItems(['  --- Choose Type ---  '])
         self._gui.goalGeneratorComboBox.addItems(['  --- Choose Generator ---  '])
+        self._gui.guiLogFormatComboBox.addItems(['  --- Choose GUI Log Format Level---  '])
+
 
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
         self._gui.learnerComboBox.addItems(list(learn.learners.keys()))
         # self._gui.getDemoComboBox.addItems(list(sense.goal_types[self._model._sensor]))
         self._gui.goalGeneratorComboBox.addItems(list(srp_md.goal.goal_generators.keys()))
+
+        error_types = ['Critical', 'Error', 'Warning', 'Info', 'Debug']
+        self._gui.guiLogFormatComboBox.addItems(error_types)
+
+
 
         # Connect the buttons to actions
         self._gui.get_demo.pressed.connect(self._ctrl.generate_demo)
@@ -82,6 +89,8 @@ class PyQtView(view.BaseView):
         self._gui.getDemoComboBox.customContextMenuRequested.connect(self.configure_demo_type)
 
         self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
+
+        self._gui.guiLogFormatComboBox.currentIndexChanged.connect(self.update_gui_log_format)
 
         # Display the GUI
         self._gui.show()
@@ -124,6 +133,32 @@ class PyQtView(view.BaseView):
             self._gui.getDemoComboBox.addItems(list(sense.goal_types[self._model._sensor_name]))
         else:
             pass
+
+    def update_gui_log_format(self):
+        # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
+        level = self._gui.guiLogFormatComboBox.currentText()
+
+        if level == "Critical":
+            self._qt_handler.setLevel(logging.CRITICAL)
+            self._logger.critical('Setting GUI format type to {}'.format(level))
+
+        elif level == "Error":
+            self._qt_handler.setLevel(logging.ERROR)
+            self._logger.error('Setting GUI format type to {}'.format(level))
+
+        elif level == "Warning":
+            self._qt_handler.setLevel(logging.WARNING)
+            self._logger.warning('Setting GUI format type to {}'.format(level))
+
+        elif level == "Info":
+            self._qt_handler.setLevel(logging.INFO)
+            self._logger.info('Setting GUI format type to {}'.format(level))
+
+        else:
+            self._qt_handler.setLevel(logging.DEBUG)
+            self._logger.debug('Setting GUI format type to {}'.format(level))
+
+
 
     def update_learner(self):
         if self._gui.learnerComboBox.currentText()[0] == " ":

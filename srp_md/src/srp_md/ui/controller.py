@@ -31,6 +31,9 @@ class Controller(object):
     def update_sensor_config(self, **kwargs):
         self._model.update_sensor_config(**kwargs)
 
+    def update_gui_log_format(self, format):
+        self._model.update_gui_log_format(format)
+
     def generate_demo(self):
         self._model.accept_data([])
         self._model.process_data()
@@ -74,3 +77,6 @@ class Controller(object):
 
     def show_graph(self):
         self._model.show_graph(self._model._current_graph)
+
+    def test_button(self):
+        self._model.test_button()

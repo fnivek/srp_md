@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
+    <width>835</width>
     <height>558</height>
    </rect>
   </property>
@@ -122,7 +122,7 @@ color: rgb(150, 150, 150)
          <property name="layoutDirection">
           <enum>Qt::LeftToRight</enum>
          </property>
-         <property name="currentText">
+         <property name="currentText" stdset="0">
           <string/>
          </property>
         </widget>
@@ -153,13 +153,16 @@ color: rgb(150, 150, 150)
      </widget>
     </item>
     <item row="1" column="0" colspan="2">
-     <layout class="QVBoxLayout" name="loggerLayout" stretch="0,0">
+     <layout class="QVBoxLayout" name="loggerLayout" stretch="0,0,0">
       <item>
        <widget class="QLabel" name="loggerLabel">
         <property name="text">
          <string>Logger</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="guiLogFormatComboBox"/>
       </item>
       <item>
        <widget class="QTextEdit" name="loggerText">
@@ -177,8 +180,8 @@ color: rgb(150, 150, 150)
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>946</width>
-     <height>39</height>
+     <width>835</width>
+     <height>28</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
