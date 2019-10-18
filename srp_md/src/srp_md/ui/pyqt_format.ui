@@ -153,16 +153,55 @@ color: rgb(150, 150, 150)
      </widget>
     </item>
     <item row="1" column="0" colspan="2">
-     <layout class="QVBoxLayout" name="loggerLayout" stretch="0,0,0">
+     <layout class="QVBoxLayout" name="loggerLayout" stretch="0,0">
       <item>
-       <widget class="QLabel" name="loggerLabel">
-        <property name="text">
-         <string>Logger</string>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="spacing">
+         <number>33</number>
         </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="guiLogFormatComboBox"/>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>UI Debugger Level</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="guiLogFormatComboBox"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Terminal Debugger Level</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="terminalLogFormatComboBox"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>File Stream Debugger Level</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="fileLogFormatComboBox"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </item>
       <item>
        <widget class="QTextEdit" name="loggerText">
