@@ -76,10 +76,6 @@ class SrpMd(object):
     def update_learner_config(self, **kwargs):
         self._learner.update_config(**kwargs)
 
-    def update_gui_log_format(self, format):
-        self._logger.info('GUI log level set to: %s', format)
-
-
     def learn(self):
         if self._sensor is None:
             self._logger.error('Please select sensor!')

@@ -153,30 +153,42 @@ class PyQtView(view.BaseView):
         print(level_map[text])
         return level_map[text]
 
-    def update_gui_log_format(self):
-        # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
-        level = self._gui.guiLogFormatComboBox.currentText()
+    # get the logging handlers that aren't the QT handler
+    def get_handlers(self):
+        logger = logging.getLogger('srp_md')
+        return [handler for handler in logger.handlers if handler != self._qt_handler]
 
+    # Get the file handler
+    def get_file_handler(self):
+        handlers = self.get_handlers()
+        fileHandlers = [handler for handler in handlers if type(handler) == logging.FileHandler]
+        return fileHandlers[0]
+
+    # Get the stream handler for the terminal
+    def get_terminal_handler(self):
+        handlers = self.get_handlers()
+        streamHandlers = [handler for handler in handlers if type(handler) == logging.StreamHandler]
+        return streamHandlers[0]
+
+    def update_gui_log_format(self):
+        level = self._gui.guiLogFormatComboBox.currentText()
         self._qt_handler.setLevel(logging.INFO)
         self._logger.info('Setting GUI format type to {}'.format(level))
         self._qt_handler.setLevel(self.text_level_to_logger_level(level))
 
     def update_terminal_log_format(self):
-        # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
-        level = self._gui.guiLogFormatComboBox.currentText()
-
-        self._qt_handler.setLevel(logging.INFO)
-        self._logger.info('Setting GUI format type to {}'.format(level))
-        self._qt_handler.setLevel(self.text_level_to_logger_level(level))
+        level = self._gui.terminalLogFormatComboBox.currentText()
+        terminal_handler = self.get_terminal_handler()
+        terminal_handler.setLevel(logging.INFO)
+        self._logger.info('Setting terminal format type to {}'.format(level))
+        terminal_handler.setLevel(self.text_level_to_logger_level(level))
 
     def update_file_log_format(self):
-        # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
-        level = self._gui.guiLogFormatComboBox.currentText()
-
-        self._qt_handler.setLevel(logging.INFO)
-        self._logger.info('Setting GUI format type to {}'.format(level))
-        self._qt_handler.setLevel(self.text_level_to_logger_level(level))
-
+        level = self._gui.fileLogFormatComboBox.currentText()
+        file_handler = self.get_file_handler()
+        file_handler.setLevel(logging.INFO)
+        self._logger.info('Setting terminal format type to {}'.format(level))
+        file_handler.setLevel(self.text_level_to_logger_level(level))
 
     def update_learner(self):
         if self._gui.learnerComboBox.currentText()[0] == " ":
