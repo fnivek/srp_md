@@ -53,6 +53,9 @@ class PyQtView(view.BaseView):
         self._gui.getDemoComboBox.addItems(['  --- Choose Type ---  '])
         self._gui.goalGeneratorComboBox.addItems(['  --- Choose Generator ---  '])
         self._gui.guiLogFormatComboBox.addItems(['  --- Choose GUI Log Format Level---  '])
+        self._gui.terminalLogFormatComboBox.addItems(['  --- Choose Terminal Log Format Level---  '])
+        self._gui.fileLogFormatComboBox.addItems(['  --- Choose File Log Format Level---  '])
+
 
 
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
@@ -62,8 +65,8 @@ class PyQtView(view.BaseView):
 
         error_types = ['Critical', 'Error', 'Warning', 'Info', 'Debug']
         self._gui.guiLogFormatComboBox.addItems(error_types)
-
-
+        self._gui.terminalLogFormatComboBox.addItems(error_types)
+        self._gui.fileLogFormatComboBox.addItems(error_types)
 
         # Connect the buttons to actions
         self._gui.get_demo.pressed.connect(self._ctrl.generate_demo)
@@ -91,6 +94,8 @@ class PyQtView(view.BaseView):
         self._gui.goalGeneratorComboBox.currentIndexChanged.connect(self.update_goal_generator)
 
         self._gui.guiLogFormatComboBox.currentIndexChanged.connect(self.update_gui_log_format)
+        self._gui.terminalLogFormatComboBox.currentIndexChanged.connect(self.update_terminal_log_format)
+        self._gui.fileLogFormatComboBox.currentIndexChanged.connect(self.update_file_log_format)
 
         # Display the GUI
         self._gui.show()
@@ -134,30 +139,43 @@ class PyQtView(view.BaseView):
         else:
             pass
 
+
+    # input: text logger level ['Critical', 'Error', 'Warning', 'Info', 'Debug']
+    # output: Python logger level
+    def text_level_to_logger_level(self, text):
+        level_map = {
+            'Critical': logging.CRITICAL,
+            'Error': logging.ERROR,
+            'Warning': logging.WARNING,
+            'Info': logging.INFO,
+            'Debug': logging.DEBUG
+        }
+        print(level_map[text])
+        return level_map[text]
+
     def update_gui_log_format(self):
         # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
         level = self._gui.guiLogFormatComboBox.currentText()
 
-        if level == "Critical":
-            self._qt_handler.setLevel(logging.CRITICAL)
-            self._logger.critical('Setting GUI format type to {}'.format(level))
+        self._qt_handler.setLevel(logging.INFO)
+        self._logger.info('Setting GUI format type to {}'.format(level))
+        self._qt_handler.setLevel(self.text_level_to_logger_level(level))
 
-        elif level == "Error":
-            self._qt_handler.setLevel(logging.ERROR)
-            self._logger.error('Setting GUI format type to {}'.format(level))
+    def update_terminal_log_format(self):
+        # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
+        level = self._gui.guiLogFormatComboBox.currentText()
 
-        elif level == "Warning":
-            self._qt_handler.setLevel(logging.WARNING)
-            self._logger.warning('Setting GUI format type to {}'.format(level))
+        self._qt_handler.setLevel(logging.INFO)
+        self._logger.info('Setting GUI format type to {}'.format(level))
+        self._qt_handler.setLevel(self.text_level_to_logger_level(level))
 
-        elif level == "Info":
-            self._qt_handler.setLevel(logging.INFO)
-            self._logger.info('Setting GUI format type to {}'.format(level))
+    def update_file_log_format(self):
+        # self._ctrl.update_gui_log_format(self._gui.guiLogFormatComboBox.currentText())
+        level = self._gui.guiLogFormatComboBox.currentText()
 
-        else:
-            self._qt_handler.setLevel(logging.DEBUG)
-            self._logger.debug('Setting GUI format type to {}'.format(level))
-
+        self._qt_handler.setLevel(logging.INFO)
+        self._logger.info('Setting GUI format type to {}'.format(level))
+        self._qt_handler.setLevel(self.text_level_to_logger_level(level))
 
 
     def update_learner(self):
