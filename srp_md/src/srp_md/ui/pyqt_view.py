@@ -56,8 +56,6 @@ class PyQtView(view.BaseView):
         self._gui.terminalLogFormatComboBox.addItems(['  --- Choose Terminal Log Format Level---  '])
         self._gui.fileLogFormatComboBox.addItems(['  --- Choose File Log Format Level---  '])
 
-
-
         self._gui.sensorComboBox.addItems(list(sense.sensors.keys()))
         self._gui.learnerComboBox.addItems(list(learn.learners.keys()))
         # self._gui.getDemoComboBox.addItems(list(sense.goal_types[self._model._sensor]))
@@ -139,10 +137,13 @@ class PyQtView(view.BaseView):
         else:
             pass
 
-
-    # input: text logger level ['Critical', 'Error', 'Warning', 'Info', 'Debug']
-    # output: Python logger level
     def text_level_to_logger_level(self, text):
+        """
+
+        input: text logger level ['Critical', 'Error', 'Warning', 'Info', 'Debug']
+        output: Python logger level
+
+        """
         level_map = {
             'Critical': logging.CRITICAL,
             'Error': logging.ERROR,
@@ -150,7 +151,6 @@ class PyQtView(view.BaseView):
             'Info': logging.INFO,
             'Debug': logging.DEBUG
         }
-        print(level_map[text])
         return level_map[text]
 
     # get the logging handlers that aren't the QT handler
