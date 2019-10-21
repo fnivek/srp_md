@@ -14,16 +14,9 @@
 
 namespace renderer
 {
-enum PrimitiveType
+class Pose
 {
-    CubeType,
-    CylinderType,
-    SphereType,
-    None
-};
-
-struct Pose
-{
+  public:
     glm::vec3 pos_;
     glm::vec3 euler_;
 
@@ -74,56 +67,23 @@ struct Pose
 
 struct Object
 {
-    PrimitiveType type_;
-    std::string name_;
-    Pose pose_;
-    glm::vec3 dim_;
+    Pose pose;
+    glm::vec3 dim;
 
-    std::string folder_path_;
+    std::string name;
+    int id;
+    int pose_label;
 
-    glm::mat4 trans_mat_;
-
-    int heuristic_ind_;
-
-    float heurisitic_weight_;
-
-    int id_;
-
-    int pose_label_;
-
-    Object() : pose_label_(-1)
+    Object() : pose_label(-1)
     {
     }
 };
 
 typedef std::vector<Object> ObjectList;
 
-struct Workspace
-{
-    double x_min_, y_min_, x_max_, y_max_, z_min_, z_max_;
-};
-
-struct Heuristic
-{
-    Workspace workspace_;
-    Workspace bbox_;
-    Pose centroid_pose_;
-
-    std::vector<std::pair<std::string, double>> name_weight_pairs;
-};
-
-// For given number of object and type
-struct Cluster
-{
-    Workspace workspace_;
-    Pose centroid_pose_;
-
-    std::vector<std::string> names_;
-};
-
 enum RelationType
 {
-    ON
+    kOn
 };
 
 struct Relation
@@ -148,20 +108,20 @@ struct Relation
 
 struct SceneGraph
 {
-    std::vector<Object> objectList;
-    std::vector<Relation> relList;
+    std::vector<Object> object_list;
+    std::vector<Relation> rel_list;
 
     // void operator=(const SceneGraph& scene_graph){
-    // 	objectList.clear();
-    // 	for(size_t i = 0; i < scene_graph.objectList.size(); i++){
-    // 		Object object = scene_graph.objectList[i];
-    // 		objectList.push_back(object);
+    // 	object_list.clear();
+    // 	for(size_t i = 0; i < scene_graph.object_list.size(); i++){
+    // 		Object object = scene_graph.object_list[i];
+    // 		object_list.push_back(object);
     // 	}
 
-    // 	relList.clear();
-    // 	for(size_t i =0; i < scene_graph.relList.size(); i++){
-    // 		Relation rel = scene_graph.relList[i];
-    // 		relList.push_back(rel);
+    // 	rel_list.clear();
+    // 	for(size_t i =0; i < scene_graph.rel_list.size(); i++){
+    // 		Relation rel = scene_graph.rel_list[i];
+    // 		rel_list.push_back(rel);
     // 	}
 
     // 	objIndMap.clear();
@@ -173,8 +133,8 @@ struct SceneGraph
     // }
 
     // void display(){
-    // 	 for(size_t i = 0; i < objectList.size(); i++){
-    // 		Object object = objectList[i];
+    // 	 for(size_t i = 0; i < object_list.size(); i++){
+    // 		Object object = object_list[i];
     // 	//	std::cout << object.name << ' ' << object.type << ' ' << object.id << ' ' << object.length << ' ' <<
     // object.width << object.height << std::endl;
     // 		std::cout << nameObjHash[object.name] << " pose: " << object.pos.x << ' ' << object.pos.y << ' ' <<
@@ -186,9 +146,9 @@ struct SceneGraph
     // 	}
 
     // 	std::cout << "relations: ";
-    // 	for(size_t i = 0; i < relList.size(); i++){
-    // 		//Relation rel = relList[i];
-    // 		std::cout <<  "on" << "(" << nameObjHash[relList[i].n1] << "," << nameObjHash[relList[i].n2] << ") ";
+    // 	for(size_t i = 0; i < rel_list.size(); i++){
+    // 		//Relation rel = rel_list[i];
+    // 		std::cout <<  "on" << "(" << nameObjHash[rel_list[i].n1] << "," << nameObjHash[rel_list[i].n2] << ") ";
     // 	}
     // 	std::cout << std::endl;
 

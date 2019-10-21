@@ -54,21 +54,21 @@ class TaskPlanner
 
     void generateObjPosLabelHash(renderer::SceneGraph goal_scene_graph, renderer::SceneGraph current_scene_graph)
     {
-        for (size_t i = 0; i < goal_scene_graph.relList.size(); i++)
+        for (size_t i = 0; i < goal_scene_graph.rel_list.size(); i++)
         {
-            renderer::Relation rel = goal_scene_graph.relList[i];
-            if (rel.type == renderer::RelationType::ON && rel.name1 != "tray")
+            renderer::Relation rel = goal_scene_graph.rel_list[i];
+            if (rel.type == renderer::RelationType::kOn && rel.name1 != "tray")
             {
                 if (rel.name2 == "table" || rel.name2 == "tray")
                 {
                     // find object pose add push to hash table
-                    for (size_t j = 0; j < goal_scene_graph.objectList.size(); j++)
+                    for (size_t j = 0; j < goal_scene_graph.object_list.size(); j++)
                     {
-                        if (goal_scene_graph.objectList[j].id_ == rel.n1)
+                        if (goal_scene_graph.object_list[j].id == rel.n1)
                         {
-                            goal_ObjHash.insert(std::make_pair(rel.n1, goal_scene_graph.objectList[j]));
+                            goal_ObjHash.insert(std::make_pair(rel.n1, goal_scene_graph.object_list[j]));
 
-                            printf("#GOAL: object %s on table or tray\n", goal_scene_graph.objectList[j].name_.c_str());
+                            printf("#GOAL: object %s on table or tray\n", goal_scene_graph.object_list[j].name.c_str());
                             break;
                         }
                     }
@@ -77,22 +77,22 @@ class TaskPlanner
         }
 
         std::map<int, renderer::Object> current_ObjHash;
-        for (size_t i = 0; i < current_scene_graph.relList.size(); i++)
+        for (size_t i = 0; i < current_scene_graph.rel_list.size(); i++)
         {
-            renderer::Relation rel = current_scene_graph.relList[i];
-            if (rel.type == renderer::RelationType::ON && rel.name1 != "tray")
+            renderer::Relation rel = current_scene_graph.rel_list[i];
+            if (rel.type == renderer::RelationType::kOn && rel.name1 != "tray")
             {
                 if (rel.name2 == "table" || rel.name2 == "tray")
                 {
                     // find object pose add push to hash table
-                    for (size_t j = 0; j < current_scene_graph.objectList.size(); j++)
+                    for (size_t j = 0; j < current_scene_graph.object_list.size(); j++)
                     {
-                        if (current_scene_graph.objectList[j].id_ == rel.n1)
+                        if (current_scene_graph.object_list[j].id == rel.n1)
                         {
-                            current_ObjHash.insert(std::make_pair(rel.n1, current_scene_graph.objectList[j]));
+                            current_ObjHash.insert(std::make_pair(rel.n1, current_scene_graph.object_list[j]));
 
                             printf("$CURR: object %s on table or tray\n",
-                                   current_scene_graph.objectList[j].name_.c_str());
+                                   current_scene_graph.object_list[j].name.c_str());
                             break;
                         }
                     }
@@ -105,10 +105,10 @@ class TaskPlanner
         {
             for (std::map<int, renderer::Object>::iterator y = current_ObjHash.begin(); y != current_ObjHash.end(); ++y)
             {
-                if (x->second.name_ == y->second.name_)
+                if (x->second.name == y->second.name)
                 {
-                    renderer::Pose pose1 = x->second.pose_;  // goal
-                    renderer::Pose pose2 = y->second.pose_;  // current
+                    renderer::Pose pose1 = x->second.pose;  // goal
+                    renderer::Pose pose2 = y->second.pose;  // current
 
                     // float distance = (pose1.pos_.x-pose2.position.x)*(pose1.position.x-pose2.position.x)
                     //             + (pose1.position.y-pose2.position.y)*(pose1.position.y-pose2.position.y)
@@ -118,15 +118,15 @@ class TaskPlanner
                     // assign same label pose if the change of position is less than 0.1m
                     if (distance < 0.1)
                     {
-                        printf("%s-%s stays at the same place\n", x->second.name_.c_str(), y->second.name_.c_str());
+                        printf("%s-%s stays at the same place\n", x->second.name.c_str(), y->second.name.c_str());
 
-                        x->second.pose_label_ = poseLabel;
+                        x->second.pose_label = poseLabel;
                         goal_occupied_pose.push_back(poseLabel);
-                        goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name_, poseLabel));
+                        goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name, poseLabel));
 
-                        y->second.pose_label_ = poseLabel;
+                        y->second.pose_label = poseLabel;
                         current_occupied_pose.push_back(poseLabel);
-                        current_objNamePoseLabelHash.insert(std::make_pair(y->second.name_, poseLabel));
+                        current_objNamePoseLabelHash.insert(std::make_pair(y->second.name, poseLabel));
 
                         poseLabel++;
                     }
@@ -148,13 +148,13 @@ class TaskPlanner
             for (std::map<int, renderer::Object>::iterator y = current_ObjHash.begin(); y != current_ObjHash.end(); ++y)
             {
                 // std::map<string, int>::iterator goal_it;
-                // goal_it = goal_objNamePoseLabelHash.find(x->second.name_);
+                // goal_it = goal_objNamePoseLabelHash.find(x->second.name);
                 // std::map<string, int>::iterator current_it;
                 // current_it = current_objNamePoseLabelHash.find(nameObjHash[y->first]);
-                if ((x->second.pose_label_ == -1) && (y->second.pose_label_ == -1))
+                if ((x->second.pose_label == -1) && (y->second.pose_label == -1))
                 {
-                    renderer::Pose pose1 = x->second.pose_;  // goal
-                    renderer::Pose pose2 = y->second.pose_;  // current
+                    renderer::Pose pose1 = x->second.pose;  // goal
+                    renderer::Pose pose2 = y->second.pose;  // current
 
                     float distance = (pose1.pos_[0] - pose2.pos_[0]) * (pose1.pos_[0] - pose2.pos_[0]) +
                                      (pose1.pos_[1] - pose2.pos_[1]) * (pose1.pos_[1] - pose2.pos_[1]);
@@ -163,31 +163,31 @@ class TaskPlanner
                     // assign same label pose if 2d distance in x-y plane is less than 0.1m
                     if (distance < 0.1)
                     {
-                        printf("%s goal loc is similar to current %s loc\n", x->second.name_.c_str(),
-                               y->second.name_.c_str());
+                        printf("%s goal loc is similar to current %s loc\n", x->second.name.c_str(),
+                               y->second.name.c_str());
 
-                        if (x->second.name_ == y->second.name_)
+                        if (x->second.name == y->second.name)
                         {
                             // same object but drastically different pose
-                            x->second.pose_label_ = poseLabel;
+                            x->second.pose_label = poseLabel;
                             goal_occupied_pose.push_back(poseLabel);
-                            goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name_, poseLabel));
+                            goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name, poseLabel));
 
                             poseLabel++;
 
-                            y->second.pose_label_ = poseLabel;
+                            y->second.pose_label = poseLabel;
                             current_occupied_pose.push_back(poseLabel);
-                            current_objNamePoseLabelHash.insert(std::make_pair(y->second.name_, poseLabel));
+                            current_objNamePoseLabelHash.insert(std::make_pair(y->second.name, poseLabel));
                         }
                         else
                         {
-                            x->second.pose_label_ = poseLabel;
+                            x->second.pose_label = poseLabel;
                             goal_occupied_pose.push_back(poseLabel);
-                            goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name_, poseLabel));
+                            goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name, poseLabel));
 
-                            y->second.pose_label_ = poseLabel;
+                            y->second.pose_label = poseLabel;
                             current_occupied_pose.push_back(poseLabel);
-                            current_objNamePoseLabelHash.insert(std::make_pair(y->second.name_, poseLabel));
+                            current_objNamePoseLabelHash.insert(std::make_pair(y->second.name, poseLabel));
                         }
 
                         poseLabel++;
@@ -204,50 +204,50 @@ class TaskPlanner
 
         // go through objets that needs to be moved to a new empty place
         for (std::map<int, renderer::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
-            if (x->second.pose_label_ == -1)
+            if (x->second.pose_label == -1)
             {
-                printf("%s needs to be moved to a new empty place\n", x->second.name_.c_str());
+                printf("%s needs to be moved to a new empty place\n", x->second.name.c_str());
 
-                x->second.pose_label_ = poseLabel;
+                x->second.pose_label = poseLabel;
                 goal_occupied_pose.push_back(poseLabel);
-                goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name_, poseLabel));
+                goal_objNamePoseLabelHash.insert(std::make_pair(x->second.name, poseLabel));
 
                 poseLabel++;
             }
 
         // go through objects that are now at a place that will become empty
         for (std::map<int, renderer::Object>::iterator x = current_ObjHash.begin(); x != current_ObjHash.end(); ++x)
-            if (x->second.pose_label_ == -1)
+            if (x->second.pose_label == -1)
             {
-                printf("%s is at a place that will become empty\n", x->second.name_.c_str());
+                printf("%s is at a place that will become empty\n", x->second.name.c_str());
 
-                x->second.pose_label_ = poseLabel;
+                x->second.pose_label = poseLabel;
                 current_occupied_pose.push_back(poseLabel);
-                current_objNamePoseLabelHash.insert(std::make_pair(x->second.name_, poseLabel));
+                current_objNamePoseLabelHash.insert(std::make_pair(x->second.name, poseLabel));
 
                 poseLabel++;
             }
 
         // objects that are in the current scene graph (on table) but not in the goal scene graph are supposed to be
         // moved into bin
-        for (size_t i = 0; i < current_scene_graph.objectList.size(); i++)
+        for (size_t i = 0; i < current_scene_graph.object_list.size(); i++)
         {
             bool extra_object = true;
-            std::string extra_object_name = current_scene_graph.objectList[i].name_;
-            for (size_t j = 0; j < goal_scene_graph.objectList.size(); j++)
+            std::string extra_object_name = current_scene_graph.object_list[i].name;
+            for (size_t j = 0; j < goal_scene_graph.object_list.size(); j++)
             {
-                if (current_scene_graph.objectList[i].name_ == goal_scene_graph.objectList[j].name_)
+                if (current_scene_graph.object_list[i].name == goal_scene_graph.object_list[j].name)
                 {
                     extra_object = false;
-                    printf("%s currently present is in goal scene\n", current_scene_graph.objectList[i].name_.c_str());
+                    printf("%s currently present is in goal scene\n", current_scene_graph.object_list[i].name.c_str());
                     break;
                 }
             }
 
             if (extra_object)
             {
-                printf("%s currently present is not in goal scene\n", current_scene_graph.objectList[i].name_.c_str());
-                extra_objNamePoseLabelHash.insert(std::make_pair(current_scene_graph.objectList[i].name_, poseLabel));
+                printf("%s currently present is not in goal scene\n", current_scene_graph.object_list[i].name.c_str());
+                extra_objNamePoseLabelHash.insert(std::make_pair(current_scene_graph.object_list[i].name, poseLabel));
                 goal_occupied_pose.push_back(poseLabel);
                 poseLabel++;
             }
@@ -265,16 +265,16 @@ class TaskPlanner
         // find close locations of objects on table
         for (std::map<int, renderer::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
         {
-            assert(x->second.name_ != "tray");
+            assert(x->second.name != "tray");
 
             for (std::map<int, renderer::Object>::iterator y = std::next(x); y != goal_ObjHash.end(); ++y)
             {
-                assert(y->second.name_ != "tray");
+                assert(y->second.name != "tray");
 
-                printf("comparing %s goal pose and %s goal pose\n", x->second.name_.c_str(), y->second.name_.c_str());
+                printf("comparing %s goal pose and %s goal pose\n", x->second.name.c_str(), y->second.name.c_str());
 
-                renderer::Pose pose1 = x->second.pose_;
-                renderer::Pose pose2 = y->second.pose_;
+                renderer::Pose pose1 = x->second.pose;
+                renderer::Pose pose2 = y->second.pose;
 
                 float distance = (pose1.pos_[0] - pose2.pos_[0]) * (pose1.pos_[0] - pose2.pos_[0]) +
                                  (pose1.pos_[1] - pose2.pos_[1]) * (pose1.pos_[1] - pose2.pos_[1]);
@@ -283,11 +283,11 @@ class TaskPlanner
                 // assign same label pose if the 2d distance in x-y plane is less than 0.15m
                 if (distance < 0.15)
                 {
-                    printf("%s goal pose is close to %s goal pose\n", x->second.name_.c_str(), y->second.name_.c_str());
+                    printf("%s goal pose is close to %s goal pose\n", x->second.name.c_str(), y->second.name.c_str());
                     TriggerTriplet trigger;
                     trigger.trigger_id = triggerLabel++;
-                    trigger.obj1 = x->second.name_;
-                    trigger.obj2 = y->second.name_;
+                    trigger.obj1 = x->second.name;
+                    trigger.obj2 = y->second.name;
                     // find a clear pose (loc 1-8 available)
                     for (int i = 1; i < 8; i++)
                     {
@@ -371,10 +371,10 @@ class TaskPlanner
             task_file << " (in pos" << triggers_list[i].poseLabel << " trig" << triggers_list[i].trigger_id << ")";
         }
 
-        for (size_t i = 0; i < current_scene_graph_copy.objectList.size(); i++)
+        for (size_t i = 0; i < current_scene_graph_copy.object_list.size(); i++)
         {
-            if (current_scene_graph_copy.objectList[i].name_ != "tray")
-                task_file << " (temp " << current_scene_graph_copy.objectList[i].name_ << ")";
+            if (current_scene_graph_copy.object_list[i].name != "tray")
+                task_file << " (temp " << current_scene_graph_copy.object_list[i].name << ")";
         }
 
         task_file << ")" << std::endl << std::endl;
@@ -424,10 +424,10 @@ class TaskPlanner
             task_file << " (contains " << triggers_list[i].obj2 << " trig" << triggers_list[i].trigger_id << ")";
         }
 
-        for (size_t i = 0; i < goal_scene_graph_copy.objectList.size(); i++)
+        for (size_t i = 0; i < goal_scene_graph_copy.object_list.size(); i++)
         {
-            if (goal_scene_graph_copy.objectList[i].name_ != "tray")
-                task_file << " (final " << goal_scene_graph_copy.objectList[i].name_ << ")";
+            if (goal_scene_graph_copy.object_list[i].name != "tray")
+                task_file << " (final " << goal_scene_graph_copy.object_list[i].name << ")";
         }
 
         for (std::map<string, int>::iterator x = extra_objNamePoseLabelHash.begin();

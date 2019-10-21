@@ -9,7 +9,7 @@
 
 bool ObjectCompByHeight(const renderer::Object& s1, const renderer::Object& s2)
 {
-    return s1.pose_.pos_[2] > s2.pose_.pos_[2];
+    return s1.pose.pos_[2] > s2.pose.pos_[2];
 }
 
 bool PointCompByHeight(const Eigen::Vector4f& p1, const Eigen::Vector4f& p2)
@@ -43,42 +43,42 @@ void PoseToSceneGraph::CalcSceneGraph()
                       std::back_inserter(tokens));
 
             renderer::Object object;
-            object.name_ = tokens[0];
-            object.name_ = object.name_.substr(0, std::strlen(object.name_.c_str()) - 1);
-            object.pose_.pos_ = glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
-            object.pose_.euler_ = glm::vec3(std::stof(tokens[4]), std::stof(tokens[5]), std::stof(tokens[6]));
-            object.id_ = object_id++;
+            object.name = tokens[0];
+            object.name = object.name.substr(0, std::strlen(object.name.c_str()) - 1);
+            object.pose.pos_ = glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
+            object.pose.euler_ = glm::vec3(std::stof(tokens[4]), std::stof(tokens[5]), std::stof(tokens[6]));
+            object.id = object_id++;
 
-            if (object.name_ == "tray")
-                tray_id_ = object.id_;
+            if (object.name == "tray")
+                tray_id_ = object.id;
 
             // read in object dimensions
-            std::string obj_dim_file = object_folder_path + "/" + object.name_ + ".txt";
+            std::string obj_dim_file = object_folder_path + "/" + object.name + ".txt";
             std::ifstream dim_reader(obj_dim_file);
-            dim_reader >> object.dim_[0];  // x
-            dim_reader >> object.dim_[1];  // y
-            dim_reader >> object.dim_[2];  // z
+            dim_reader >> object.dim[0];  // x
+            dim_reader >> object.dim[1];  // y
+            dim_reader >> object.dim[2];  // z
 
             object_list.push_back(object);
 
-            if (object.name_ != "tray")
+            if (object.name != "tray")
                 clear_objects_.push_back(object);
 
-            transforms.push_back(object.pose_.transformationFromPose());
+            transforms.push_back(object.pose.transformationFromPose());
 
-            std::cout << object.name_ << ": " << object.pose_;
-            printf("object dim: %f %f %f\n", object.dim_[0], object.dim_[1], object.dim_[2]);
+            std::cout << object.name << ": " << object.pose;
+            printf("object dim: %f %f %f\n", object.dim[0], object.dim[1], object.dim[2]);
         }
     }
 
-    scene_graph_.objectList = object_list;
+    scene_graph_.object_list = object_list;
     assert(tray_id_ != -1);
 
     // determine objects being supported
     renderer::ObjectList supported_objects;
     for (int i = object_list.size() - 1; i >= 0; i--)
     {
-        if (object_list[i].name_ == "tray")
+        if (object_list[i].name == "tray")
         {
             object_list.erase(object_list.begin() + i);
             continue;
@@ -87,15 +87,15 @@ void PoseToSceneGraph::CalcSceneGraph()
         // determine object axis that is aligned with gravitational axis
         float angle;
         int axis_ind = GetGravitationalAxis(transforms[i], angle);
-        printf("%s axis %d aligns with grav axis, angle = %f\n", object_list[i].name_.c_str(), axis_ind, angle);
+        printf("%s axis %d aligns with grav axis, angle = %f\n", object_list[i].name.c_str(), axis_ind, angle);
 
         // determine whether object is being supported
-        float occupied_height = object_list[i].dim_[axis_ind] * cos(angle);
+        float occupied_height = object_list[i].dim[axis_ind] * cos(angle);
         float threshold = 0.01;
 
-        if (object_list[i].pose_.pos_[2] - occupied_height / 2.0 > table_height + threshold)
+        if (object_list[i].pose.pos_[2] - occupied_height / 2.0 > table_height + threshold)
         {
-            printf("%s is being supported by other objects\n", object_list[i].name_.c_str());
+            printf("%s is being supported by other objects\n", object_list[i].name.c_str());
 
             supported_objects.push_back(object_list[i]);
             object_list.erase(object_list.begin() + i);
@@ -105,9 +105,9 @@ void PoseToSceneGraph::CalcSceneGraph()
             // add relation on(obj, table) to scene graph
             // NOTE: not distinguishing between table and tray, because the planner needs to be able to put multiple
             // objects onto tray
-            renderer::Relation rel(renderer::RelationType::ON, object_list[i].id_, tray_id_, object_list[i].name_, "tra"
-                                                                                                                   "y");
-            scene_graph_.relList.push_back(rel);
+            renderer::Relation rel(renderer::RelationType::kOn, object_list[i].id, tray_id_, object_list[i].name, "tra"
+                                                                                                                  "y");
+            scene_graph_.rel_list.push_back(rel);
         }
 
         std::cout << std::endl;
@@ -117,11 +117,11 @@ void PoseToSceneGraph::CalcSceneGraph()
     std::sort(supported_objects.begin(), supported_objects.end(), ObjectCompByHeight);
     std::cout << "all objects being supported : ";
     for (const auto& object : supported_objects)
-        printf("%s ", object.name_.c_str());
+        printf("%s ", object.name.c_str());
     std::cout << std::endl;
     std::cout << "all rest objects : ";
     for (const auto& object : object_list)
-        printf("%s ", object.name_.c_str());
+        printf("%s ", object.name.c_str());
     std::cout << std::endl;
 
     // check supporting relationship
@@ -135,8 +135,8 @@ void PoseToSceneGraph::CalcSceneGraph()
             if (CheckOverlap(supported_objects[i], object_list[j]))
             {
                 // calculate distances between projected center
-                float dist = (Eigen::Vector2f(supported_objects[i].pose_.pos_[0], supported_objects[i].pose_.pos_[1]) -
-                              Eigen::Vector2f(object_list[j].pose_.pos_[0], object_list[j].pose_.pos_[1]))
+                float dist = (Eigen::Vector2f(supported_objects[i].pose.pos_[0], supported_objects[i].pose.pos_[1]) -
+                              Eigen::Vector2f(object_list[j].pose.pos_[0], object_list[j].pose.pos_[1]))
                                  .norm();
                 printf("2d dist = %f\n", dist);
 
@@ -154,12 +154,11 @@ void PoseToSceneGraph::CalcSceneGraph()
 
         if (supporting_object_index != -1)
         {
-            printf("on(%s, %s)\n", object_list.back().name_.c_str(),
-                   object_list[supporting_object_index].name_.c_str());
+            printf("on(%s, %s)\n", object_list.back().name.c_str(), object_list[supporting_object_index].name.c_str());
 
             for (int j = 0; j < clear_objects_.size(); j++)
             {
-                if (clear_objects_[j].id_ == object_list[supporting_object_index].id_)
+                if (clear_objects_[j].id == object_list[supporting_object_index].id)
                 {
                     clear_objects_.erase(clear_objects_.begin() + j);
                     break;
@@ -167,10 +166,10 @@ void PoseToSceneGraph::CalcSceneGraph()
             }
 
             // add relation to scene graph
-            renderer::Relation rel(renderer::RelationType::ON, object_list.back().id_,
-                                   object_list[supporting_object_index].id_, object_list.back().name_,
-                                   object_list[supporting_object_index].name_);
-            scene_graph_.relList.push_back(rel);
+            renderer::Relation rel(renderer::RelationType::kOn, object_list.back().id,
+                                   object_list[supporting_object_index].id, object_list.back().name,
+                                   object_list[supporting_object_index].name);
+            scene_graph_.rel_list.push_back(rel);
         }
     }
 }
@@ -248,17 +247,17 @@ int PoseToSceneGraph::GetGravitationalAxis(Eigen::Matrix4f transform, float& ang
 
 std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(renderer::Object object, std::string surface)
 {
-    Eigen::Matrix4f transform = object.pose_.transformationFromPose();
+    Eigen::Matrix4f transform = object.pose.transformationFromPose();
 
     // object vertices
-    Eigen::Vector4f p0(object.dim_[0] / 2.0, -object.dim_[1] / 2.0, -object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p1(object.dim_[0] / 2.0, object.dim_[1] / 2.0, -object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p2(-object.dim_[0] / 2.0, object.dim_[1] / 2.0, -object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p3(-object.dim_[0] / 2.0, -object.dim_[1] / 2.0, -object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p4(object.dim_[0] / 2.0, -object.dim_[1] / 2.0, object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p5(object.dim_[0] / 2.0, object.dim_[1] / 2.0, object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p6(-object.dim_[0] / 2.0, object.dim_[1] / 2.0, object.dim_[2] / 2.0, 1);
-    Eigen::Vector4f p7(-object.dim_[0] / 2.0, -object.dim_[1] / 2.0, object.dim_[2] / 2.0, 1);
+    Eigen::Vector4f p0(object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p1(object.dim[0] / 2.0, object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p2(-object.dim[0] / 2.0, object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p3(-object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p4(object.dim[0] / 2.0, -object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p5(object.dim[0] / 2.0, object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p6(-object.dim[0] / 2.0, object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4f p7(-object.dim[0] / 2.0, -object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
 
     std::vector<Eigen::Vector4f> vertices{ p0, p1, p2, p3, p4, p5, p6, p7 };
     for (auto& vertice : vertices)
@@ -316,7 +315,7 @@ void PoseToSceneGraph::DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> 
 
 bool PoseToSceneGraph::CheckOverlap(renderer::Object object1, renderer::Object object2)
 {
-    printf("check overlap (%s, %s): ", object1.name_.c_str(), object2.name_.c_str());
+    printf("check overlap (%s, %s): ", object1.name.c_str(), object2.name.c_str());
 
     std::vector<Eigen::Vector3f> object1_points = ProjectObjectBoudingBox(object1, "bottom");
     std::vector<Eigen::Vector3f> object2_points = ProjectObjectBoudingBox(object2, "upper");
