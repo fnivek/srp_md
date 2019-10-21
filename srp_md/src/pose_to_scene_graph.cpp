@@ -7,7 +7,7 @@
 
 #include "srp_md/pose_to_scene_graph.h"
 
-bool ObjectCompByHeight(const renderer::Object& s1, const renderer::Object& s2)
+bool ObjectCompByHeight(const scene_graph::Object& s1, const scene_graph::Object& s2)
 {
     return s1.pose.pos_[2] > s2.pose.pos_[2];
 }
@@ -26,7 +26,7 @@ void PoseToSceneGraph::CalcSceneGraph()
 
     std::string object_folder_path = "/home/logan/Documents/betty_models/light/";
 
-    renderer::ObjectList object_list;
+    scene_graph::ObjectList object_list;
     std::vector<Eigen::Matrix4f> transforms;
 
     std::getline(infile, line);
@@ -42,7 +42,7 @@ void PoseToSceneGraph::CalcSceneGraph()
             std::copy(std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>(),
                       std::back_inserter(tokens));
 
-            renderer::Object object;
+            scene_graph::Object object;
             object.name = tokens[0];
             object.name = object.name.substr(0, std::strlen(object.name.c_str()) - 1);
             object.pose.pos_ = glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
@@ -75,7 +75,7 @@ void PoseToSceneGraph::CalcSceneGraph()
     assert(tray_id_ != -1);
 
     // determine objects being supported
-    renderer::ObjectList supported_objects;
+    scene_graph::ObjectList supported_objects;
     for (int i = object_list.size() - 1; i >= 0; i--)
     {
         if (object_list[i].name == "tray")
@@ -105,8 +105,9 @@ void PoseToSceneGraph::CalcSceneGraph()
             // add relation on(obj, table) to scene graph
             // NOTE: not distinguishing between table and tray, because the planner needs to be able to put multiple
             // objects onto tray
-            renderer::Relation rel(renderer::RelationType::kOn, object_list[i].id, tray_id_, object_list[i].name, "tra"
-                                                                                                                  "y");
+            scene_graph::Relation rel(scene_graph::RelationType::kOn, object_list[i].id, tray_id_, object_list[i].name,
+                                      "tra"
+                                      "y");
             scene_graph_.rel_list.push_back(rel);
         }
 
@@ -166,9 +167,9 @@ void PoseToSceneGraph::CalcSceneGraph()
             }
 
             // add relation to scene graph
-            renderer::Relation rel(renderer::RelationType::kOn, object_list.back().id,
-                                   object_list[supporting_object_index].id, object_list.back().name,
-                                   object_list[supporting_object_index].name);
+            scene_graph::Relation rel(scene_graph::RelationType::kOn, object_list.back().id,
+                                      object_list[supporting_object_index].id, object_list.back().name,
+                                      object_list[supporting_object_index].name);
             scene_graph_.rel_list.push_back(rel);
         }
     }
@@ -245,7 +246,7 @@ int PoseToSceneGraph::GetGravitationalAxis(Eigen::Matrix4f transform, float& ang
     }
 }
 
-std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(renderer::Object object, std::string surface)
+std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(scene_graph::Object object, std::string surface)
 {
     Eigen::Matrix4f transform = object.pose.transformationFromPose();
 
@@ -313,7 +314,7 @@ void PoseToSceneGraph::DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> 
     // cv::waitKey(-1);
 }
 
-bool PoseToSceneGraph::CheckOverlap(renderer::Object object1, renderer::Object object2)
+bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Object object2)
 {
     printf("check overlap (%s, %s): ", object1.name.c_str(), object2.name.c_str());
 

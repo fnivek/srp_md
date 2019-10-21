@@ -14,7 +14,7 @@
 #include <math.h>
 #include <iterator>
 
-#include "srp_md/object.h"
+#include "srp_md/scene_graph.h"
 #include "srp_md/pose_to_scene_graph.h"
 
 using namespace std;
@@ -52,12 +52,12 @@ class TaskPlanner
             std::cout << line << std::endl;
     }
 
-    void generateObjPosLabelHash(renderer::SceneGraph goal_scene_graph, renderer::SceneGraph current_scene_graph)
+    void generateObjPosLabelHash(scene_graph::SceneGraph goal_scene_graph, scene_graph::SceneGraph current_scene_graph)
     {
         for (size_t i = 0; i < goal_scene_graph.rel_list.size(); i++)
         {
-            renderer::Relation rel = goal_scene_graph.rel_list[i];
-            if (rel.type == renderer::RelationType::kOn && rel.name1 != "tray")
+            scene_graph::Relation rel = goal_scene_graph.rel_list[i];
+            if (rel.type == scene_graph::RelationType::kOn && rel.name1 != "tray")
             {
                 if (rel.name2 == "table" || rel.name2 == "tray")
                 {
@@ -76,11 +76,11 @@ class TaskPlanner
             }
         }
 
-        std::map<int, renderer::Object> current_ObjHash;
+        std::map<int, scene_graph::Object> current_ObjHash;
         for (size_t i = 0; i < current_scene_graph.rel_list.size(); i++)
         {
-            renderer::Relation rel = current_scene_graph.rel_list[i];
-            if (rel.type == renderer::RelationType::kOn && rel.name1 != "tray")
+            scene_graph::Relation rel = current_scene_graph.rel_list[i];
+            if (rel.type == scene_graph::RelationType::kOn && rel.name1 != "tray")
             {
                 if (rel.name2 == "table" || rel.name2 == "tray")
                 {
@@ -101,14 +101,15 @@ class TaskPlanner
         }
 
         // go through objects that stay at the same place first
-        for (std::map<int, renderer::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
+        for (std::map<int, scene_graph::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
         {
-            for (std::map<int, renderer::Object>::iterator y = current_ObjHash.begin(); y != current_ObjHash.end(); ++y)
+            for (std::map<int, scene_graph::Object>::iterator y = current_ObjHash.begin(); y != current_ObjHash.end();
+                 ++y)
             {
                 if (x->second.name == y->second.name)
                 {
-                    renderer::Pose pose1 = x->second.pose;  // goal
-                    renderer::Pose pose2 = y->second.pose;  // current
+                    scene_graph::Pose pose1 = x->second.pose;  // goal
+                    scene_graph::Pose pose2 = y->second.pose;  // current
 
                     // float distance = (pose1.pos_.x-pose2.position.x)*(pose1.position.x-pose2.position.x)
                     //             + (pose1.position.y-pose2.position.y)*(pose1.position.y-pose2.position.y)
@@ -143,9 +144,10 @@ class TaskPlanner
         // 	}
 
         // go through objects that change positions and see if it is taking up places that are being occupied now
-        for (std::map<int, renderer::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
+        for (std::map<int, scene_graph::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
         {
-            for (std::map<int, renderer::Object>::iterator y = current_ObjHash.begin(); y != current_ObjHash.end(); ++y)
+            for (std::map<int, scene_graph::Object>::iterator y = current_ObjHash.begin(); y != current_ObjHash.end();
+                 ++y)
             {
                 // std::map<string, int>::iterator goal_it;
                 // goal_it = goal_objNamePoseLabelHash.find(x->second.name);
@@ -153,8 +155,8 @@ class TaskPlanner
                 // current_it = current_objNamePoseLabelHash.find(nameObjHash[y->first]);
                 if ((x->second.pose_label == -1) && (y->second.pose_label == -1))
                 {
-                    renderer::Pose pose1 = x->second.pose;  // goal
-                    renderer::Pose pose2 = y->second.pose;  // current
+                    scene_graph::Pose pose1 = x->second.pose;  // goal
+                    scene_graph::Pose pose2 = y->second.pose;  // current
 
                     float distance = (pose1.pos_[0] - pose2.pos_[0]) * (pose1.pos_[0] - pose2.pos_[0]) +
                                      (pose1.pos_[1] - pose2.pos_[1]) * (pose1.pos_[1] - pose2.pos_[1]);
@@ -203,7 +205,7 @@ class TaskPlanner
         // 	}
 
         // go through objets that needs to be moved to a new empty place
-        for (std::map<int, renderer::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
+        for (std::map<int, scene_graph::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
             if (x->second.pose_label == -1)
             {
                 printf("%s needs to be moved to a new empty place\n", x->second.name.c_str());
@@ -216,7 +218,7 @@ class TaskPlanner
             }
 
         // go through objects that are now at a place that will become empty
-        for (std::map<int, renderer::Object>::iterator x = current_ObjHash.begin(); x != current_ObjHash.end(); ++x)
+        for (std::map<int, scene_graph::Object>::iterator x = current_ObjHash.begin(); x != current_ObjHash.end(); ++x)
             if (x->second.pose_label == -1)
             {
                 printf("%s is at a place that will become empty\n", x->second.name.c_str());
@@ -260,21 +262,21 @@ class TaskPlanner
         // 	}
     }
 
-    void generateObjTrigger(renderer::SceneGraph goal_scene_graph)
+    void generateObjTrigger(scene_graph::SceneGraph goal_scene_graph)
     {
         // find close locations of objects on table
-        for (std::map<int, renderer::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
+        for (std::map<int, scene_graph::Object>::iterator x = goal_ObjHash.begin(); x != goal_ObjHash.end(); ++x)
         {
             assert(x->second.name != "tray");
 
-            for (std::map<int, renderer::Object>::iterator y = std::next(x); y != goal_ObjHash.end(); ++y)
+            for (std::map<int, scene_graph::Object>::iterator y = std::next(x); y != goal_ObjHash.end(); ++y)
             {
                 assert(y->second.name != "tray");
 
                 printf("comparing %s goal pose and %s goal pose\n", x->second.name.c_str(), y->second.name.c_str());
 
-                renderer::Pose pose1 = x->second.pose;
-                renderer::Pose pose2 = y->second.pose;
+                scene_graph::Pose pose1 = x->second.pose;
+                scene_graph::Pose pose2 = y->second.pose;
 
                 float distance = (pose1.pos_[0] - pose2.pos_[0]) * (pose1.pos_[0] - pose2.pos_[0]) +
                                  (pose1.pos_[1] - pose2.pos_[1]) * (pose1.pos_[1] - pose2.pos_[1]);
@@ -443,7 +445,7 @@ class TaskPlanner
         task_file.close();
     }
 
-    void plan_extended(renderer::SceneGraph goal_scene_graph, renderer::SceneGraph current_scene_graph,
+    void plan_extended(scene_graph::SceneGraph goal_scene_graph, scene_graph::SceneGraph current_scene_graph,
                        std::string goal_scene_graph_path, std::string current_scene_graph_path,
                        std::string prefix = "fetch")
     {
@@ -463,7 +465,7 @@ class TaskPlanner
     int poseLabel;
     int triggerLabel;
     std::string planner_path;
-    std::map<int, renderer::Object> goal_ObjHash;
+    std::map<int, scene_graph::Object> goal_ObjHash;
     std::map<std::string, int> goal_objNamePoseLabelHash;  // from object name to pose label, pose label # starts from 1
     std::map<std::string, int> current_objNamePoseLabelHash;
     std::map<std::string, int> extra_objNamePoseLabelHash;
@@ -472,8 +474,8 @@ class TaskPlanner
     std::vector<int> goal_occupied_pose;
     std::vector<TriggerTriplet> triggers_list;
 
-    renderer::SceneGraph current_scene_graph_copy;
-    renderer::SceneGraph goal_scene_graph_copy;
+    scene_graph::SceneGraph current_scene_graph_copy;
+    scene_graph::SceneGraph goal_scene_graph_copy;
 };
 
 int main(int argc, char** argv)
@@ -482,8 +484,8 @@ int main(int argc, char** argv)
     std::string goal_pose_path = std::string(argv[1]);
     std::string current_pose_path = std::string(argv[2]);
 
-    renderer::SceneGraph goal_scene_graph;
-    renderer::SceneGraph current_scene_graph;
+    scene_graph::SceneGraph goal_scene_graph;
+    scene_graph::SceneGraph current_scene_graph;
 
     // PoseToSceneGraph goal_scene_generator(goal_pose_path);
     // goal_scene_generator.CalcSceneGraph();

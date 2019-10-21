@@ -1,6 +1,6 @@
 #pragma once
 //
-// @file src/renderer/object.h
+// @file src/scene_graph/object.h
 // @brief General object description
 // @author Zhiqiang Sui, Zhen Zeng
 // University of Michigan, 2016
@@ -12,7 +12,7 @@
 #include <vector>
 #include <eigen3/Eigen/Geometry>
 
-namespace renderer
+namespace scene_graph
 {
 class Pose
 {
@@ -155,4 +155,4 @@ struct SceneGraph
     // }
 };
 
-}  // namespace renderer
+}  // namespace scene_graph
