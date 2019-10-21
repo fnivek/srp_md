@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   srp_md_msgs
   actionlib
+  dope_msgs
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -39,7 +40,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES srp_md
-  CATKIN_DEPENDS roscpp rospy srp_md_msgs
+  CATKIN_DEPENDS roscpp rospy srp_md_msgs dope_msgs
 #  DEPENDS system_lib
 )
 
