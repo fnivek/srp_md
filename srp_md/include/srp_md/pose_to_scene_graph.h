@@ -27,19 +27,7 @@ class PoseToSceneGraph
 
     void CalcSceneGraph();
 
-    void WriteSceneGraph(std::string file_path)
-    {
-        std::ofstream fout;
-        fout.open(file_path);
-
-        for (size_t i = 0; i < scene_graph_.rel_list.size(); i++)
-            fout << "on " << scene_graph_.rel_list[i].name1 << " " << scene_graph_.rel_list[i].name2 << "\n";
-
-        for (const auto& object : clear_objects_)
-            fout << "clear " << object.name << "\n";
-
-        fout << std::endl;
-    }
+    void WriteSceneGraph(std::string file_path);
 
     scene_graph::SceneGraph get_scene_graph()
     {
