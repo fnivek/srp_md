@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(GLEW REQUIRED)
 
 ## This macro ensures modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -62,6 +63,8 @@ include_directories(
   ${DAI_INCLUDE_DIRS}
   ${GRAPHVIZ_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${GLEW_INCLUDE_DIRS}
+  /usr/include/glm/
 )
 
 # Factor Graph Node
@@ -96,6 +99,18 @@ target_link_libraries(plane_detector_node
   ${catkin_LIBRARIES}
 )
 add_dependencies(plane_detector_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+# Pose to scene graph node
+add_executable(pose_to_scene_graph src/pose_to_scene_graph.cpp)
+# Note order should be if depends on another then must go higher in list
+target_link_libraries(pose_to_scene_graph
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+add_dependencies(pose_to_scene_graph
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
