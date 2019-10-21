@@ -31,14 +31,14 @@ class DopeSensor(sense.BaseSensor):
 
         # Start ROS subscribers
         image_sub = message_filters.Subscriber(
-            '/dope/webcam/image_raw',
+            '/head_camera/rgb/image_raw',
             ImageSensor_msg
         )
         info_sub = message_filters.Subscriber(
-            '/dope/webcam/camera_info',
+            '/head_camera/rgb/camera_info',
             CameraInfo
         )
-        ts = message_filters.TimeSynchronizer([image_sub, info_sub], 1)
+        ts = message_filters.TimeSynchronizer([image_sub, info_sub], 10)
         ts.registerCallback(self.image_callback)
 
         # Wait for message with timeout
