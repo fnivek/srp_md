@@ -1,5 +1,5 @@
 //
-// @file progress/poseToSceneGraph.cpp
+// @file progress/PoseToSceneGraph.cpp
 // @brief convert from object poses to scene graph
 // @author Zhen Zeng
 // University of Michigan, 2017
@@ -15,50 +15,50 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "srp_md/object.h"
 
-class poseToSceneGraph
+class PoseToSceneGraph
 {
   public:
-    poseToSceneGraph(std::string file_path) : pos_file(file_path), tray_id(-1)
+    PoseToSceneGraph(std::string file_path) : pos_file_(file_path), tray_id_(-1)
     {
     }
-    ~poseToSceneGraph()
+    ~PoseToSceneGraph()
     {
     }
 
-    void calcSceneGraph();
+    void CalcSceneGraph();
 
-    void writeSceneGraph(std::string file_path)
+    void WriteSceneGraph(std::string file_path)
     {
         std::ofstream fout;
         fout.open(file_path);
 
-        for (size_t i = 0; i < scene_graph.relList.size(); i++)
-            fout << "on " << scene_graph.relList[i].name1 << " " << scene_graph.relList[i].name2 << "\n";
+        for (size_t i = 0; i < scene_graph_.relList.size(); i++)
+            fout << "on " << scene_graph_.relList[i].name1 << " " << scene_graph_.relList[i].name2 << "\n";
 
-        for (const auto& object : clear_objects)
+        for (const auto& object : clear_objects_)
             fout << "clear " << object.name_ << "\n";
 
         fout << std::endl;
     }
 
-    renderer::SceneGraph getSceneGraph()
+    renderer::SceneGraph get_scene_graph()
     {
-        return scene_graph;
+        return scene_graph_;
     }
 
   private:
-    std::string pos_file;
-    renderer::SceneGraph scene_graph;
-    std::vector<renderer::Object> clear_objects;
-    int tray_id;
+    std::string pos_file_;
+    renderer::SceneGraph scene_graph_;
+    std::vector<renderer::Object> clear_objects_;
+    int tray_id_;
 
-    float calcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2);
+    float CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2);
 
-    int getGravitationalAxis(Eigen::Matrix4f transform, float& angle);
+    int GetGravitationalAxis(Eigen::Matrix4f transform, float& angle);
 
-    std::vector<Eigen::Vector3f> projectObjectBoudingBox(renderer::Object object, std::string surface);
+    std::vector<Eigen::Vector3f> ProjectObjectBoudingBox(renderer::Object object, std::string surface);
 
-    void drawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> points);
+    void DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> points);
 
-    bool checkOverlap(renderer::Object object1, renderer::Object object2);
+    bool CheckOverlap(renderer::Object object1, renderer::Object object2);
 };

@@ -485,15 +485,15 @@ int main(int argc, char** argv)
     renderer::SceneGraph goal_scene_graph;
     renderer::SceneGraph current_scene_graph;
 
-    // poseToSceneGraph goal_scene_generator(goal_pose_path);
-    // goal_scene_generator.calcSceneGraph();
-    // goal_scene_generator.writeSceneGraph("goal_scene_graph.txt");
+    // PoseToSceneGraph goal_scene_generator(goal_pose_path);
+    // goal_scene_generator.CalcSceneGraph();
+    // goal_scene_generator.WriteSceneGraph("goal_scene_graph.txt");
 
-    // poseToSceneGraph current_scene_generator(current_pose_path);
-    // current_scene_generator.calcSceneGraph();
-    // current_scene_generator.writeSceneGraph("current_scene_graph.txt");
+    // PoseToSceneGraph current_scene_generator(current_pose_path);
+    // current_scene_generator.CalcSceneGraph();
+    // current_scene_generator.WriteSceneGraph("current_scene_graph.txt");
 
-    // planner.plan_extended(goal_scene_generator.getSceneGraph(), current_scene_generator.getSceneGraph(),
+    // planner.plan_extended(goal_scene_generator.get_scene_graph(), current_scene_generator.get_scene_graph(),
     //                       "goal_scene_graph.txt", "current_scene_graph.txt");
 
     std::cout << "\n\n";

@@ -1,5 +1,5 @@
 //
-// @file progress/poseToSceneGraph.cpp
+// @file progress/PoseToSceneGraph.cpp
 // @brief convert from object poses to scene graph
 // @author Zhen Zeng
 // University of Michigan, 2017
@@ -17,9 +17,9 @@ bool PointCompByHeight(const Eigen::Vector4f& p1, const Eigen::Vector4f& p2)
     return p1[2] < p2[2];
 }
 
-void poseToSceneGraph::calcSceneGraph()
+void PoseToSceneGraph::CalcSceneGraph()
 {
-    std::ifstream infile(pos_file);
+    std::ifstream infile(pos_file_);
     std::string line;
     float table_height = 0.76;
     int object_id = 0;
@@ -50,7 +50,7 @@ void poseToSceneGraph::calcSceneGraph()
             object.id_ = object_id++;
 
             if (object.name_ == "tray")
-                tray_id = object.id_;
+                tray_id_ = object.id_;
 
             // read in object dimensions
             std::string obj_dim_file = object_folder_path + "/" + object.name_ + ".txt";
@@ -62,7 +62,7 @@ void poseToSceneGraph::calcSceneGraph()
             object_list.push_back(object);
 
             if (object.name_ != "tray")
-                clear_objects.push_back(object);
+                clear_objects_.push_back(object);
 
             transforms.push_back(object.pose_.transformationFromPose());
 
@@ -71,8 +71,8 @@ void poseToSceneGraph::calcSceneGraph()
         }
     }
 
-    scene_graph.objectList = object_list;
-    assert(tray_id != -1);
+    scene_graph_.objectList = object_list;
+    assert(tray_id_ != -1);
 
     // determine objects being supported
     renderer::ObjectList supported_objects;
@@ -86,7 +86,7 @@ void poseToSceneGraph::calcSceneGraph()
 
         // determine object axis that is aligned with gravitational axis
         float angle;
-        int axis_ind = getGravitationalAxis(transforms[i], angle);
+        int axis_ind = GetGravitationalAxis(transforms[i], angle);
         printf("%s axis %d aligns with grav axis, angle = %f\n", object_list[i].name_.c_str(), axis_ind, angle);
 
         // determine whether object is being supported
@@ -105,9 +105,9 @@ void poseToSceneGraph::calcSceneGraph()
             // add relation on(obj, table) to scene graph
             // NOTE: not distinguishing between table and tray, because the planner needs to be able to put multiple
             // objects onto tray
-            renderer::Relation rel(renderer::RelationType::ON, object_list[i].id_, tray_id, object_list[i].name_, "tra"
-                                                                                                                  "y");
-            scene_graph.relList.push_back(rel);
+            renderer::Relation rel(renderer::RelationType::ON, object_list[i].id_, tray_id_, object_list[i].name_, "tra"
+                                                                                                                   "y");
+            scene_graph_.relList.push_back(rel);
         }
 
         std::cout << std::endl;
@@ -132,7 +132,7 @@ void poseToSceneGraph::calcSceneGraph()
         for (int j = 0; j < object_list.size(); j++)
         {
             // find overlap between objects if any
-            if (checkOverlap(supported_objects[i], object_list[j]))
+            if (CheckOverlap(supported_objects[i], object_list[j]))
             {
                 // calculate distances between projected center
                 float dist = (Eigen::Vector2f(supported_objects[i].pose_.pos_[0], supported_objects[i].pose_.pos_[1]) -
@@ -157,11 +157,11 @@ void poseToSceneGraph::calcSceneGraph()
             printf("on(%s, %s)\n", object_list.back().name_.c_str(),
                    object_list[supporting_object_index].name_.c_str());
 
-            for (int j = 0; j < clear_objects.size(); j++)
+            for (int j = 0; j < clear_objects_.size(); j++)
             {
-                if (clear_objects[j].id_ == object_list[supporting_object_index].id_)
+                if (clear_objects_[j].id_ == object_list[supporting_object_index].id_)
                 {
-                    clear_objects.erase(clear_objects.begin() + j);
+                    clear_objects_.erase(clear_objects_.begin() + j);
                     break;
                 }
             }
@@ -170,12 +170,12 @@ void poseToSceneGraph::calcSceneGraph()
             renderer::Relation rel(renderer::RelationType::ON, object_list.back().id_,
                                    object_list[supporting_object_index].id_, object_list.back().name_,
                                    object_list[supporting_object_index].name_);
-            scene_graph.relList.push_back(rel);
+            scene_graph_.relList.push_back(rel);
         }
     }
 }
 
-float poseToSceneGraph::calcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
+float PoseToSceneGraph::CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
 {
     float cos_angle = v1.dot(v2) / (v1.norm() * v2.norm());
     float angle = acos(cos_angle);
@@ -192,7 +192,7 @@ float poseToSceneGraph::calcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
     return angle;
 }
 
-int poseToSceneGraph::getGravitationalAxis(Eigen::Matrix4f transform, float& angle)
+int PoseToSceneGraph::GetGravitationalAxis(Eigen::Matrix4f transform, float& angle)
 {
     // axis ind: 0, 1, 2 corresponds to x, y, z axis
     // gravitational axis is (0, 0, 1) in world frame
@@ -220,9 +220,9 @@ int poseToSceneGraph::getGravitationalAxis(Eigen::Matrix4f transform, float& ang
     Eigen::Vector3f y_axis3(y_axis[0], y_axis[1], y_axis[2]);
     Eigen::Vector3f z_axis3(z_axis[0], z_axis[1], z_axis[2]);
 
-    float angle_x = calcMinAngle(x_axis3, grav_axis);
-    float angle_y = calcMinAngle(y_axis3, grav_axis);
-    float angle_z = calcMinAngle(z_axis3, grav_axis);
+    float angle_x = CalcMinAngle(x_axis3, grav_axis);
+    float angle_y = CalcMinAngle(y_axis3, grav_axis);
+    float angle_z = CalcMinAngle(z_axis3, grav_axis);
 
     if ((angle_x <= angle_y) && (angle_x <= angle_z))
     {
@@ -246,7 +246,7 @@ int poseToSceneGraph::getGravitationalAxis(Eigen::Matrix4f transform, float& ang
     }
 }
 
-std::vector<Eigen::Vector3f> poseToSceneGraph::projectObjectBoudingBox(renderer::Object object, std::string surface)
+std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(renderer::Object object, std::string surface)
 {
     Eigen::Matrix4f transform = object.pose_.transformationFromPose();
 
@@ -289,7 +289,7 @@ std::vector<Eigen::Vector3f> poseToSceneGraph::projectObjectBoudingBox(renderer:
     return points;
 }
 
-void poseToSceneGraph::drawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> points)
+void PoseToSceneGraph::DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> points)
 {
     std::vector<cv::Point> cv_points(4);
     for (int i = 0; i < points.size(); i++)
@@ -314,12 +314,12 @@ void poseToSceneGraph::drawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> 
     // cv::waitKey(-1);
 }
 
-bool poseToSceneGraph::checkOverlap(renderer::Object object1, renderer::Object object2)
+bool PoseToSceneGraph::CheckOverlap(renderer::Object object1, renderer::Object object2)
 {
     printf("check overlap (%s, %s): ", object1.name_.c_str(), object2.name_.c_str());
 
-    std::vector<Eigen::Vector3f> object1_points = projectObjectBoudingBox(object1, "bottom");
-    std::vector<Eigen::Vector3f> object2_points = projectObjectBoudingBox(object2, "upper");
+    std::vector<Eigen::Vector3f> object1_points = ProjectObjectBoudingBox(object1, "bottom");
+    std::vector<Eigen::Vector3f> object2_points = ProjectObjectBoudingBox(object2, "upper");
 
     // find min, max of x, y coordinates in all projected points
     float min_x = INFINITY, min_y = INFINITY;
@@ -359,13 +359,13 @@ bool poseToSceneGraph::checkOverlap(renderer::Object object1, renderer::Object o
 
     // draw filled polygons and check overlap in opencv
     cv::Mat image1(120, 120, CV_8UC3, cv::Scalar(0, 0, 0));
-    drawPolygon(image1, object1_points);
+    DrawPolygon(image1, object1_points);
     cv::Mat image1_bw;
     cv::cvtColor(image1, image1_bw, CV_RGB2GRAY);
     cv::threshold(image1_bw, image1_bw, 0, 255, CV_THRESH_BINARY);
 
     cv::Mat image2(120, 120, CV_8UC3, cv::Scalar(0, 0, 0));
-    drawPolygon(image2, object2_points);
+    DrawPolygon(image2, object2_points);
     cv::Mat image2_bw;
     cv::cvtColor(image2, image2_bw, CV_RGB2GRAY);
     cv::threshold(image2_bw, image2_bw, 0, 255, CV_THRESH_BINARY);
