@@ -104,13 +104,13 @@ add_dependencies(plane_detector_node
 )
 
 # Pose to scene graph node
-add_executable(pose_to_scene_graph src/pose_to_scene_graph.cpp)
+add_executable(pose_to_scene_graph_node src/pose_to_scene_graph_node.cpp src/pose_to_scene_graph.cpp)
 # Note order should be if depends on another then must go higher in list
-target_link_libraries(pose_to_scene_graph
+target_link_libraries(pose_to_scene_graph_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-add_dependencies(pose_to_scene_graph
+add_dependencies(pose_to_scene_graph_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )

@@ -6,6 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   actionlib_msgs
   geometry_msgs
+  vision_msgs
 )
 
 ################################################
@@ -22,6 +23,7 @@ add_message_files(
 add_service_files(
   FILES
     GetGoal.srv
+    PoseToSceneGraph.srv
 )
 
 # Generate actions in the 'action' folder
@@ -37,6 +39,7 @@ generate_messages(
   DEPENDENCIES
     actionlib_msgs
     geometry_msgs
+    vision_msgs
 )
 
 ###################################
@@ -47,4 +50,5 @@ catkin_package(
   CATKIN_DEPENDS
     actionlib_msgs
     geometry_msgs
+    vision_msgs
 )

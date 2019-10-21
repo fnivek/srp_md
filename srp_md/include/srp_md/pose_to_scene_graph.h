@@ -10,22 +10,23 @@
 #include <fstream>
 #include <iterator>
 #include <cmath>
+
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <opencv2/imgproc/imgproc.hpp>
+
+#include <ros/ros.h>
+
 #include "srp_md/scene_graph.h"
+#include "srp_md_msgs/PoseToSceneGraph.h"
 
 class PoseToSceneGraph
 {
   public:
-    PoseToSceneGraph(std::string file_path) : pos_file_(file_path), tray_id_(-1)
-    {
-    }
+    PoseToSceneGraph();
     ~PoseToSceneGraph()
     {
     }
-
-    void CalcSceneGraph();
 
     void WriteSceneGraph(std::string file_path);
 
@@ -35,10 +36,12 @@ class PoseToSceneGraph
     }
 
   private:
-    std::string pos_file_;
+    ros::ServiceServer server_;
     scene_graph::SceneGraph scene_graph_;
     std::vector<scene_graph::Object> clear_objects_;
     int tray_id_;
+
+    bool CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req, srp_md_msgs::PoseToSceneGraph::Response& resp);
 
     float CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2);
 

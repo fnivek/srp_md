@@ -19,6 +19,13 @@ bool PointCompByHeight(const Eigen::Vector4f& p1, const Eigen::Vector4f& p2)
 }
 
 // PoseToSceneGraph
+PoseToSceneGraph::PoseToSceneGraph() : tray_id_(-1)
+{
+    // Start ros service
+    ros::NodeHandle nh;
+    server_ = nh.advertiseService("pose_to_scene_graph", &PoseToSceneGraph::CalcSceneGraph, this);
+}
+
 void PoseToSceneGraph::WriteSceneGraph(std::string file_path)
 {
     std::ofstream fout;
@@ -33,59 +40,53 @@ void PoseToSceneGraph::WriteSceneGraph(std::string file_path)
     fout << std::endl;
 }
 
-void PoseToSceneGraph::CalcSceneGraph()
+bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req,
+                                      srp_md_msgs::PoseToSceneGraph::Response& resp)
 {
-    std::ifstream infile(pos_file_);
-    std::string line;
     float table_height = 0.76;
     int object_id = 0;
 
     std::string object_folder_path = "/home/logan/Documents/betty_models/light/";
 
     scene_graph::ObjectList object_list;
-    std::vector<Eigen::Matrix4f> transforms;
 
-    std::getline(infile, line);
+    // while (std::getline(infile, line))
+    // {
+    //     std::size_t colon = line.find(":");
 
-    while (std::getline(infile, line))
-    {
-        std::size_t colon = line.find(":");
+    //     if (colon != std::string::npos)
+    //     {
+    //         std::istringstream iss(line);
+    //         std::vector<std::string> tokens;
+    //         std::copy(std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>(),
+    //                   std::back_inserter(tokens));
 
-        if (colon != std::string::npos)
-        {
-            std::istringstream iss(line);
-            std::vector<std::string> tokens;
-            std::copy(std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>(),
-                      std::back_inserter(tokens));
+    //         scene_graph::Object object;
+    //         object.name = tokens[0];
+    //         object.name = object.name.substr(0, std::strlen(object.name.c_str()) - 1);
+    //         object.pose.pos_ = glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
+    //         object.pose.euler_ = glm::vec3(std::stof(tokens[4]), std::stof(tokens[5]), std::stof(tokens[6]));
+    //         object.id = object_id++;
 
-            scene_graph::Object object;
-            object.name = tokens[0];
-            object.name = object.name.substr(0, std::strlen(object.name.c_str()) - 1);
-            object.pose.pos_ = glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
-            object.pose.euler_ = glm::vec3(std::stof(tokens[4]), std::stof(tokens[5]), std::stof(tokens[6]));
-            object.id = object_id++;
+    //         if (object.name == "tray")
+    //             tray_id_ = object.id;
 
-            if (object.name == "tray")
-                tray_id_ = object.id;
+    //         // read in object dimensions
+    //         std::string obj_dim_file = object_folder_path + "/" + object.name + ".txt";
+    //         std::ifstream dim_reader(obj_dim_file);
+    //         dim_reader >> object.dim[0];  // x
+    //         dim_reader >> object.dim[1];  // y
+    //         dim_reader >> object.dim[2];  // z
 
-            // read in object dimensions
-            std::string obj_dim_file = object_folder_path + "/" + object.name + ".txt";
-            std::ifstream dim_reader(obj_dim_file);
-            dim_reader >> object.dim[0];  // x
-            dim_reader >> object.dim[1];  // y
-            dim_reader >> object.dim[2];  // z
+    //         object_list.push_back(object);
 
-            object_list.push_back(object);
+    //         if (object.name != "tray")
+    //             clear_objects_.push_back(object);
 
-            if (object.name != "tray")
-                clear_objects_.push_back(object);
-
-            transforms.push_back(object.pose.transformationFromPose());
-
-            std::cout << object.name << ": " << object.pose;
-            printf("object dim: %f %f %f\n", object.dim[0], object.dim[1], object.dim[2]);
-        }
-    }
+    //         std::cout << object.name << ": " << object.pose;
+    //         printf("object dim: %f %f %f\n", object.dim[0], object.dim[1], object.dim[2]);
+    //     }
+    // }
 
     scene_graph_.object_list = object_list;
     assert(tray_id_ != -1);
@@ -102,7 +103,7 @@ void PoseToSceneGraph::CalcSceneGraph()
 
         // determine object axis that is aligned with gravitational axis
         float angle;
-        int axis_ind = GetGravitationalAxis(transforms[i], angle);
+        int axis_ind = GetGravitationalAxis(object_list[i].pose.transformationFromPose(), angle);
         printf("%s axis %d aligns with grav axis, angle = %f\n", object_list[i].name.c_str(), axis_ind, angle);
 
         // determine whether object is being supported
@@ -189,6 +190,7 @@ void PoseToSceneGraph::CalcSceneGraph()
             scene_graph_.rel_list.push_back(rel);
         }
     }
+    return true;
 }
 
 float PoseToSceneGraph::CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
@@ -395,9 +397,4 @@ bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Ob
         return true;
     else
         return false;
-}
-
-int main(int argc, char** argv)
-{
-    return 0;
 }
