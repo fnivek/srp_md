@@ -26,7 +26,7 @@ class Pose
         euler_ = glm::vec3(0.0);
     }
 
-    void poseFromTransformation(Eigen::Matrix4f transform)
+    void PoseFromTransformation(Eigen::Matrix4f transform)
     {
         Eigen::Matrix3f m = transform.block<3, 3>(0, 0);
         Eigen::Vector3f euler = m.eulerAngles(0, 1, 2);
@@ -40,7 +40,7 @@ class Pose
         euler_.z = euler[2];
     }
 
-    Eigen::Matrix4f transformationFromPose()
+    Eigen::Matrix4f TransformationFromPose()
     {
         Eigen::Matrix4f transform;
         transform.setIdentity();

@@ -103,7 +103,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
 
         // determine object axis that is aligned with gravitational axis
         float angle;
-        int axis_ind = GetGravitationalAxis(object_list[i].pose.transformationFromPose(), angle);
+        int axis_ind = GetGravitationalAxis(object_list[i].pose.TransformationFromPose(), angle);
         printf("%s axis %d aligns with grav axis, angle = %f\n", object_list[i].name.c_str(), axis_ind, angle);
 
         // determine whether object is being supported
@@ -266,7 +266,7 @@ int PoseToSceneGraph::GetGravitationalAxis(Eigen::Matrix4f transform, float& ang
 
 std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(scene_graph::Object object, std::string surface)
 {
-    Eigen::Matrix4f transform = object.pose.transformationFromPose();
+    Eigen::Matrix4f transform = object.pose.TransformationFromPose();
 
     // object vertices
     Eigen::Vector4f p0(object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
