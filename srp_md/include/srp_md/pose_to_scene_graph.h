@@ -16,6 +16,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <ros/ros.h>
+#include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include "srp_md/scene_graph.h"
 #include "srp_md_msgs/PoseToSceneGraph.h"

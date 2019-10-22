@@ -7,6 +7,7 @@ import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
 from dope_msgs.msg import DopeAction, DopeGoal
 from srp_md_msgs.msg import DetectPlaneAction, DetectPlaneGoal
+from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
 
 
 class DopeSensor(sense.BaseSensor):
@@ -24,6 +25,7 @@ class DopeSensor(sense.BaseSensor):
         self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
         self._plane_goal = None
         self._plane_client = actionlib.SimpleActionClient('plane_detector', DetectPlaneAction)
+        self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
 
     def get_next_image(self, timeout=None):
         # Reset goal
@@ -94,6 +96,21 @@ class DopeSensor(sense.BaseSensor):
         self._logger.debug('Plane detector result is {}'.format(plane_result))
 
         # Build scene graph
+        req = PoseToSceneGraphRequest()
+        req.names = []
+        req.objects = []
+        class_ids = rospy.get_param("/dope/class_ids")
+        class_names = {class_id: name for name, class_id in class_ids.iteritems()}
+        for detection in dope_result.detections:
+            req.names.append(class_names[detection.results[0].id])
+            req.objects.append(detection.bbox)
+        try:
+            resp = self._pose_to_scene_graph_client(req)
+        except rospy.ServiceException, e:
+            self._logger.error('Failed to get scene graph from pose: {}'.format(e))
+            return None
+        # Convert ros msg to scene graph
+        self._logger.debug('Pose to scene graph result: {}'.format(resp))
 
         return None
 

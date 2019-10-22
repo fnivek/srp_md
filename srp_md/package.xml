@@ -11,6 +11,8 @@
   <depend>rospy</depend>
   <depend>srp_md_msgs</depend>
   <depend>dope_msgs</depend>
+  <depend>tf</depend>
+  <depend>tf_conversions</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

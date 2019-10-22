@@ -50,46 +50,33 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
 
     scene_graph::ObjectList object_list;
 
-    // while (std::getline(infile, line))
-    // {
-    //     std::size_t colon = line.find(":");
-
-    //     if (colon != std::string::npos)
-    //     {
-    //         std::istringstream iss(line);
-    //         std::vector<std::string> tokens;
-    //         std::copy(std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>(),
-    //                   std::back_inserter(tokens));
-
-    //         scene_graph::Object object;
-    //         object.name = tokens[0];
-    //         object.name = object.name.substr(0, std::strlen(object.name.c_str()) - 1);
-    //         object.pose.pos_ = glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
-    //         object.pose.euler_ = glm::vec3(std::stof(tokens[4]), std::stof(tokens[5]), std::stof(tokens[6]));
-    //         object.id = object_id++;
-
-    //         if (object.name == "tray")
-    //             tray_id_ = object.id;
-
-    //         // read in object dimensions
-    //         std::string obj_dim_file = object_folder_path + "/" + object.name + ".txt";
-    //         std::ifstream dim_reader(obj_dim_file);
-    //         dim_reader >> object.dim[0];  // x
-    //         dim_reader >> object.dim[1];  // y
-    //         dim_reader >> object.dim[2];  // z
-
-    //         object_list.push_back(object);
-
-    //         if (object.name != "tray")
-    //             clear_objects_.push_back(object);
-
-    //         std::cout << object.name << ": " << object.pose;
-    //         printf("object dim: %f %f %f\n", object.dim[0], object.dim[1], object.dim[2]);
-    //     }
-    // }
+    for (int i = 0; i < req.objects.size(); ++i)
+    {
+        // Make an object
+        scene_graph::Object obj;
+        obj.name = req.names[i];
+        obj.id = object_id++;
+        // Convert Ros Pose to scene_graph pose
+        tf::Pose tf_pose;
+        Eigen::Affine3d eigen_tf;
+        vision_msgs::BoundingBox3D& ros_obj = req.objects[i];
+        tf::poseMsgToTF(ros_obj.center, tf_pose);
+        tf::poseTFToEigen(tf_pose, eigen_tf);
+        obj.pose.PoseFromTransformation(eigen_tf.matrix().cast<float>());
+        // Get the dimensions of the object
+        obj.dim[0] = req.objects[i].size.x;
+        obj.dim[1] = req.objects[i].size.y;
+        obj.dim[2] = req.objects[i].size.z;
+        // Add to vectors
+        object_list.push_back(obj);
+        clear_objects_.push_back(obj);
+        // Debug
+        std::cout << obj.name << ": " << obj.pose;
+        printf("\tdim: %f %f %f\n", obj.dim[0], obj.dim[1], obj.dim[2]);
+    }
 
     scene_graph_.object_list = object_list;
-    assert(tray_id_ != -1);
+    // assert(tray_id_ != -1);
 
     // determine objects being supported
     scene_graph::ObjectList supported_objects;

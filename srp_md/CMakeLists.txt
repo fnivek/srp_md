@@ -19,10 +19,13 @@ find_package(catkin REQUIRED COMPONENTS
   srp_md_msgs
   actionlib
   dope_msgs
+  tf
+  tf_conversions
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 ## This macro ensures modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -40,7 +43,13 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES srp_md
-  CATKIN_DEPENDS roscpp rospy srp_md_msgs dope_msgs
+  CATKIN_DEPENDS
+    roscpp
+    rospy
+    srp_md_msgs
+    dope_msgs
+    tf
+    tf_conversions
 #  DEPENDS system_lib
 )
 
@@ -66,6 +75,7 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${GLEW_INCLUDE_DIRS}
   /usr/include/glm/
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 # Factor Graph Node

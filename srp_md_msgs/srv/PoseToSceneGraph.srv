@@ -1,4 +1,5 @@
 # Request
+string[] names
 vision_msgs/BoundingBox3D[] objects
 ---
 # Reply
