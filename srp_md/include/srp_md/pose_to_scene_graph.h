@@ -41,7 +41,6 @@ class PoseToSceneGraph
     ros::ServiceServer server_;
     scene_graph::SceneGraph scene_graph_;
     std::vector<scene_graph::Object> clear_objects_;
-    int tray_id_;
 
     bool CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req, srp_md_msgs::PoseToSceneGraph::Response& resp);
 

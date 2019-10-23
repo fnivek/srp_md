@@ -19,7 +19,7 @@ bool PointCompByHeight(const Eigen::Vector4f& p1, const Eigen::Vector4f& p2)
 }
 
 // PoseToSceneGraph
-PoseToSceneGraph::PoseToSceneGraph() : tray_id_(-1)
+PoseToSceneGraph::PoseToSceneGraph()
 {
     // Start ros service
     ros::NodeHandle nh;
@@ -43,13 +43,9 @@ void PoseToSceneGraph::WriteSceneGraph(std::string file_path)
 bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req,
                                       srp_md_msgs::PoseToSceneGraph::Response& resp)
 {
-    float table_height = 0.76;
+    // Grab objects from request
     int object_id = 0;
-
-    std::string object_folder_path = "/home/logan/Documents/betty_models/light/";
-
     scene_graph::ObjectList object_list;
-
     for (int i = 0; i < req.objects.size(); ++i)
     {
         // Make an object
@@ -75,108 +71,31 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         printf("\tdim: %f %f %f\n", obj.dim[0], obj.dim[1], obj.dim[2]);
     }
 
+    // Determine support and on relations
+    std::sort(object_list.begin(), object_list.end(), ObjectCompByHeight);
+    for (int i = 0; i < object_list.size(); ++i)
+    {
+        scene_graph::Object& top_obj = object_list[i];
+        for (int j = i + 1; j < object_list.size(); ++j)
+        {
+            scene_graph::Object& bot_obj = object_list[j];
+            if (CheckOverlap(top_obj, bot_obj))
+            {
+                scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, bot_obj.id, top_obj.name,
+                                         bot_obj.name);
+                scene_graph::Relation support(scene_graph::RelationType::kSupport, bot_obj.id, top_obj.id, bot_obj.name,
+                                              top_obj.name);
+                scene_graph_.rel_list.push_back(on);
+                scene_graph_.rel_list.push_back(support);
+                // Debug
+                printf("On(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
+            }
+        }
+    }
+
+    // Prepare output
     scene_graph_.object_list = object_list;
-    // assert(tray_id_ != -1);
 
-    // determine objects being supported
-    scene_graph::ObjectList supported_objects;
-    for (int i = object_list.size() - 1; i >= 0; i--)
-    {
-        if (object_list[i].name == "tray")
-        {
-            object_list.erase(object_list.begin() + i);
-            continue;
-        }
-
-        // determine object axis that is aligned with gravitational axis
-        float angle;
-        int axis_ind = GetGravitationalAxis(object_list[i].pose.TransformationFromPose(), angle);
-        printf("%s axis %d aligns with grav axis, angle = %f\n", object_list[i].name.c_str(), axis_ind, angle);
-
-        // determine whether object is being supported
-        float occupied_height = object_list[i].dim[axis_ind] * cos(angle);
-        float threshold = 0.01;
-
-        if (object_list[i].pose.pos_[2] - occupied_height / 2.0 > table_height + threshold)
-        {
-            printf("%s is being supported by other objects\n", object_list[i].name.c_str());
-
-            supported_objects.push_back(object_list[i]);
-            object_list.erase(object_list.begin() + i);
-        }
-        else
-        {
-            // add relation on(obj, table) to scene graph
-            // NOTE: not distinguishing between table and tray, because the planner needs to be able to put multiple
-            // objects onto tray
-            scene_graph::Relation rel(scene_graph::RelationType::kOn, object_list[i].id, tray_id_, object_list[i].name,
-                                      "tra"
-                                      "y");
-            scene_graph_.rel_list.push_back(rel);
-        }
-
-        std::cout << std::endl;
-    }
-
-    // sort in descending order for z
-    std::sort(supported_objects.begin(), supported_objects.end(), ObjectCompByHeight);
-    std::cout << "all objects being supported : ";
-    for (const auto& object : supported_objects)
-        printf("%s ", object.name.c_str());
-    std::cout << std::endl;
-    std::cout << "all rest objects : ";
-    for (const auto& object : object_list)
-        printf("%s ", object.name.c_str());
-    std::cout << std::endl;
-
-    // check supporting relationship
-    for (int i = supported_objects.size() - 1; i >= 0; i--)
-    {
-        int supporting_object_index = -1;
-        float min_dist = INFINITY;
-        for (int j = 0; j < object_list.size(); j++)
-        {
-            // find overlap between objects if any
-            if (CheckOverlap(supported_objects[i], object_list[j]))
-            {
-                // calculate distances between projected center
-                float dist = (Eigen::Vector2f(supported_objects[i].pose.pos_[0], supported_objects[i].pose.pos_[1]) -
-                              Eigen::Vector2f(object_list[j].pose.pos_[0], object_list[j].pose.pos_[1]))
-                                 .norm();
-                printf("2d dist = %f\n", dist);
-
-                if (dist < min_dist)
-                {
-                    min_dist = dist;
-                    supporting_object_index = j;
-                }
-            }
-        }
-
-        // move the supported object to rest objects lists
-        object_list.push_back(supported_objects[i]);
-        supported_objects.erase(supported_objects.begin() + i);
-
-        if (supporting_object_index != -1)
-        {
-            printf("on(%s, %s)\n", object_list.back().name.c_str(), object_list[supporting_object_index].name.c_str());
-
-            for (int j = 0; j < clear_objects_.size(); j++)
-            {
-                if (clear_objects_[j].id == object_list[supporting_object_index].id)
-                {
-                    clear_objects_.erase(clear_objects_.begin() + j);
-                    break;
-                }
-            }
-
-            // add relation to scene graph
-            scene_graph::Relation rel(scene_graph::RelationType::kOn, object_list.back().id,
-                                      object_list[supporting_object_index].id, object_list.back().name,
-                                      object_list[supporting_object_index].name);
-            scene_graph_.rel_list.push_back(rel);
-        }
-    }
     return true;
 }
 

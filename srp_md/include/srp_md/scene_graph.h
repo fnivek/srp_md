@@ -83,7 +83,8 @@ typedef std::vector<Object> ObjectList;
 
 enum RelationType
 {
-    kOn
+    kOn,
+    kSupport
 };
 
 struct Relation
