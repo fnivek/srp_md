@@ -2,9 +2,11 @@ from __future__ import absolute_import
 from . import sense
 import logging
 import rospy
+import tf
 import actionlib
 import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
+from geometry_msgs.msg import PoseStamped
 from dope_msgs.msg import DopeAction, DopeGoal
 from srp_md_msgs.msg import DetectPlaneAction, DetectPlaneGoal
 from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
@@ -19,6 +21,9 @@ class DopeSensor(sense.BaseSensor):
 
         # Timing
         self._timeout = 5
+
+        # Transforms
+        self._listener = tf.TransformListener()
 
         # Action client
         self._dope_goal = None
@@ -94,6 +99,21 @@ class DopeSensor(sense.BaseSensor):
             self._logger.error('Failed to get result from plane detector within {}s'.format(self._timeout))
             return None
         self._logger.debug('Plane detector result is {}'.format(plane_result))
+
+        # Transform dope msgs
+        for detection in dope_result.detections:
+            # Make a stamped pose
+            pose_stamped = PoseStamped()
+            pose_stamped.header.frame_id = '/head_camera_rgb_optical_frame'
+            pose_stamped.header.stamp = rospy.Time(0)
+            pose_stamped.pose = detection.bbox.center
+            try:
+                tfed_pose_stamped = self._listener.transformPose('/base_link', pose_stamped)
+                detection.bbox.center = tfed_pose_stamped.pose
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
+                self._logger.error('Failed to transform from /head_camera_rgb_optical_frame to /base_link: {}'.format(e)
+                                   )
+                return None
 
         # Build scene graph
         req = PoseToSceneGraphRequest()

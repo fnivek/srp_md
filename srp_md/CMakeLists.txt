@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   dope_msgs
   tf
   tf_conversions
+  geometry_msgs
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -50,6 +51,7 @@ catkin_package(
     dope_msgs
     tf
     tf_conversions
+    geometry_msgs
 #  DEPENDS system_lib
 )
 
