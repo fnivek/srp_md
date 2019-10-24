@@ -130,10 +130,7 @@ class SrpMd(object):
             self._obs.append(new_obs)
             self._current_graph = new_obs
             # Debug
-            obs_str = ''
-            for rel, name in new_obs.print_rels().iteritems():
-                obs_str += '\n  {}: {}'.format(rel, name)
-            self._logger.debug('Observation is:{}'.format(obs_str))
+            self._logger.debug('Observation is: {}'.format(new_obs))
 
     """ Goal Generator.
 
@@ -160,6 +157,8 @@ class SrpMd(object):
                 self._current_graph = self._goal_instance
             else:
                 self._goal_instance = self._goal_generator.generate_goal()
+
+            self._logger.debug('New goal is: {}'.format(self._goal_instance))
 
     def update_goal_generator_config(self, **kwargs):
         self._goal_generator.update_config(**kwargs)

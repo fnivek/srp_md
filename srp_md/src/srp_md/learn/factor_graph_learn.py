@@ -132,7 +132,7 @@ class FactorHandler():
         var = self._vars[var_index]
         # Iterate over all relations
         if isinstance(var, srp_md.Relation):
-            for relation in srp_md.SceneGraph.RELATION_STRS:
+            for relation in srp_md.Relation.RELATION_STRS:
                 self._assignment[var] = {'value': relation}
                 self._recurse_generate_factor(var_index + 1)
         else:

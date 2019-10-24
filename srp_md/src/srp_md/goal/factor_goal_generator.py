@@ -122,8 +122,8 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('What are object names? %s', goal.get_obj_names())
         self._logger.debug('What are relation names? %s', goal.get_rel_names())
         self._logger.debug('What are relation values? %s', goal.get_rel_values())
-        self._logger.debug('What are property values? %s', goal.get_prop_values('color'))
-        self._logger.debug('Is this scene graph consistent? %s', goal.check_consistency("block"))
+        # self._logger.debug('What are property values? %s', goal.get_prop_values('color'))
+        # self._logger.debug('Is this scene graph consistent? %s', goal.check_consistency("block"))
         return goal
 
 

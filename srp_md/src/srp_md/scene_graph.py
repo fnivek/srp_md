@@ -25,6 +25,13 @@ class SceneGraph(srp_md.FactorGraph):
         self.relations = []
         self.generate_relations()
 
+    def __str__(self):
+        s = ''
+        for rel in self.relations:
+            s += '{}({}, {}), '.format(rel.value, rel.obj1.name, rel.obj2.name)
+        s = s[:-2]
+        return '[{}]'.format(s)
+
     def num_objs(self):
         return len(self.objs)
 
@@ -356,8 +363,9 @@ class SceneGraph(srp_md.FactorGraph):
 
 
 class Object(srp_md.Var):
-    def __init__(self, id_num=0, uuid=0, assignment=None, relations=None):
-        super(Object, self).__init__(name='X_{}'.format(id_num), uuid=uuid, assignment=assignment, num_states=1)
+    def __init__(self, name=None, id_num=0, uuid=0, assignment=None, relations=None):
+        super(Object, self).__init__(name=name if name is not None else 'X_{}'.format(id_num), uuid=uuid,
+                                     assignment=assignment, num_states=1)
         self.id = id_num
         self.relations = relations
         if relations is None:

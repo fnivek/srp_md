@@ -26,6 +26,9 @@ class DopeSensor(sense.BaseSensor):
         # Transforms
         self._listener = tf.TransformListener()
 
+        # Initilize properties
+        self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach']}
+
         # Action client
         self._dope_goal = None
         self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
@@ -139,7 +142,7 @@ class DopeSensor(sense.BaseSensor):
         for name in req.names:
             uuid = int(name[name.rfind('_') + 1:])
             label = name[:name.rfind('_')]
-            objs.append(srp_md.Object(id_num=uuid, uuid=uuid, assignment={'class': label}))
+            objs.append(srp_md.Object(name=name, id_num=uuid, uuid=uuid, assignment={'class': label}))
         # Build the scene graph
         scene_graph = srp_md.SceneGraph(objs)
         # Update all relations from response
