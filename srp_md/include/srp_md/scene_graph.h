@@ -100,6 +100,21 @@ struct Relation
     {
     }
 
+    std::string get_type_str()
+    {
+        std::string type_str;
+        switch (type)
+        {
+            case kOn:
+                type_str = "on";
+                break;
+            case kSupport:
+                type_str = "support";
+                break;
+        }
+        return type_str;
+    }
+
     // void operator=(const Relation& relation){
     // 	n1 = relation.n1;
     // 	n2 = relation.n2;

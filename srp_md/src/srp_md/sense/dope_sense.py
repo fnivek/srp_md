@@ -8,6 +8,7 @@ import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
 from geometry_msgs.msg import PoseStamped
 from dope_msgs.msg import DopeAction, DopeGoal
+import srp_md
 from srp_md_msgs.msg import DetectPlaneAction, DetectPlaneGoal
 from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
 
@@ -121,8 +122,10 @@ class DopeSensor(sense.BaseSensor):
         req.objects = []
         class_ids = rospy.get_param("/dope/class_ids")
         class_names = {class_id: name for name, class_id in class_ids.iteritems()}
+        uuid = 0
         for detection in dope_result.detections:
-            req.names.append(class_names[detection.results[0].id])
+            req.names.append(class_names[detection.results[0].id] + '_' + str(uuid))
+            uuid += 1
             req.objects.append(detection.bbox)
         try:
             resp = self._pose_to_scene_graph_client(req)
@@ -131,8 +134,25 @@ class DopeSensor(sense.BaseSensor):
             return None
         # Convert ros msg to scene graph
         self._logger.debug('Pose to scene graph result: {}'.format(resp))
+        # Make srp_md objects
+        objs = []
+        for name in req.names:
+            uuid = int(name[name.rfind('_') + 1:])
+            label = name[:name.rfind('_')]
+            objs.append(srp_md.Object(id_num=uuid, uuid=uuid, assignment={'class': label}))
+        # Build the scene graph
+        scene_graph = srp_md.SceneGraph(objs)
+        # Update all relations from response
+        for name1, name2, rel_value in zip(resp.object1, resp.object2, resp.relation):
+            obj1 = srp_md.Var(uuid=int(name1[name1.rfind('_') + 1:]))
+            obj2 = srp_md.Var(uuid=int(name2[name2.rfind('_') + 1:]))
+            rel = scene_graph.get_rel_by_objs(obj1, obj2)
+            rel.value = rel_value
+            # Check if obj1 and obj2 are fliped
+            if rel.obj1 != obj1:
+                rel.rev_relation()
 
-        return None
+        return scene_graph
 
 
 sense.sensors['dope_sensor'] = DopeSensor

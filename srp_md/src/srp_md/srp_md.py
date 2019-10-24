@@ -129,6 +129,11 @@ class SrpMd(object):
             new_obs = self._sensor.process_data(self._raw_data)
             self._obs.append(new_obs)
             self._current_graph = new_obs
+            # Debug
+            obs_str = ''
+            for rel, name in new_obs.print_rels().iteritems():
+                obs_str += '\n  {}: {}'.format(rel, name)
+            self._logger.debug('Observation is:{}'.format(obs_str))
 
     """ Goal Generator.
 

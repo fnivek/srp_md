@@ -43,6 +43,9 @@ void PoseToSceneGraph::WriteSceneGraph(std::string file_path)
 bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req,
                                       srp_md_msgs::PoseToSceneGraph::Response& resp)
 {
+    // Reset scene graph
+    scene_graph_ = scene_graph::SceneGraph();
+
     // Grab objects from request
     int object_id = 0;
     scene_graph::ObjectList object_list;
@@ -67,8 +70,8 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         object_list.push_back(obj);
         clear_objects_.push_back(obj);
         // Debug
-        std::cout << obj.name << ": " << obj.pose;
-        printf("\tdim: %f %f %f\n", obj.dim[0], obj.dim[1], obj.dim[2]);
+        // std::cout << obj.name << ": " << obj.pose;
+        // printf("\tdim: %f %f %f\n", obj.dim[0], obj.dim[1], obj.dim[2]);
     }
 
     // Determine support and on relations
@@ -83,10 +86,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
             {
                 scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, bot_obj.id, top_obj.name,
                                          bot_obj.name);
-                scene_graph::Relation support(scene_graph::RelationType::kSupport, bot_obj.id, top_obj.id, bot_obj.name,
-                                              top_obj.name);
                 scene_graph_.rel_list.push_back(on);
-                scene_graph_.rel_list.push_back(support);
                 // Debug
                 printf("On(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
             }
@@ -95,6 +95,12 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
 
     // Prepare output
     scene_graph_.object_list = object_list;
+    for (auto&& rel : scene_graph_.rel_list)
+    {
+        resp.object1.push_back(rel.name1);
+        resp.object2.push_back(rel.name2);
+        resp.relation.push_back(rel.get_type_str());
+    }
 
     return true;
 }
@@ -104,14 +110,14 @@ float PoseToSceneGraph::CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
     float cos_angle = v1.dot(v2) / (v1.norm() * v2.norm());
     float angle = acos(cos_angle);
 
-    std::cout << "angle = " << angle * 180.0 / M_PI;
+    // std::cout << "angle = " << angle * 180.0 / M_PI;
     if (angle > M_PI / 2.0)
     {
         angle = M_PI - angle;
-        std::cout << " -> " << angle * 180.0 / M_PI;
+        // std::cout << " -> " << angle * 180.0 / M_PI;
     }
 
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
     return angle;
 }
@@ -240,7 +246,7 @@ void PoseToSceneGraph::DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> 
 
 bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Object object2)
 {
-    printf("check overlap (%s, %s): ", object1.name.c_str(), object2.name.c_str());
+    // printf("check overlap (%s, %s): ", object1.name.c_str(), object2.name.c_str());
 
     std::vector<Eigen::Vector3f> object1_points = ProjectObjectBoudingBox(object1, "bottom");
     std::vector<Eigen::Vector3f> object2_points = ProjectObjectBoudingBox(object2, "upper");
@@ -297,7 +303,7 @@ bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Ob
     cv::Mat overlap_image;
     cv::bitwise_and(image1_bw, image2_bw, overlap_image);
     int overlap = cv::countNonZero(overlap_image);
-    printf("overlap %d pixels in 120x120 scaled image\n", overlap);
+    // printf("overlap %d pixels in 120x120 scaled image\n", overlap);
 
     if (overlap > 0)
         return true;
