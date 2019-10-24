@@ -16,17 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class SceneGraph(srp_md.FactorGraph):
-    # Class constants
-    RELATION_STRS = ['disjoint', 'in', 'on', 'contain', 'support', 'proximity']
-    REV_RELATION_DICT = {
-        "disjoint": "disjoint",
-        "proximity": "proximity",
-        "on": "support",
-        "support": "on",
-        "in": "contain",
-        "contain": "in"
-    }
-
     def __init__(self, objs=None):
         super(SceneGraph, self).__init__()
         if objs is None:
@@ -112,18 +101,13 @@ class SceneGraph(srp_md.FactorGraph):
                     rels = []
                     for obj_pair in itertools.combinations(objs, 2):
                         # Get the relation of those objs (in order)
-                        relation = self.get_rel_by_objs(obj_pair[0], obj_pair[1])
-                        # If reversed flip value
+                        relation = copy.deepcopy(self.get_rel_by_objs(obj_pair[0], obj_pair[1]))
+                        # If reversed rev value
                         if relation.obj1 != obj_pair[0]:
-                            relation = self.flip_rel(relation)
+                            relation.rev_relation()
                         rels.append(relation)
                     # Finally yield the factor of these variables list
                     yield srp_md.SgFactor(variables=list(objs) + rels)
-
-    def flip_rel(self, rel):
-        rel_cp = copy.deepcopy(rel)
-        rel_cp.value = SceneGraph.REV_RELATION_DICT[rel.value]
-        return rel_cp
 
     def markov_blanket(self, vars):
         """ Get all vars in the markov blanket.
@@ -384,14 +368,31 @@ class Object(srp_md.Var):
 
 
 class Relation(srp_md.Var):
+    # Class constants
+    RELATION_STRS = ['disjoint', 'in', 'on', 'contain', 'support', 'proximity']
+    REV_RELATION_DICT = {
+        "disjoint": "disjoint",
+        "proximity": "proximity",
+        "on": "support",
+        "support": "on",
+        "in": "contain",
+        "contain": "in"
+    }
+
     def __init__(self, objs, uuid=0, value=None):
-        super(Relation, self).__init__(name=None, uuid=uuid, num_states=len(SceneGraph.RELATION_STRS))
+        super(Relation, self).__init__(name=None, uuid=uuid, num_states=len(self.RELATION_STRS))
         if len(objs) != 2 or any([not isinstance(obj, Object) for obj in objs]):
             raise TypeError('objs must be an itterable of 2 srp_md.Object classes')
         self.obj1 = objs[0]
         self.obj2 = objs[1]
         self.name = 'R_{}_{}'.format(self.obj1.id, self.obj2.id)
-        self.value = value
+        if value is None:
+            self.value = "disjoint"
+        else:
+            self.value = value
+
+    def rev_relation(self):
+        self.value = self.REV_RELATION_DICT[self.value]
 
     def get_objs(self):
         return [self.obj1, self.obj2]
@@ -402,7 +403,10 @@ class Relation(srp_md.Var):
 
     @value.setter
     def value(self, value):
-        self.assignment['value'] = value
+        if value in self.RELATION_STRS:
+            self.assignment['value'] = value
+        else:
+            raise ValueError('{} not in {}'.format(value, self.RELATION_STRS))
 
 
 class SgFactor(srp_md.Factor):
