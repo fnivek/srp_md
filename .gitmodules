@@ -1,3 +1,6 @@
 [submodule "submodules/libDAI"]
 	path = submodules/libDAI
 	url = ../../4progress/libDAI
+[submodule "submodules/pyperplan"]
+	path = submodules/pyperplan
+	url = ./submodules/pyperplan
