@@ -29,6 +29,18 @@ class DopeSensor(sense.BaseSensor):
         # Initilize properties
         self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach']}
 
+        # Start ROS subscribers
+        self.image_sub = message_filters.Subscriber(
+            '/head_camera/rgb/image_raw',
+            ImageSensor_msg
+        )
+        self.info_sub = message_filters.Subscriber(
+            '/head_camera/rgb/camera_info',
+            CameraInfo
+        )
+        self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
+        self.ts.registerCallback(self.image_callback)
+
         # Action client
         self._dope_goal = None
         self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
@@ -40,17 +52,17 @@ class DopeSensor(sense.BaseSensor):
         # Reset goal
         self._dope_goal = None
 
-        # Start ROS subscribers
-        image_sub = message_filters.Subscriber(
-            '/head_camera/rgb/image_raw',
-            ImageSensor_msg
-        )
-        info_sub = message_filters.Subscriber(
-            '/head_camera/rgb/camera_info',
-            CameraInfo
-        )
-        ts = message_filters.TimeSynchronizer([image_sub, info_sub], 10)
-        ts.registerCallback(self.image_callback)
+        # # Start ROS subscribers
+        # image_sub = message_filters.Subscriber(
+        #     '/head_camera/rgb/image_raw',
+        #     ImageSensor_msg
+        # )
+        # info_sub = message_filters.Subscriber(
+        #     '/head_camera/rgb/camera_info',
+        #     CameraInfo
+        # )
+        # ts = message_filters.TimeSynchronizer([image_sub, info_sub], 100)
+        # ts.registerCallback(self.image_callback)
 
         # Wait for message with timeout
         start = rospy.get_rostime()
@@ -67,8 +79,8 @@ class DopeSensor(sense.BaseSensor):
             self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
 
         # Unregister image subscription
-        image_sub.unregister()
-        info_sub.unregister()
+        # image_sub.unregister()
+        # info_sub.unregister()
 
     def image_callback(self, image, info):
         self._dope_goal = DopeGoal()
@@ -87,8 +99,8 @@ class DopeSensor(sense.BaseSensor):
         self._dope_client.send_goal(self._dope_goal)
 
         # Wait for action servers to return
-        self._dope_client.wait_for_result(rospy.Duration(5))
-        self._plane_client.wait_for_result(rospy.Duration(5))
+        self._dope_client.wait_for_result(rospy.Duration(self._timeout))
+        self._plane_client.wait_for_result(rospy.Duration(self._timeout))
 
         # Get Dope result
         dope_result = self._dope_client.get_result()
