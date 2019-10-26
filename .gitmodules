@@ -4,3 +4,6 @@
 [submodule "submodules/pyperplan"]
 	path = submodules/pyperplan
 	url = ./submodules/pyperplan
+[submodule "submodules/val"]
+	path = submodules/val
+	url = git@github.com:fnivek/VAL.git
