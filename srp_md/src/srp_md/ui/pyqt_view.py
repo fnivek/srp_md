@@ -77,6 +77,7 @@ class PyQtView(view.BaseView):
         self._gui.show_graph.pressed.connect(self._ctrl.show_graph)
         self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
         self._gui.evaluate_goal.pressed.connect(self._ctrl.evaluate_goal)
+        self._gui.plan.pressed.connect(self._ctrl.plan)
 
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_goal_type_list)

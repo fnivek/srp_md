@@ -56,6 +56,9 @@ class Controller(object):
         except ValueError:
             self._errors.append("Failed to process data")
 
+    def plan(self):
+        self._model.plan()
+
     # Actions added
     def write_demos(self, filename):
         self._model.write_demos(filename)

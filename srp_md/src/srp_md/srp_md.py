@@ -11,6 +11,7 @@ from . import learn
 from . import sense
 from . import goal
 from . import evaluate
+from . import plan
 
 # Python imports
 import logging as log
@@ -54,6 +55,7 @@ class SrpMd(object):
         self.set_sensor(sensor)
         self.set_goal_generator(goal_generator)
         self.set_goal_evaluator(goal_evaluator)
+        self._planner = plan.Planner()
 
     def get_num_demos(self):
         return len(self._obs)
@@ -296,3 +298,6 @@ class SrpMd(object):
             # nx.draw_networkx_edges(G, pos, edgelist=red_edges, edge_color='r', arrows=True)
             # nx.draw_networkx_edges(G, pos, edgelist=black_edges, arrows=False)
             # plt.show()
+
+    def plan(self):
+        self._planner.plan()
