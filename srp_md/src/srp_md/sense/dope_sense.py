@@ -27,6 +27,7 @@ class DopeSensor(sense.BaseSensor):
         self._listener = tf.TransformListener()
 
         # Initilize properties
+        # TODO(Henry): Add properties?
         self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach']}
 
         # Start ROS subscribers
@@ -39,6 +40,7 @@ class DopeSensor(sense.BaseSensor):
             CameraInfo
         )
         self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
+        # ts = message_filters.ApproximateTimeSynchronizer([image_sub, info_sub], queue_size=10, slop=1)
         self.ts.registerCallback(self.image_callback)
 
         # Action client
@@ -48,21 +50,10 @@ class DopeSensor(sense.BaseSensor):
         self._plane_client = actionlib.SimpleActionClient('plane_detector', DetectPlaneAction)
         self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
 
+
     def get_next_image(self, timeout=None):
         # Reset goal
         self._dope_goal = None
-
-        # # Start ROS subscribers
-        # image_sub = message_filters.Subscriber(
-        #     '/head_camera/rgb/image_raw',
-        #     ImageSensor_msg
-        # )
-        # info_sub = message_filters.Subscriber(
-        #     '/head_camera/rgb/camera_info',
-        #     CameraInfo
-        # )
-        # ts = message_filters.TimeSynchronizer([image_sub, info_sub], 100)
-        # ts.registerCallback(self.image_callback)
 
         # Wait for message with timeout
         start = rospy.get_rostime()
@@ -83,9 +74,12 @@ class DopeSensor(sense.BaseSensor):
         # info_sub.unregister()
 
     def image_callback(self, image, info):
+        print("I know you are not here")
         self._dope_goal = DopeGoal()
         self._dope_goal.image = image
         self._dope_goal.cam_info = info
+        print(self._dope_goal.image)
+        print(self._dope_goal.cam_info)
 
     def process_data(self, data):
         # Start looking for the table
