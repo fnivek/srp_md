@@ -74,12 +74,9 @@ class DopeSensor(sense.BaseSensor):
         # info_sub.unregister()
 
     def image_callback(self, image, info):
-        print("I know you are not here")
         self._dope_goal = DopeGoal()
         self._dope_goal.image = image
         self._dope_goal.cam_info = info
-        print(self._dope_goal.image)
-        print(self._dope_goal.cam_info)
 
     def process_data(self, data):
         # Start looking for the table
