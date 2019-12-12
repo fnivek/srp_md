@@ -15,6 +15,10 @@
   <depend>tf_conversions</depend>
   <depend>geometry_msgs</depend>
 
+  <build_depend>py_trees_ros</build_depend>
+  <exec_depend>py_trees_ros</exec_depend>
+  <test_depend>unittest</test_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->

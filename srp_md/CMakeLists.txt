@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
   geometry_msgs
+  py_trees_ros
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -136,6 +137,20 @@ target_link_libraries(plan_task
   ${OpenCV_LIBS}
 )
 add_dependencies(plan_task
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+# Action node
+add_executable(action_node
+  src/action_node.cpp
+  src/actions.cpp
+)
+# Note order should be if depends on another then must go higher in list
+target_link_libraries(action_node
+  ${catkin_LIBRARIES}
+)
+add_dependencies(action_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
