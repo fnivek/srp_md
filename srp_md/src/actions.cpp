@@ -725,3 +725,79 @@ bool Act::close_gripper()
 {
     return control_gripper(MIN_GRIPPER_VAL);
 }
+
+/*  function: move(overload version(1/3))
+    description:
+        move arm to one of the predefined poses given its pose name
+    args:
+        pose_name (string)
+    return:
+        pair<bool (true for success), moveit::planning_interface::MoveGroupInterface::Plan>
+*/
+bool Act::move(const std::string &pose_name, int max_try /* = 1 */)
+{
+    move_group_.setStartStateToCurrentState();
+    auto plan_result = this->plan(pose_name, max_try);
+    if (!plan_result.first)
+        return false;
+    bool success = (bool)move_group_.execute(plan_result.second);
+    if (!success)
+        ROS_INFO("Fail to move to %s", pose_name.c_str());
+    return success;
+}
+
+/*  function: move(overload v(2/3))
+    description:
+        move arm to some pose given its joint angles
+    args:
+        joint_angles ( map {joint name -> joint angle} )
+    return:
+        bool (true for success)
+*/
+bool Act::move(const std::map<std::string, double> &joint_angles, int max_try /* = 1 */)
+{
+    move_group_.setStartStateToCurrentState();
+    auto plan_result = this->plan(joint_angles, max_try);
+    if (!plan_result.first)
+        return false;
+    bool success = (bool)move_group_.execute(plan_result.second);
+    if (!success)
+        ROS_INFO("Fail to move given the joint angles");
+    return success;
+}
+
+/*  function: move(overload v(3/3))
+    description:
+        move arm to some pose given its geometry pose
+    args:
+        pose (geometry_msgs::Pose)
+    return:
+        bool (true for success)
+*/
+bool Act::move(const geometry_msgs::Pose &pose, int max_try /* = 1 */)
+{
+    move_group_.setStartStateToCurrentState();
+    auto plan_result = this->plan(pose, max_try);
+    if (!plan_result.first)
+        return false;
+    bool success = (bool)move_group_.execute(plan_result.second);
+    if (!success)
+        ROS_INFO("Fail to move given the geometry pose");
+    return success;
+}
+
+/*  function: move(overload v(4/3))
+    description:
+        move arm to some pose given plan
+    args:
+        plan (moveit::planning_interface::MoveGroupInterface::Plan )
+    return:
+        bool (true for success)
+*/
+bool Act::move(moveit::planning_interface::MoveGroupInterface::Plan move_plan)
+{
+    bool success = (bool)move_group_.execute(move_plan);
+    if (!success)
+        ROS_INFO("Fail to move to the given plan");
+    return success;
+}

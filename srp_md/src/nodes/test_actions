@@ -7,7 +7,7 @@ import rospy
 import py_trees
 import py_trees_ros
 
-from srp_md.act import ResetAct, GripperAct, OpenGripperAct, CloseGripperAct
+from srp_md.act import ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, PickAct
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
@@ -19,16 +19,19 @@ def build_tree():
     root = py_trees.composites.Sequence(name='srp_md_actions_test')
 
     test_pose = Pose()
-    test_pose.position.x = 0.7
-    test_pose.position.y = 0.3
-    test_pose.position.z = 0.85
-    test_pose.orientation.w = 0.5
-    test_pose.orientation.x = -0.5
-    test_pose.orientation.y = 0.5
-    test_pose.orientation.z = 0.5
+    test_pose.position.x = 0.75
+    test_pose.position.y = 0.
+    test_pose.position.z = 1.10
+    test_pose.orientation.w = 0.707
+    test_pose.orientation.x = 0.707
+    test_pose.orientation.y = 0.
+    test_pose.orientation.z = 0.
 
     root.add_children([
         py_trees.meta.oneshot(ResetAct)('reset'),
+        #py_trees.meta.oneshot(MoveToPoseAct)('move_to_test_pose', pose=test_pose),
+        py_trees.meta.oneshot(PickAct)('pick', 'object name', test_pose),
+        # py_trees_ros.trees.BehaviourTree(MoveToPoseAct),
         #srp_md.act.Pick('sugar_box','sugar_box', sugar_box_pose)
     ])
     return py_trees_ros.trees.BehaviourTree(root)

@@ -134,17 +134,22 @@ public:
     bool control_gripper(double pos);
     bool open_gripper();
     bool close_gripper();
+
+    bool move(const std::string &pose_name, int max_try = 1);
+    bool move(const std::map<std::string, double> &joint_angles, int max_try = 1);
+    bool move(const geometry_msgs::Pose &pose, int max_try = 1);
+    bool move(moveit::planning_interface::MoveGroupInterface::Plan move_plan);
 };
 
 
-// //template implementation==========================================================================
-// template <typename Client>
-// void Act::wait_for_server(Client &ac, const std::string &topic_name)
-// {
-//     ROS_INFO("Waiting for \"%s\" action server...", topic_name.c_str());
-//     ac.waitForServer();
-//     ROS_INFO("Connected to \"%s\" action server!", topic_name.c_str());
-// }
+//template implementation==========================================================================
+template <typename Client>
+void Act::wait_for_server(Client &ac, const std::string &topic_name)
+{
+    ROS_INFO("Waiting for \"%s\" action server...", topic_name.c_str());
+    ac.waitForServer();
+    ROS_INFO("Connected to \"%s\" action server!", topic_name.c_str());
+}
 
 
 // template<typename Goal>

@@ -16,13 +16,20 @@ list(APPEND CMAKE_MODULE_PATH
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  srp_md_msgs
   actionlib
+  srp_md_msgs
+  std_msgs
+  control_msgs
   dope_msgs
+  geometry_msgs
   tf
   tf_conversions
-  geometry_msgs
   py_trees_ros
+  moveit_core
+  moveit_msgs
+  moveit_ros_move_group
+  moveit_ros_planning
+  moveit_ros_planning_interface
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -48,11 +55,20 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     rospy
+    actionlib
     srp_md_msgs
+    std_msgs
+    control_msgs
     dope_msgs
+    geometry_msgs
     tf
     tf_conversions
-    geometry_msgs
+    py_trees_ros
+    moveit_core
+    moveit_msgs
+    moveit_ros_move_group
+    moveit_ros_planning
+    moveit_ros_planning_interface
 #  DEPENDS system_lib
 )
 

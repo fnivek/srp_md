@@ -10,12 +10,14 @@ import actionlib
 import py_trees
 import py_trees_ros
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
+from srp_md_msgs.msg import *
 
 import fetch_manipulation_pipeline.msg
 from behavior_manager.conditions.arm_tucked_condition import ArmTuckedCondition
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
+
 
 def ResetAct(name):
     """ Bring robot back to default pose.
@@ -59,13 +61,46 @@ def GripperAct(name, percent_open, max_effort=None):
         action_namespace='/gripper_controller/gripper_action'
     )
 
-
 def OpenGripperAct(name, max_effort=None):
     return GripperAct(name, 1.0, max_effort)
 
-
 def CloseGripperAct(name, max_effort=None):
     return GripperAct(name, 0.0, max_effort)
+
+def MoveToPoseAct(name, pose):
+    seq = py_trees.composites.Sequence(name='seq_{}'.format(name))
+    root = py_trees.composites.Parallel(
+        name='pal_{}'.format(name),
+        policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL,
+        synchronize=True,
+        allow_failure=False)
+    root.add_children([
+        seq,
+        HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight'),
+        OpenGripperAct('act_{}_open_gripper'.format(name))
+    ])
+    seq.add_children([
+        FullyExtendTorso('act_{}_extend_torso'.format(name)),
+        MoveToPoseBehavior('act_{}_move_to_pose'.format(name), pose=pose),
+    ])
+    return root
+
+class MoveToPoseBehavior(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, pose=Pose(), *argv, **kwargs):
+        super(MoveToPoseBehavior, self).__init__(
+            name=name,
+            action_spec=MoveToPoseAction,
+            action_goal=MoveToPoseGoal(),
+            action_namespace='move',
+            *argv,
+            **kwargs
+        )
+        self.pose = pose
+
+    def initialise(self):
+        super(MoveToPoseBehavior, self).initialise()
+        self.action_goal.pose = self.pose
+        rospy.loginfo('Grasploc Pick Goal Constructed.')
 
 def PickAct(name, obj_name, obj_pose):
     """

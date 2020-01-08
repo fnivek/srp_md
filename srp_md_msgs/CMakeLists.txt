@@ -33,6 +33,7 @@ add_action_files(
   FILES
     DetectPlane.action
     GrasplocPick.action
+    MoveToPose.action
 )
 
 # Generate added messages and services with any dependencies listed here
