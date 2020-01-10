@@ -11,6 +11,7 @@ import py_trees
 import py_trees_ros
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
+from geometry_msgs.msg import Pose, Transform
 
 import fetch_manipulation_pipeline.msg
 from behavior_manager.conditions.arm_tucked_condition import ArmTuckedCondition
@@ -67,27 +68,9 @@ def OpenGripperAct(name, max_effort=None):
 def CloseGripperAct(name, max_effort=None):
     return GripperAct(name, 0.0, max_effort)
 
-def MoveToPoseAct(name, pose):
-    seq = py_trees.composites.Sequence(name='seq_{}'.format(name))
-    root = py_trees.composites.Parallel(
-        name='pal_{}'.format(name),
-        policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL,
-        synchronize=True,
-        allow_failure=False)
-    root.add_children([
-        seq,
-        HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight'),
-        OpenGripperAct('act_{}_open_gripper'.format(name))
-    ])
-    seq.add_children([
-        FullyExtendTorso('act_{}_extend_torso'.format(name)),
-        MoveToPoseBehavior('act_{}_move_to_pose'.format(name), pose=pose),
-    ])
-    return root
-
-class MoveToPoseBehavior(py_trees_ros.actions.ActionClient):
+class MoveToPoseAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, pose=Pose(), *argv, **kwargs):
-        super(MoveToPoseBehavior, self).__init__(
+        super(MoveToPoseAct, self).__init__(
             name=name,
             action_spec=MoveToPoseAction,
             action_goal=MoveToPoseGoal(),
@@ -96,13 +79,21 @@ class MoveToPoseBehavior(py_trees_ros.actions.ActionClient):
             **kwargs
         )
         self.pose = pose
-
-    def initialise(self):
-        super(MoveToPoseBehavior, self).initialise()
         self.action_goal.pose = self.pose
-        rospy.loginfo('Grasploc Pick Goal Constructed.')
 
-def PickAct(name, obj_name, obj_pose):
+class MoveToRelativePoseAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, transform=Transform(), *argv, **kwargs):
+        super(MoveToRelativePoseAct, self).__init__(
+            name=name,
+            action_spec=MoveToRelativePoseAction,
+            action_goal=MoveToRelativePoseGoal(),
+            action_namespace='relative_move',
+            *argv,
+            **kwargs
+        )
+        self.action_goal.transform = transform
+
+def PickAct(name):
     """
     Pick
     - Input: Detected objects' poses from DOPE
@@ -113,9 +104,9 @@ def PickAct(name, obj_name, obj_pose):
     -   GrasplocPickBehavior: Pick up the object by actuating gripper
     -   CartesianBehavior: Lift it up in world z (base-link z)
     """
-    # # Set up blackboard variable for GrasplocPickBehavior?
-    # blackboard = py_trees.blackboard.Blackboard()
-    # blackboard.set('grasploc', obj_pose)
+    # Set up blackboard variable for GrasplocPickBehavior?
+    obj_name, obj_bbox = py_trees.blackboard.Blackboard().get('obj_key')
+    obj_pose = obj_bbox
 
     # Generate a pose that is higher up from obj_pose. Not sure if this needs to be the gripper pose?
     up_pose = deepcopy(obj_pose)
@@ -128,7 +119,7 @@ def PickAct(name, obj_name, obj_pose):
 
     # Add steps to execute pick action
     root.add_children([
-        GrasplocPickBehavior(name='grasplocPick', obj_bbox),
+        GrasplocPickBehavior(name='grasplocPick', bbox=obj_bbox),
         CartesianBehavior(name='act_cartesian_pick', action_name='move', wplist=up_pose, max_try=3)
     ])
     return root

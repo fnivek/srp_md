@@ -24,6 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   tf_conversions
+  tf2_geometry_msgs
   py_trees_ros
   moveit_core
   moveit_msgs
@@ -63,6 +64,7 @@ catkin_package(
     geometry_msgs
     tf
     tf_conversions
+    tf2_geometry_msgs
     py_trees_ros
     moveit_core
     moveit_msgs

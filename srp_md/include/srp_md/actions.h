@@ -24,6 +24,10 @@
 
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
+#include <tf2/convert.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <moveit_msgs/GetPlanningScene.h>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -139,6 +143,9 @@ public:
     bool move(const std::map<std::string, double> &joint_angles, int max_try = 1);
     bool move(const geometry_msgs::Pose &pose, int max_try = 1);
     bool move(moveit::planning_interface::MoveGroupInterface::Plan move_plan);
+
+    bool relative_move(const geometry_msgs::Transform &pose_diff, int max_try = 1);
+
 };
 
 

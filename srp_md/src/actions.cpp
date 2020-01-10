@@ -801,3 +801,34 @@ bool Act::move(moveit::planning_interface::MoveGroupInterface::Plan move_plan)
         ROS_INFO("Fail to move to the given plan");
     return success;
 }
+
+/*  function: relative_move()
+    description:
+        move arm to some pose relative to current pose
+    args:
+        pose_diff (geometry_msgs::TransformStamped)
+    return:
+        bool (true for success)
+*/
+bool Act::relative_move(const geometry_msgs::Transform &pose_diff, int max_try /* = 1 */)
+{
+    geometry_msgs::Pose current_pose = move_group_.getCurrentPose().pose;
+    ROS_INFO("Frame ID: %s", move_group_.getCurrentPose().header.frame_id.c_str());
+    tf2::Transform current_pose_tf;
+    tf2::fromMsg(current_pose, current_pose_tf);
+
+    tf2::Transform pose_diff_tf;
+    tf2::fromMsg(pose_diff, pose_diff_tf);
+
+    tf2::Transform computed_tf = current_pose_tf * pose_diff_tf;
+    geometry_msgs::Pose computed;
+    tf2::toMsg(computed_tf, computed);
+
+    auto plan_result = this->plan(computed, max_try);
+    if (!plan_result.first)
+        return false;
+    bool success = (bool)move_group_.execute(plan_result.second);
+    if (!success)
+        ROS_INFO("Fail to move given relative pose");
+    return success;
+}
