@@ -23,30 +23,50 @@ def build_tree():
     test_pose = Pose()
     test_pose.position.x = 0.75
     test_pose.position.y = 0.
-    test_pose.position.z = 1.10
+    test_pose.position.z = 1.0
     test_pose.orientation.w = 0.707
     test_pose.orientation.x = 0.707
     test_pose.orientation.y = 0.
     test_pose.orientation.z = 0.
 
-    test_transform = Transform()
-    test_transform.translation.x = 0.
-    test_transform.translation.y = 0.
-    test_transform.translation.z = 0.5
-    test_transform.rotation.x = 0.
-    test_transform.rotation.y = 0.
-    test_transform.rotation.z = 0.
-    test_transform.rotation.w = 0.
+    test_transform1 = Transform()
+    test_transform1.translation.x = 0.
+    test_transform1.translation.y = 0.
+    test_transform1.translation.z = 0.25
+    test_transform1.rotation.x = 0.707
+    test_transform1.rotation.y = 0.
+    test_transform1.rotation.z = 0.
+    test_transform1.rotation.w = 0.707
+
+    test_transform2 = Transform()
+    test_transform2.translation.x = 0.
+    test_transform2.translation.y = 0.25
+    test_transform2.translation.z = 0.
+    test_transform2.rotation.x = 0.707
+    test_transform2.rotation.y = 0.
+    test_transform2.rotation.z = 0.
+    test_transform2.rotation.w = 0.707
+
+    test_transform3 = Transform()
+    test_transform3.translation.x = 0.
+    test_transform3.translation.y = 0.
+    test_transform3.translation.z = -0.25
+    test_transform3.rotation.x = 0.707
+    test_transform3.rotation.y = 0.
+    test_transform3.rotation.z = 0.
+    test_transform3.rotation.w = 0.707
 
 
     obj_bbox = []
     py_trees.blackboard.Blackboard().set('obj_key', ['obj_name', obj_bbox])
 
     root.add_children([
-        py_trees.meta.oneshot(ResetAct)('reset'),
+        # py_trees.meta.oneshot(ResetAct)('reset'),
         FullyExtendTorso('act_please_extend_torso'),
         MoveToPoseAct('move_to_test_pose', pose=test_pose),
-        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform),
+        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
+        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
+        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
         #PickAct('pick_1'),
     ])
     return py_trees_ros.trees.BehaviourTree(root)
@@ -62,7 +82,7 @@ def main():
     rospy.init_node('srp_md_actions_test')
 
     # This is a test tree so initilize set debug level
-    py_trees.logging.level = py_trees.logging.Level.DEBUG
+    # py_trees.logging.level = py_trees.logging.Level.DEBUG
 
     # Build a tree
     tree = build_tree()

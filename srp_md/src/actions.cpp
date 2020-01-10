@@ -813,14 +813,14 @@ bool Act::move(moveit::planning_interface::MoveGroupInterface::Plan move_plan)
 bool Act::relative_move(const geometry_msgs::Transform &pose_diff, int max_try /* = 1 */)
 {
     geometry_msgs::Pose current_pose = move_group_.getCurrentPose().pose;
-    ROS_INFO("Frame ID: %s", move_group_.getCurrentPose().header.frame_id.c_str());
     tf2::Transform current_pose_tf;
     tf2::fromMsg(current_pose, current_pose_tf);
 
     tf2::Transform pose_diff_tf;
     tf2::fromMsg(pose_diff, pose_diff_tf);
 
-    tf2::Transform computed_tf = current_pose_tf * pose_diff_tf;
+    tf2::Transform computed_tf(pose_diff_tf.getRotation() * current_pose_tf.getRotation(),
+        pose_diff_tf.getOrigin() + current_pose_tf.getOrigin());
     geometry_msgs::Pose computed;
     tf2::toMsg(computed_tf, computed);
 
