@@ -7,11 +7,16 @@ from copy import deepcopy
 
 import rospy
 import actionlib
+import tf
 import py_trees
 import py_trees_ros
+import message_filters
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
-from geometry_msgs.msg import Pose, Transform
+from dope_msgs.msg import DopeAction, DopeGoal
+from geometry_msgs.msg import Pose, PoseStamped, Transform
+from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
+import actionlib_msgs.msg as actionlib_msgs
 
 import fetch_manipulation_pipeline.msg
 from behavior_manager.conditions.arm_tucked_condition import ArmTuckedCondition
@@ -92,6 +97,80 @@ class MoveToRelativePoseAct(py_trees_ros.actions.ActionClient):
             **kwargs
         )
         self.action_goal.transform = transform
+
+class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, *argv, **kwargs):
+        super(GetDopeSnapshotAct, self).__init__(
+            name=name,
+            action_spec=DopeAction,
+            action_goal=DopeGoal(),
+            action_namespace='dope',
+            *argv,
+            **kwargs
+        )
+
+        self._timeout = 5
+        self._listener = tf.TransformListener()
+
+        self.image_sub = message_filters.Subscriber(
+            '/head_camera/rgb/image_raw',
+            ImageSensor_msg
+        )
+        self.info_sub = message_filters.Subscriber(
+            '/head_camera/rgb/camera_info',
+            CameraInfo
+        )
+        self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
+        self.ts.registerCallback(self.image_callback)
+
+    def image_callback(self, image, info):
+        self.action_goal = DopeGoal()
+        self.action_goal.image = image
+        self.action_goal.cam_info = info
+
+    def update(self):
+        self.logger.debug("{0}.update()".format(self.__class__.__name__))
+        if not self.action_client:
+            self.feedback_message = "no action client, did you call setup() on your tree?"
+            return py_trees.Status.INVALID
+        if not self.sent_goal:
+            self.action_client.send_goal(self.action_goal)
+            self.sent_goal = True
+            self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+        self.feedback_message = self.action_client.get_goal_status_text()
+        if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
+                                              actionlib_msgs.GoalStatus.PREEMPTED]:
+            return py_trees.Status.FAILURE
+        result = self.action_client.get_result()
+        if result:
+            obj_bboxes = {}
+            uuid = 0
+            class_ids = rospy.get_param("/dope/class_ids")
+            class_names = {class_id: name for name, class_id in class_ids.iteritems()}
+
+            for detection in result.detections:
+                pose_stamped = PoseStamped()
+                pose_stamped.header.frame_id = '/head_camera_rgb_optical_frame' # shouldn't this be same as self.imsage_sub?
+                pose_stamped.header.stamp = rospy.Time(0)
+                pose_stamped.pose = detection.bbox.center
+                try:
+                    tfed_pose_stamped = self._listener.transformPose('/base_link', pose_stamped)
+                    detection.bbox.center = tfed_pose_stamped.pose
+                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
+                    print 'Failed to transform from /head_camera_rgb_optical_frame to /base_link: {}'.format(e)
+                    return None
+
+                obj_bboxes[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
+                uuid += 1
+
+            print 'Dope Result: {}'.format(obj_bboxes)
+
+            py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
+            return py_trees.Status.SUCCESS
+        else:
+            self.feedback_message = self.override_feedback_message_on_running
+            return py_trees.Status.RUNNING
 
 def PickAct(name):
     """
