@@ -3,7 +3,7 @@
 	url = ../../4progress/libDAI
 [submodule "submodules/pyperplan"]
 	path = submodules/pyperplan
-	url = ./submodules/pyperplan
+	url = ../../4progress/pyperplan
 [submodule "submodules/val"]
 	path = submodules/val
 	url = git@github.com:fnivek/VAL.git
