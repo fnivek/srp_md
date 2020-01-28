@@ -832,3 +832,59 @@ bool Act::relative_move(const geometry_msgs::Transform &pose_diff, int max_try /
         ROS_INFO("Fail to move given relative pose");
     return success;
 }
+/*
+ * Find a pose to stack the object on top of another
+ * Inputs:
+ *      bot_pose - pose of bottom object
+ *      bot_dim  - dimension of bottom object
+ *      dim      - dimension of upper object
+ * Output:
+ *      upper_pose_msg - pose of upper object
+ */
+geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim)
+{
+    //convert input pose from geometry_msgs to tf2
+    tf2::Transform bot_pose_tf;
+    tf2::fromMsg(bot_pose, bot_pose_tf);
+
+    //convert input dimension from geometry_msgs to tf2
+    tf2::Vector3 bot_dim_tf(0,0,0);
+    tf2::Vector3 dim_tf(0,0,0);
+    tf2::convert(bot_dim, bot_dim_tf);
+    tf2::convert(dim, dim_tf);
+
+    //create coefficient the dimension of object to multiply by to get points coordinate in its own frame
+    float length_coeff[8] = {0.5, 0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5};
+    float width_coeff[8] = {0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5};
+    float height_coeff[8] = {0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, -0.5};
+
+    //initialize vector to store points
+    std::vector<tf2::Vector3> bot_points_botframe;
+    std::vector<tf2::Vector3> bot_points_world;
+
+    //loop through all points to find highest point
+    float max_z_value = -1;
+    int max_index = -1;
+    std::cout << sizeof(length_coeff) / sizeof(*length_coeff) << std::endl;
+    for (int i = 0; i < sizeof(length_coeff) / sizeof(*length_coeff); i++) {
+        bot_points_botframe.push_back(tf2::Vector3(bot_dim_tf.x() * length_coeff[i],
+            bot_dim_tf.y() * width_coeff[i], bot_dim_tf.z() * height_coeff[i]));
+
+        bot_points_world.push_back(bot_pose_tf * bot_points_botframe[i]);
+        if (bot_points_world[i].z() > max_z_value) {
+            max_z_value = bot_points_world[i].z();
+            max_index = i;
+        }
+    }
+    //get the radius and pose of upper object
+    tf2::Vector3 origin_bot = bot_pose_tf.getOrigin();
+    float z_radius = sqrt(dim_tf.x() * dim_tf.x() + dim_tf.y() * dim_tf.y() + dim_tf.z() * dim_tf.z()) / 2;
+    //keep same orientation as bottom one and add half of radius to z axis
+    tf2::Transform pose_upper_tf(tf2::Quaternion(0,0,0,1),
+        tf2::Vector3(origin_bot.x(), origin_bot.y(), bot_points_world[max_index].z() + z_radius));
+
+    //convert output to geometry_msgs form
+    geometry_msgs::Pose upper_pose_msg;
+    tf2::toMsg(pose_upper_tf, upper_pose_msg);
+    return upper_pose_msg;
+}

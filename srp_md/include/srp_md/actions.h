@@ -8,6 +8,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <random>
+#include <vector>
 
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
@@ -157,6 +158,8 @@ void Act::wait_for_server(Client &ac, const std::string &topic_name)
     ac.waitForServer();
     ROS_INFO("Connected to \"%s\" action server!", topic_name.c_str());
 }
+
+geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim);
 
 
 // template<typename Goal>
