@@ -17,6 +17,7 @@ from dope_msgs.msg import DopeAction, DopeGoal
 from geometry_msgs.msg import Pose, PoseStamped, Transform
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
 import actionlib_msgs.msg as actionlib_msgs
+from scipy.spatial.transform import Rotation as R
 
 import fetch_manipulation_pipeline.msg
 from behavior_manager.conditions.arm_tucked_condition import ArmTuckedCondition
@@ -172,38 +173,13 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
 
-def PickAct(name):
-    """
-    Pick
-    - Input: Detected objects' poses from DOPE
-    - Children:
-    -   GrasplocPickBehavior: From the bounding box, get the intersection point cloud and find graspable pose for grip using grasploc?
-    -   GrasplocPickBehavior: Pick the best graspable pose by pruning undesired approach angles with dot product of z-axis?
-    -   GrasplocPickBehavior: Move the gripper to the pose with trajectory planning (move somewhere to the top, go down to the offset and go to the object)
-    -   GrasplocPickBehavior: Pick up the object by actuating gripper
-    -   CartesianBehavior: Lift it up in world z (base-link z)
-    """
-    # Set up blackboard variable for GrasplocPickBehavior?
-    obj_name, obj_bbox = py_trees.blackboard.Blackboard().get('obj_key')
-    obj_pose = obj_bbox
-
-    # Generate a pose that is higher up from obj_pose. Not sure if this needs to be the gripper pose?
-    up_pose = deepcopy(obj_pose)
-    up_pose.position.z += 0.5
-
-    # Initialize the root as sequence node
-    root = py_trees.composites.Sequence(
-        name='seq_{}'.format(name),
-        children=None)
-
-    # Add steps to execute pick action
-    root.add_children([
-        GrasplocPickBehavior(name='grasplocPick', bbox=obj_bbox),
-        CartesianBehavior(name='act_cartesian_pick', action_name='move', wplist=up_pose, max_try=3)
-    ])
-    return root
-
 class GrasplocPickBehavior(py_trees_ros.actions.ActionClient):
+    """
+    - From the bounding box, get the intersection point cloud and find graspable pose for grip using grasploc?
+    - Pick the best graspable pose by pruning undesired approach angles with dot product of z-axis?
+    - Move the gripper to the pose with trajectory planning (move somewhere to the top, go down to the offset and go to the object)
+    - Pick up the object by actuating gripper
+    """
     def __init__(self, name, input_key='grasploc', centroid_key='centroid_3d_point', filter_off=False, *argv, **kwargs):
         super(GrasplocPickBehavior, self).__init__(
             name=name,
@@ -236,34 +212,73 @@ class GrasplocPickBehavior(py_trees_ros.actions.ActionClient):
         self.action_goal.centroid = centroid
         rospy.loginfo('Grasploc Pick Goal Constructed.')
 
-def PlaceAct(obj_name, des_pose):
+def PickAct(name, key_str):
     """
-    Place
-    - Input: Desired pose of the object to be placed
-    - Children:
-    -   Go to that position from the top, using trajectory planning, move down in same orientation as it grasped the object
-    -   ControlGripperBehavior: Actuate the gripper to let it go~
-    -   CartesianBehvaior: Move side, up and out
-    -   TuckWithCondBehavior: Move the arm to default position
+    Picks up object given the key to blackboard
     """
-    # Generate a pose that is higher up from des_pose. Not sure if this needs to be the gripper pose?
-    back_pose = deepcopy(des_pose)
-    back_pose.position.x += 0.5 # probably sure this is not the way to do it. General moving out how to do it?
+    # Retrieve object name and its graspable pose from blackboard
+    obj_name, grasp_pose = py_trees.blackboard.Blackboard().get(key_str)
 
-    up_pose = deepcopy(back_pose)
-    up_pose.position.z += 0.5
+    # Generate a pre-grasp pose that is displaced in z-direction of grasp pose
+    r = R.from_quat([grasp_pose.orientation.w, grasp_pose.orientation.x, grasp_pose.orientation.y, grasp_pose.orientation.z])
+    position = r.apply([0, 0, -0.1])
+    pre_grasp_pose = deepcopy(grasp_pose)
+    pre_grasp_pose.position.x += position[0]
+    pre_grasp_pose.position.y += position[1]
+    pre_grasp_pose.position.z += position[2]
+
+    # Generate up pose that is displaced in z-direction of pre-grasp pose in world coordinate
+    up_pose = deepcopy(pre_grasp_pose)
+    up_pose.position.z += 0.25
 
     # Initialize the root as sequence node
     root = py_trees.composites.Sequence(
-        name='place_{}'.format(obj_name),
+        name='seq_{}'.format(name),
         children=None)
 
     # Add steps to execute pick action
     root.add_children([
-        LoadAndExecuteTrajectoryBehavior(obj_name, traj_name='PlaceItem'),
-        ControlGripperBehavior(name, 1.0),
-        CartesianBehavior(name='act_cartesian_place', action_name='move', wplist=[back_pose, up_pose], max_try=3),
-        TuckWithCondBehavior(obj_name, 'unknown_3')
+        MoveToPoseAct(name='act_{}_move_to_up_pose_1'.format(name), pose=up_pose),
+        MoveToPoseAct(name='act_{}_move_to_pre_grasp_pose_1'.format(name), pose=pre_grasp_pose),
+        MoveToPoseAct(name='act_{}_move_to_grasp_pose'.format(name), pose=grasp_pose),
+        CloseGripperAct('act_{}_close_gripper'.format(name)),
+        MoveToPoseAct(name='act_{}_move_to_pre_grasp_pose_2'.format(name), pose=pre_grasp_pose),
+        MoveToPoseAct(name='act_{}_move_to_up_pose_2'.format(name), pose=up_pose),
+    ])
+    return root
+
+def PlaceAct(name, des_pose):
+    """
+    Places the object in hand to desired position
+    """
+    # Generate pre-up pose that is displaced in z-direction of desired pose in world coordinate
+    pre_up_pose = deepcopy(des_pose)
+    pre_up_pose.position.z += 0.25
+
+    # Generate a post-desired pose that is displaced in z-direction of desired pose
+    r = R.from_quat([des_pose.orientation.w, des_pose.orientation.x, des_pose.orientation.y, des_pose.orientation.z])
+    position = r.apply([0, 0, -0.1])
+    post_des_pose = deepcopy(des_pose)
+    post_des_pose.position.x += position[0]
+    post_des_pose.position.y += position[1]
+    post_des_pose.position.z += position[2]
+
+    # Generate post-up pose that is displaced in z-direction of post-desired pose in world coordinate
+    post_up_pose = deepcopy(post_des_pose)
+    post_up_pose.position.z += 0.25
+
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='seq_{}'.format(name),
+        children=None)
+
+    # Add steps to execute pick action
+    root.add_children([
+        MoveToPoseAct(name='act_{}_move_to_pre_up_pose'.format(name), pose=pre_up_pose),
+        MoveToPoseAct(name='act_{}_move_to_des_pose'.format(name), pose=des_pose),
+        CloseGripperAct('act_{}_close_gripper'.format(name)),
+        MoveToPoseAct(name='act_{}_move_to_post_des_pose'.format(name), pose=post_des_pose),
+        MoveToPoseAct(name='act_{}_move_to_post_up_pose'.format(name), pose=post_up_pose),
     ])
     return root
 
