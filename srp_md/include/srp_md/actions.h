@@ -18,10 +18,22 @@
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseArray.h>
 
+#include <sensor_msgs/PointCloud2.h>
+
 #include <control_msgs/GripperCommandAction.h>
 #include <control_msgs/GripperCommand.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <control_msgs/PointHeadAction.h>
+
+#include <pcl_conversions/pcl_conversions.h>
+// #include <pcl/ModelCoefficient.h>
+// #include <pcl/io/pcl_io.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/extract_indices.h>
 
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
@@ -146,6 +158,8 @@ public:
     bool move(moveit::planning_interface::MoveGroupInterface::Plan move_plan);
 
     bool relative_move(const geometry_msgs::Transform &pose_diff, int max_try = 1);
+
+    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, geometry_msgs::Pose& pose, geometry_msgs::Vector3& size);
 
 };
 

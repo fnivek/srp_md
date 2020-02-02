@@ -888,3 +888,64 @@ geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Ve
     tf2::toMsg(pose_upper_tf, upper_pose_msg);
     return upper_pose_msg;
 }
+
+/*  function: get_table()
+    description:
+        detects the table
+    args:
+        points (sensor_msgs::PointCloud2)
+    return:
+
+*/
+bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, geometry_msgs::Pose& pose, geometry_msgs::Vector3& size)
+{
+    // Initialize variables
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_p (new pcl::PointCloud<pcl::PointXYZ>), cloud_f (new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Convert to PCL PointCloud
+    pcl::PCLPointCloud2::Ptr points_pcl2(new pcl::PCLPointCloud2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr points_pcl (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl_conversions::toPCL(*points, *points_pcl2);
+    pcl::fromPCLPointCloud2 (*points_pcl2, *points_pcl);
+
+    // Do parametric segmentation
+    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
+    pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
+    pcl::SACSegmentation<pcl::PointXYZ> seg;
+    seg.setOptimizeCoefficients (true);
+    seg.setModelType (pcl::SACMODEL_PLANE);
+    seg.setMethodType (pcl::SAC_RANSAC);
+    seg.setMaxIterations (1000);
+    seg.setDistanceThreshold (0.01);
+
+    // Creating filtering object
+    pcl::ExtractIndices<pcl::PointXYZ> extract;
+
+    int i = 0, nr_points = (int) points_pcl->points.size ();
+    while (points_pcl->points.size () > 0.3 * nr_points)
+    {
+        // Segment the largest planar component from the remaining cloud
+        seg.setInputCloud (points_pcl);
+        seg.segment (*inliers, *coefficients);
+        if (inliers->indices.size () == 0)
+        {
+          break;
+        }
+
+        // Extract the inliers
+        extract.setInputCloud (points_pcl);
+        extract.setIndices (inliers);
+        extract.setNegative (false);
+        extract.filter (*cloud_p);
+        std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+
+        // Create the filtering object
+        extract.setNegative (true);
+        extract.filter (*cloud_f);
+        points_pcl.swap (cloud_f);
+        i++;
+    }
+
+    bool success = true;
+    return success;
+}

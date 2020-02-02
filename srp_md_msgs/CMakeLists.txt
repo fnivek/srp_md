@@ -31,7 +31,7 @@ add_action_files(
   DIRECTORY
     action
   FILES
-    DetectPlane.action
+    GetTable.action
     GrasplocPick.action
     MoveToPose.action
     MoveToRelativePose.action

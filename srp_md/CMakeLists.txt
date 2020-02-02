@@ -31,11 +31,14 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_move_group
   moveit_ros_planning
   moveit_ros_planning_interface
+  pcl_conversions
+  pcl_ros
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(Eigen3 REQUIRED)
+# find_package(PCL 1.8.1 REQUIRED)
 
 ## This macro ensures modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -71,6 +74,8 @@ catkin_package(
     moveit_ros_move_group
     moveit_ros_planning
     moveit_ros_planning_interface
+    pcl_conversions
+    pcl_ros
 #  DEPENDS system_lib
 )
 
@@ -117,20 +122,6 @@ target_link_libraries(factor_graph_node
   gmp
 )
 add_dependencies(factor_graph_node
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-)
-
-# Plane detector node
-add_executable(plane_detector_node
-  src/plane_detector.cpp
-  src/plane_detector_node.cpp
-)
-# Note order should be if depends on another then must go higher in list
-target_link_libraries(plane_detector_node
-  ${catkin_LIBRARIES}
-)
-add_dependencies(plane_detector_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )

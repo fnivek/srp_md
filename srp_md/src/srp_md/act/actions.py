@@ -15,7 +15,7 @@ from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
 from geometry_msgs.msg import Pose, PoseStamped, Transform
-from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
+from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 import actionlib_msgs.msg as actionlib_msgs
 from scipy.spatial.transform import Rotation as R
 
@@ -212,6 +212,51 @@ class GrasplocPickBehavior(py_trees_ros.actions.ActionClient):
         self.action_goal.centroid = centroid
         rospy.loginfo('Grasploc Pick Goal Constructed.')
 
+class GetTableAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, *argv, **kwargs):
+        super(GetTableAct, self).__init__(
+            name=name,
+            action_spec=GetTableAction,
+            action_goal=GetTableGoal(),
+            action_namespace='get_table',
+            *argv,
+            **kwargs
+        )
+
+        self._timeout = 5
+        self._listener = tf.TransformListener()
+
+        self.pcl_sub = message_filters.Subscriber(
+            '/head_camera/depth_downsample/points',
+            PointCloud2
+        )
+        self.pcl_sub.registerCallback(self.callback)
+
+    def callback(self, pcl):
+        self.action_goal = GetTableGoal()
+        self.action_goal.points = pcl
+
+    def update(self):
+        if not self.action_client:
+            self.feedback_message = "no action client, did you call setup() on your tree?"
+            return py_trees.Status.INVALID
+        if not self.sent_goal:
+            self.action_client.send_goal(self.action_goal)
+            self.sent_goal = True
+            self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+        self.feedback_message = self.action_client.get_goal_status_text()
+        if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
+                                              actionlib_msgs.GoalStatus.PREEMPTED]:
+            return py_trees.Status.FAILURE
+        result = self.action_client.get_result()
+        if result:
+            py_trees.blackboard.Blackboard().set('table_bbox', [result.pose, result.size])
+            return py_trees.Status.SUCCESS
+        else:
+            self.feedback_message = self.override_feedback_message_on_running
+            return py_trees.Status.RUNNING
+
 def PickAct(name, key_str):
     """
     Picks up object given the key to blackboard
@@ -247,10 +292,14 @@ def PickAct(name, key_str):
     ])
     return root
 
-def PlaceAct(name, des_pose):
+def PlaceAct(name, key_str):
     """
     Places the object in hand to desired position
     """
+
+    # Retrieve object name and its graspable pose from blackboard
+    obj_name, des_pose = py_trees.blackboard.Blackboard().get(key_str)
+
     # Generate pre-up pose that is displaced in z-direction of desired pose in world coordinate
     pre_up_pose = deepcopy(des_pose)
     pre_up_pose.position.z += 0.25
@@ -276,7 +325,7 @@ def PlaceAct(name, des_pose):
     root.add_children([
         MoveToPoseAct(name='act_{}_move_to_pre_up_pose'.format(name), pose=pre_up_pose),
         MoveToPoseAct(name='act_{}_move_to_des_pose'.format(name), pose=des_pose),
-        CloseGripperAct('act_{}_close_gripper'.format(name)),
+        OpenGripperAct('act_{}_open_gripper'.format(name)),
         MoveToPoseAct(name='act_{}_move_to_post_des_pose'.format(name), pose=post_des_pose),
         MoveToPoseAct(name='act_{}_move_to_post_up_pose'.format(name), pose=post_up_pose),
     ])

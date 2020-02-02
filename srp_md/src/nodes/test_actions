@@ -10,7 +10,7 @@ import py_trees_ros
 from geometry_msgs.msg import Pose, Transform
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
-                        GetDopeSnapshotAct, PickAct)
+                        GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
@@ -69,14 +69,20 @@ def build_tree():
     py_trees.blackboard.Blackboard().set('grasp_pose', ['rando_obj', grasp_pose])
 
     root.add_children([
-        py_trees.meta.oneshot(ResetAct)('reset'),
-        FullyExtendTorso('act_please_extend_torso'),
+        # py_trees.meta.oneshot(ResetAct)('reset'),
+        # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),
+        # FullyExtendTorso('act_please_extend_torso'),
+        # FullyCollapseTorso('act_please_collapse_torso'),
+        # GetDopeSnapshotAct('act_get_dope_snapshot'),
+        # PickAct('pick_1', 'grasp_pose'),
+        # PlaceAct('place_1', 'grasp_pose'),
         # MoveToPoseAct('move_to_test_pose', pose=test_pose),
         # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
         # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
         # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
         # GetDopeSnapshotAct('act_get_dope_snapshot'),
-        PickAct('pick_1', 'grasp_pose'),
+        GetTableAct('act_get_table'),
+
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
