@@ -1,0 +1,9 @@
+#goal definition
+sensor_msgs/PointCloud2 points
+---
+#result definition
+geometry_msgs/Pose pose
+geometry_msgs/Vector3 size
+---
+#feedback
+string feedback
