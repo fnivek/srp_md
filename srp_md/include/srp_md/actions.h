@@ -26,6 +26,7 @@
 #include <control_msgs/PointHeadAction.h>
 
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/transforms.h>
 // #include <pcl/ModelCoefficient.h>
 // #include <pcl/io/pcl_io.h>
 #include <pcl/point_types.h>
@@ -34,7 +35,9 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl/filters/crop_box.h>
 
+#include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 #include <tf2/convert.h>
@@ -105,6 +108,8 @@ protected:
     robot_state::RobotStatePtr kinematic_state_;
     const robot_state::JointModelGroup* joint_model_group_;
 
+    tf::TransformListener tf_listener_;
+
     const double PI;
     const double MAX_HEAD_PAN, MIN_HEAD_PAN, MAX_HEAD_TILT, MIN_HEAD_TILT;
     const double MAX_TORSO_HEIGHT, MIN_TORSO_HEIGHT;
@@ -136,7 +141,17 @@ public:
 
     bool boolean_interface(const std::string &action);
 
-    bool grasploc_pick(std::vector<geometry_msgs::Pose> grasp_poses, std::vector<geometry_msgs::Vector3> normals, std::vector<geometry_msgs::Vector3> principals, bool usual_way);
+    // Grasploc
+    bool grasploc_pick(std::vector<geometry_msgs::Pose> grasp_poses, std::vector<geometry_msgs::Vector3> normals,
+                       std::vector<geometry_msgs::Vector3> principals, bool usual_way);
+
+    // Point clouds
+    template<typename PointT>
+    void crop_box_filt_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, const geometry_msgs::Pose& crop_box_pose,
+                          const geometry_msgs::Vector3& crop_box_size, sensor_msgs::PointCloud2& out_pc);
+    template<typename PointT>
+    void transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
+                      sensor_msgs::PointCloud2& out_pc);
 
     bool cartesian_grasp(const std::vector<geometry_msgs::Pose> &waypoints, int max_try /* = 3 */);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>

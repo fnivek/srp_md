@@ -540,6 +540,34 @@ bool Act::grasploc_pick(std::vector<geometry_msgs::Pose> grasp_poses, std::vecto
     return true;
 }
 
+// Pont clouds
+template <typename PointT>
+void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, const geometry_msgs::Pose& crop_box_pose,
+                           const geometry_msgs::Vector3& crop_box_size, sensor_msgs::PointCloud2& out_pc)
+{
+    // Make a crop box filter
+    pcl::CropBox<PointT> filt;
+    filt.setInputCloud(in_pc);
+    // Generate the max and min points of the bounding box
+    Eigen::Affine3f tf =
+        Eigen::Translation<float, 3>(crop_box_pose.position.x, crop_box_pose.position.y, crop_box_pose.position.z) *
+        Eigen::Quaternionf(crop_box_pose.orientation.w, crop_box_pose.orientation.x, crop_box_pose.orientation.y,
+                           crop_box_pose.orientation.z);
+    Eigen::Vector4f max_pt(crop_box_size.x / 2, crop_box_size.y / 2, crop_box_size.z / 2, 1);
+    Eigen::Vector4f min_pt(-crop_box_size.x / 2, -crop_box_size.y / 2, -crop_box_size.z / 2, 1);
+    filt.setMax(tf * max_pt);
+    filt.setMin(tf * min_pt);
+    // Filter the point cloud
+    filt.filter(out_pc);
+}
+
+template<typename PointT>
+void Act::transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
+                       sensor_msgs::PointCloud2& out_pc)
+{
+    pcl_ros::transformPointCloud(frame_id, *in_pc, out_pc, tf_listener_);
+}
+
 // Functions below needs to be changed!
 /*  function: cartesian_grasp
     description:
