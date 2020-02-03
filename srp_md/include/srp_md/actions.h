@@ -149,7 +149,6 @@ public:
     template<typename PointT>
     void crop_box_filt_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, const geometry_msgs::Pose& crop_box_pose,
                           const geometry_msgs::Vector3& crop_box_size, sensor_msgs::PointCloud2& out_pc);
-    template<typename PointT>
     void transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
                       sensor_msgs::PointCloud2& out_pc);
 
@@ -174,7 +173,8 @@ public:
 
     bool relative_move(const geometry_msgs::Transform &pose_diff, int max_try = 1);
 
-    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, geometry_msgs::Pose& pose, geometry_msgs::Vector3& size);
+    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<geometry_msgs::Pose>& poses,
+                   std::vector<geometry_msgs::Vector3>& sizes);
 
 };
 

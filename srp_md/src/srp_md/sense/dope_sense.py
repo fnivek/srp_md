@@ -9,7 +9,7 @@ from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
 from geometry_msgs.msg import PoseStamped
 from dope_msgs.msg import DopeAction, DopeGoal
 import srp_md
-from srp_md_msgs.msg import DetectPlaneAction, DetectPlaneGoal
+from srp_md_msgs.msg import GetTableAction, GetTableGoal
 from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
 
 
@@ -45,7 +45,7 @@ class DopeSensor(sense.BaseSensor):
         self._dope_goal = None
         self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
         self._plane_goal = None
-        self._plane_client = actionlib.SimpleActionClient('plane_detector', DetectPlaneAction)
+        self._plane_client = actionlib.SimpleActionClient('plane_detector', GetTableAction)
         self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
 
     def get_next_image(self, timeout=None):

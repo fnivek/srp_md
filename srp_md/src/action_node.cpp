@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     ROS_INFO("Created MoveToPoseAS.");
     MoveToRelativePoseAS moveToRelativePoseAS(nh, act, "relative_move");
     ROS_INFO("Created MoveToRelativePoseAS.");
-    GetTableAS getTableAS(nh, act, "plane_detector");
+    GetTableAS getTableAS(nh, act, "get_table");
     ROS_INFO("Created GetTable.");
 
     // Loop forever

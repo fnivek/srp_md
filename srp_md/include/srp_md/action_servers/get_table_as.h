@@ -26,7 +26,7 @@ public:
     void goalCB(const typename GoalMsg::ConstPtr& goal) {
         ROS_INFO("GetTableAS goalCB");
         sensor_msgs::PointCloud2::ConstPtr points(new sensor_msgs::PointCloud2(goal->points));
-        act_.get_table(points, result_.pose, result_.size);
+        act_.get_table(points, result_.poses, result_.sizes);
         feedback_.feedback = "";
 
         as_.publishFeedback(feedback_);

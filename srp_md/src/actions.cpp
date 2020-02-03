@@ -561,7 +561,6 @@ void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, cons
     filt.filter(out_pc);
 }
 
-template<typename PointT>
 void Act::transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
                        sensor_msgs::PointCloud2& out_pc)
 {
@@ -925,15 +924,20 @@ geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Ve
     return:
 
 */
-bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, geometry_msgs::Pose& pose, geometry_msgs::Vector3& size)
+bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<geometry_msgs::Pose>& poses,
+    std::vector<geometry_msgs::Vector3>& sizes)
 {
     // Initialize variables
+    sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_p (new pcl::PointCloud<pcl::PointXYZ>), cloud_f (new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Transform the pointcloud to base frame
+    transform_pc(points, "base_link", *points_tf);
 
     // Convert to PCL PointCloud
     pcl::PCLPointCloud2::Ptr points_pcl2(new pcl::PCLPointCloud2);
     pcl::PointCloud<pcl::PointXYZ>::Ptr points_pcl (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl_conversions::toPCL(*points, *points_pcl2);
+    pcl_conversions::toPCL(*points_tf, *points_pcl2);
     pcl::fromPCLPointCloud2 (*points_pcl2, *points_pcl);
 
     // Do parametric segmentation
@@ -966,12 +970,20 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, geometry_m
         extract.setNegative (false);
         extract.filter (*cloud_p);
         std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+        for (auto&& value : coefficients->values) {
+            std::cerr << "Coefficient: " << value << std::endl;
+        }
 
         // Create the filtering object
         extract.setNegative (true);
         extract.filter (*cloud_f);
         points_pcl.swap (cloud_f);
         i++;
+
+        // Normalize the coefficients A, B and C from [A, B, C, D] and take dot product with [0, 0, 1] (essentially just C normalized)
+        // If the value is greater than cos(5deg), get the table by getting min_x, min_y, max_x, max_y for bounding box and averaging them
+        // for centroid. Width = (max_x - min_x), Height = (max_y - min_y). Make pose with zero quaternion and (avg_x, avg_y, avg_z) and append
+        // to poses vector. Make Vector3 with (width, height, degree) and save to sizes vector
     }
 
     bool success = true;

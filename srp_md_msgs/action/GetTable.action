@@ -2,8 +2,8 @@
 sensor_msgs/PointCloud2 points
 ---
 #result definition
-geometry_msgs/Pose pose
-geometry_msgs/Vector3 size
+geometry_msgs/Pose[] poses
+geometry_msgs/Vector3[] sizes
 ---
 #feedback
 string feedback
