@@ -38,6 +38,9 @@ Act::Act(ros::NodeHandle &nh)
 
     // load_predefined_poses();
 
+    // Debug please delete
+    test_plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("test_plane", 1000);
+
     ROS_INFO("Manipulation pipeline ready!");
 }
 
@@ -934,7 +937,7 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     // Transform the pointcloud to base frame
     transform_pc(points, "base_link", *points_tf);
 
-    // Convert to PCL PointCloud
+    // Convert to PCL PointCloudc
     pcl::PCLPointCloud2::Ptr points_pcl2(new pcl::PCLPointCloud2);
     pcl::PointCloud<pcl::PointXYZ>::Ptr points_pcl (new pcl::PointCloud<pcl::PointXYZ>);
     pcl_conversions::toPCL(*points_tf, *points_pcl2);
@@ -954,6 +957,10 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     pcl::ExtractIndices<pcl::PointXYZ> extract;
 
     int i = 0, nr_points = (int) points_pcl->points.size ();
+
+    //std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> plane_cloud_vector;
+    std::vector<tf2::Vector3> sizes_tf_vector;
+    std::vector<tf2::Transform> poses_tf_vector;
     while (points_pcl->points.size () > 0.3 * nr_points)
     {
         // Segment the largest planar component from the remaining cloud
@@ -963,29 +970,94 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         {
           break;
         }
-
+        //plane_cloud_vector.push_back(pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>));
         // Extract the inliers
         extract.setInputCloud (points_pcl);
         extract.setIndices (inliers);
         extract.setNegative (false);
         extract.filter (*cloud_p);
-        std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+        sensor_msgs::PointCloud2 points_cloud_msg;
+        pcl::toROSMsg(*cloud_p,points_cloud_msg );
+        test_plane_pub_.publish(points_cloud_msg);
+
+        //std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
         for (auto&& value : coefficients->values) {
             std::cerr << "Coefficient: " << value << std::endl;
         }
-
+        // std::stringstream ss;
+        //ss << "table_scene_lms400_plane_" << i << ".pcd";
+        //writer.write<pcl::PointXYZ> (ss.str (), *cloud_p, false);
         // Create the filtering object
         extract.setNegative (true);
         extract.filter (*cloud_f);
         points_pcl.swap (cloud_f);
         i++;
 
+        
         // Normalize the coefficients A, B and C from [A, B, C, D] and take dot product with [0, 0, 1] (essentially just C normalized)
         // If the value is greater than cos(5deg), get the table by getting min_x, min_y, max_x, max_y for bounding box and averaging them
         // for centroid. Width = (max_x - min_x), Height = (max_y - min_y). Make pose with zero quaternion and (avg_x, avg_y, avg_z) and append
         // to poses vector. Make Vector3 with (width, height, degree) and save to sizes vector
+        float norm_div = sqrt(coefficients->values[0] * coefficients->values[0] + 
+                              coefficients->values[1] * coefficients->values[1] +
+                              coefficients->values[2] * coefficients->values[2]);
+        float dotproduct = coefficients->values[2] / norm_div;
+        if (dotproduct >= cos(5 * PI / 180)) {
+            pcl::MomentOfInertiaEstimation <pcl::PointXYZ> feature_extractor;
+            feature_extractor.setInputCloud (cloud_p);
+            feature_extractor.compute ();
+            pcl::PointXYZ min_point_AABB;
+            pcl::PointXYZ max_point_AABB;
+            pcl::PointXYZ position_AABB;
+            //Eigen::Matrix3f rotational_matrix_AABB;
+            feature_extractor.getAABB (min_point_AABB, max_point_AABB);
+            sizes_tf_vector.push_back(tf2::Vector3(max_point_AABB.x - min_point_AABB.x,
+                                                   max_point_AABB.y - min_point_AABB.y,
+                                                   acos(dotproduct)));
+            poses_tf_vector.push_back(tf2::Transform(tf2::Quaternion(0,0,0,1),
+                                      tf2::Vector3((min_point_AABB.x + max_point_AABB.x) / 2,
+                                                   (min_point_AABB.y + max_point_AABB.y) / 2,
+                                                   (min_point_AABB.z + max_point_AABB.z) / 2)
+                                                    )
+                                     );
+        } else {
+            //plane_cloud_vector.pop_back();
+        }
+    }
+    //rviz
+    std::vector<float> plane_area_copy;
+    std::vector<float> plane_area;
+    int plane_index;
+    for (auto&& size : sizes_tf_vector) {
+        plane_area.push_back(size.x() * size.y());
+        plane_area_copy.push_back(size.x() * size.y());
     }
 
+    for(int i = 1; i < plane_area.size(); i++){
+        float key=plane_area[i];
+        int j=i-1;
+        while((j>=0) && (key>plane_area[j])){
+            plane_area[j+1]=plane_area[j];
+            j--;
+        }
+        plane_area[j+1]=key;
+    }
+    std::vector<float>::iterator iter;
+    for (int i = 1; i < plane_area.size(); i++) {
+        iter = find(plane_area_copy.begin(), plane_area_copy.end(), plane_area[i]);
+
+        plane_index = std::distance(plane_area_copy.begin(), iter);
+        std::cerr<<"area: "<<"index: "<<plane_index<<" "<<plane_area[i]<<std::endl;
+        geometry_msgs::Vector3 size_msg;
+        geometry_msgs::Pose pose_msg;
+        tf2::convert(sizes_tf_vector[plane_index], size_msg);
+        tf2::toMsg(poses_tf_vector[plane_index], pose_msg);
+        std::cerr<<"size_msg: "<<"index: "<<plane_index<<std::endl<<size_msg<<std::endl;
+        std::cerr<<"pose_msg: "<<"index: "<<plane_index<<std::endl<<pose_msg<<std::endl;
+        sizes.push_back(size_msg);
+        poses.push_back(pose_msg);
+    }
+    std::cout<<"all planes: "<<poses.size()<<std::endl;
     bool success = true;
     return success;
 }

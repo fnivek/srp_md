@@ -36,6 +36,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/crop_box.h>
+#include <pcl/features/moment_of_inertia_estimation.h>
+#include <pcl/visualization/cloud_viewer.h>
 
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
@@ -54,7 +56,11 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_state/robot_state.h>
 #include <visualization_msgs/Marker.h>
+#include <pcl/io/pcd_io.h>
 
+#include <math.h>
+#include <algorithm>
+#include <thread>
 class Act;
 
 template<typename Goal>
@@ -114,6 +120,9 @@ protected:
     const double MAX_HEAD_PAN, MIN_HEAD_PAN, MAX_HEAD_TILT, MIN_HEAD_TILT;
     const double MAX_TORSO_HEIGHT, MIN_TORSO_HEIGHT;
     const double MAX_GRIPPER_VAL, MIN_GRIPPER_VAL;
+
+    // Debug please delete
+    ros::Publisher test_plane_pub_;
 
 public:
     // default constructor that starts all the action client
