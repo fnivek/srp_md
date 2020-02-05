@@ -8,3 +8,4 @@ from .actions import GetDopeSnapshotAct
 from .actions import GetTableAct
 from .actions import PickAct
 from .actions import PlaceAct
+from .actions import CropPCAct

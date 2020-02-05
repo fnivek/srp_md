@@ -1,0 +1,8 @@
+# Goal
+sensor_msgs/PointCloud2 in_pc
+vision_msgs/BoundingBox3D crop_box
+---
+# Result
+sensor_msgs/PointCloud2 out_pc
+---
+# Feedback

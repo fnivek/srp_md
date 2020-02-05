@@ -35,6 +35,7 @@ add_action_files(
     GrasplocPick.action
     MoveToPose.action
     MoveToRelativePose.action
+    CropPC.action
 )
 
 # Generate added messages and services with any dependencies listed here

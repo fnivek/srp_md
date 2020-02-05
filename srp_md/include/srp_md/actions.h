@@ -20,6 +20,8 @@
 
 #include <sensor_msgs/PointCloud2.h>
 
+#include <vision_msgs/BoundingBox3D.h>
+
 #include <control_msgs/GripperCommandAction.h>
 #include <control_msgs/GripperCommand.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
@@ -155,9 +157,8 @@ public:
                        std::vector<geometry_msgs::Vector3> principals, bool usual_way);
 
     // Point clouds
-    template<typename PointT>
-    void crop_box_filt_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, const geometry_msgs::Pose& crop_box_pose,
-                          const geometry_msgs::Vector3& crop_box_size, sensor_msgs::PointCloud2& out_pc);
+    void crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                          sensor_msgs::PointCloud2& out_pc);
     void transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
                       sensor_msgs::PointCloud2& out_pc);
 

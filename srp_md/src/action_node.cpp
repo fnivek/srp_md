@@ -4,10 +4,7 @@
 #include "srp_md/action_servers/move_to_pose_as.h"
 #include "srp_md/action_servers/move_to_relative_pose_as.h"
 #include "srp_md/action_servers/get_table_as.h"
-#include "srp_md_msgs/GrasplocPickAction.h"
-#include "srp_md_msgs/MoveToPoseAction.h"
-#include "srp_md_msgs/MoveToRelativePoseAction.h"
-#include "srp_md_msgs/GetTableAction.h"
+#include "srp_md/action_servers/point_cloud_as.h"
 
 // ROS
 #include <ros/ros.h>
@@ -29,6 +26,9 @@ int main(int argc, char** argv)
     ROS_INFO("Created MoveToRelativePoseAS.");
     GetTableAS getTableAS(nh, act, "get_table");
     ROS_INFO("Created GetTable.");
+    CropPCAS cropPCAS(nh, act, "crop_pc");
+    ROS_INFO("Created cropPCAS.");
+
 
     // Loop forever
     ros::Rate sleep_rate(100);
