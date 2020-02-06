@@ -410,3 +410,73 @@ class CropPCAct(py_trees_ros.actions.ActionClient):
         else:
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
+
+class TFPCAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, in_pc_key, frame_id, out_pc_key, *argv, **kwargs):
+        super(TFPCAct, self).__init__(
+            name=name,
+            action_spec=TFPCAction,
+            action_goal=TFPCGoal(),
+            action_namespace='tf_pc',
+            *argv,
+            **kwargs
+        )
+        self._in_pc_key = in_pc_key
+        self._frame_id = frame_id
+        self.action_goal.frame_id = self._frame_id
+        self._out_pc_key = out_pc_key
+
+    def initialise(self):
+        super(TFPCAct, self).initialise()
+        # Get goal from blackboard
+        blackboard = py_trees.blackboard.Blackboard()
+        self.action_goal.in_pc = blackboard.get(self._in_pc_key)
+
+    def update(self):
+        """
+        Check only to see whether the underlying action server has
+        succeeded, is running, or has cancelled/aborted for some reason and
+        map these to the usual behaviour return states.
+        """
+        self.logger.debug("{0}.update()".format(self.__class__.__name__))
+        if not self.action_client:
+            self.feedback_message = "no action client, did you call setup() on your tree?"
+            return py_trees.Status.INVALID
+        # pity there is no 'is_connected' api like there is for c++
+        if not self.sent_goal:
+            self.action_client.send_goal(self.action_goal)
+            self.sent_goal = True
+            self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+        self.feedback_message = self.action_client.get_goal_status_text()
+        if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
+                                              actionlib_msgs.GoalStatus.PREEMPTED]:
+            return py_trees.Status.FAILURE
+        result = self.action_client.get_result()
+        if result:
+            py_trees.blackboard.Blackboard().set(self._out_pc_key, result.out_pc)
+            return py_trees.Status.SUCCESS
+        else:
+            self.feedback_message = self.override_feedback_message_on_running
+            return py_trees.Status.RUNNING
+
+class PCPubAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, in_pc_key, topic):
+        super(PCPubAct, self).__init__(name)
+        self._in_pc_key = in_pc_key
+        self._topic = topic
+        self._pc = None
+
+    def setup(self, timeout):
+        self.pub = rospy.Publisher(self._topic, PointCloud2, queue_size=10)
+        return True
+
+    def initialise(self):
+        blackboard = py_trees.blackboard.Blackboard()
+        self._pc = blackboard.get(self._in_pc_key)
+
+    def update(self):
+        if self._pc is None:
+            return py_trees.Status.FAILURE
+        self.pub.publish(self._pc)
+        return py_trees.Status.SUCCESS

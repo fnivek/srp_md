@@ -28,6 +28,8 @@ int main(int argc, char** argv)
     ROS_INFO("Created GetTable.");
     CropPCAS cropPCAS(nh, act, "crop_pc");
     ROS_INFO("Created cropPCAS.");
+    TFPCAS tfPCAS(nh, act, "tf_pc");
+    ROS_INFO("Created tfPCAS.");
 
 
     // Loop forever

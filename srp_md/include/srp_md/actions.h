@@ -159,7 +159,7 @@ public:
     // Point clouds
     void crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
                           sensor_msgs::PointCloud2& out_pc);
-    void transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
+    void transform_pc(const sensor_msgs::PointCloud2& in_pc, std::string frame_id,
                       sensor_msgs::PointCloud2& out_pc);
 
     bool cartesian_grasp(const std::vector<geometry_msgs::Pose> &waypoints, int max_try /* = 3 */);

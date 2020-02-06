@@ -571,10 +571,10 @@ void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_m
     pcl_conversions::moveFromPCL(pcl_out_pc, out_pc);
 }
 
-void Act::transform_pc(const sensor_msgs::PointCloud2::ConstPtr& in_pc, std::string frame_id,
+void Act::transform_pc(const sensor_msgs::PointCloud2& in_pc, std::string frame_id,
                        sensor_msgs::PointCloud2& out_pc)
 {
-    pcl_ros::transformPointCloud(frame_id, *in_pc, out_pc, tf_listener_);
+    pcl_ros::transformPointCloud(frame_id, in_pc, out_pc, tf_listener_);
 }
 
 // Functions below needs to be changed!
@@ -942,7 +942,7 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_p (new pcl::PointCloud<pcl::PointXYZ>), cloud_f (new pcl::PointCloud<pcl::PointXYZ>);
 
     // Transform the pointcloud to base frame
-    transform_pc(points, "base_link", *points_tf);
+    transform_pc(*points, "base_link", *points_tf);
 
     // Convert to PCL PointCloudc
     pcl::PCLPointCloud2::Ptr points_pcl2(new pcl::PCLPointCloud2);

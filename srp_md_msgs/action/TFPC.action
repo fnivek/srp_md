@@ -1,0 +1,8 @@
+# Goal
+sensor_msgs/PointCloud2 in_pc
+string frame_id
+---
+# Result
+sensor_msgs/PointCloud2 out_pc
+---
+# Feedback

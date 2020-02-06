@@ -36,6 +36,7 @@ add_action_files(
     MoveToPose.action
     MoveToRelativePose.action
     CropPC.action
+    TFPC.action
 )
 
 # Generate added messages and services with any dependencies listed here
