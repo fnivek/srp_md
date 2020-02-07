@@ -1,6 +1,5 @@
 // Project
 #include "srp_md/actions.h"
-#include "srp_md/action_servers/grasploc_pick_as.h"
 #include "srp_md/action_servers/move_to_pose_as.h"
 #include "srp_md/action_servers/move_to_relative_pose_as.h"
 #include "srp_md/action_servers/get_table_as.h"
@@ -18,8 +17,6 @@ int main(int argc, char** argv)
     Act act(nh);
 
     // Include necessary action servers
-    GrasplocPickAS grasplocPickAS(nh, act, "grasploc_pick");
-    ROS_INFO("Created GrasplocPickAS.");
     MoveToPoseAS moveToPoseAS(nh, act, "move");
     ROS_INFO("Created MoveToPoseAS.");
     MoveToRelativePoseAS moveToRelativePoseAS(nh, act, "relative_move");

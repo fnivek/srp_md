@@ -152,10 +152,6 @@ public:
 
     bool boolean_interface(const std::string &action);
 
-    // Grasploc
-    bool grasploc_pick(std::vector<geometry_msgs::Pose> grasp_poses, std::vector<geometry_msgs::Vector3> normals,
-                       std::vector<geometry_msgs::Vector3> principals, bool usual_way);
-
     // Point clouds
     void crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
                           sensor_msgs::PointCloud2& out_pc);
