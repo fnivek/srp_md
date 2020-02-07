@@ -13,7 +13,8 @@ from vision_msgs.msg import BoundingBox3D
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
-                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct)
+                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct,
+                        AddCollisionPlaneAct)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
@@ -114,8 +115,9 @@ def build_tree():
     blackboard.set('table_collision_obj', ['table', table, [0.8, 4, table.position.z * 2]])
 
     root.add_children([
-        AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
-        AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
+        AddCollisionPlaneAct('act_add_left_wall', plane_name='left_wall', plane_equ=[0, 1, 0, 0.5]),
+        AddCollisionPlaneAct('act_add_right_wall', plane_name='right_wall', plane_equ=[0, 1, 0, -0.5]),
+        AddCollisionPlaneAct('act_add_bottom_wall', plane_name='bottom_wall', plane_equ=[0, 0, 1, -0.5]),
         AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
         # py_trees.meta.oneshot(ResetAct)('reset'),
         # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),

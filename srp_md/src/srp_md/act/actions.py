@@ -15,7 +15,7 @@ import message_filters
 import numpy as np
 
 from moveit_msgs.msg import PlanningScene, CollisionObject
-from shape_msgs.msg import SolidPrimitive
+from shape_msgs.msg import SolidPrimitive, Plane
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
@@ -634,6 +634,62 @@ class AddCollisionBoxAct(py_trees.behaviour.Behaviour):
         obj.id = self._box_name
         obj.primitives.append(box)
         obj.primitive_poses.append(self._box_pose)
+        obj.operation = obj.ADD
+
+        # Update the planning scene
+        planning_scene = PlanningScene()
+        planning_scene.is_diff = True
+        planning_scene.world.collision_objects.append(obj);
+        self._pub.publish(planning_scene);
+        return py_trees.Status.SUCCESS
+
+class AddCollisionPlaneAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, frame_id='base_link', plane_name=None, plane_pose=None, plane_equ=None, plane_bb_key=None):
+        """!
+        @brief      Add a collision plane to the planning scene
+
+        @param      name          Name of the behavior
+        @param      frame_id      TF frame to place the plane in
+        @param      plane_name    String id for the plane, used to update and remove the plane from planning scene
+        @param      plane_pose    The center plane pose as geometry_msgs.msg.Pose this is redundent to the plane
+                                  equation
+        @param      plane_equ     The plane equation as a list with [A, B, C, D] where Ax + By + Cz + D = 0
+        @param      plane_bb_key  The plane bb key if provided will read a plane from the blackboard and overwrite the
+                                  other parameters, the blackboard value should be a list as such [plane_name,
+                                  plane_pose, plane_equ]
+        """
+        super(AddCollisionPlaneAct, self).__init__(name)
+        self._pub = None
+        self._frame_id = frame_id
+        self._plane_name = plane_name
+        self._plane_equ = plane_equ
+        self._plane_bb_key = plane_bb_key
+        self._plane_pose = plane_pose
+        if self._plane_pose is None:
+            self._plane_pose = Pose()
+            print(self._plane_pose)
+            self._plane_pose.orientation.w = 1.0 # The rest should be zero
+            print(self._plane_pose)
+
+    def setup(self, timeout):
+        self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        return True
+
+    def initialise(self):
+        if self._plane_bb_key is not None:
+            self._plane_name, self._plane_pose, self._plane_equ = py_trees.blackboard.Blackboard().get(self._plane_bb_key)
+
+    def update(self):
+        # Make the plane
+        plane = Plane()
+        plane.coef = self._plane_equ
+
+        # Define the collision object
+        obj = CollisionObject()
+        obj.header.frame_id = self._frame_id
+        obj.id = self._plane_name
+        obj.planes.append(plane)
+        obj.plane_poses.append(self._plane_pose)
         obj.operation = obj.ADD
 
         # Update the planning scene
