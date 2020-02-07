@@ -7,6 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   geometry_msgs
   vision_msgs
+  moveit_msgs
+  shape_msgs
 )
 
 ################################################
@@ -45,6 +47,8 @@ generate_messages(
     actionlib_msgs
     geometry_msgs
     vision_msgs
+    moveit_msgs
+    shape_msgs
 )
 
 ###################################
@@ -56,4 +60,6 @@ catkin_package(
     actionlib_msgs
     geometry_msgs
     vision_msgs
+    moveit_msgs
+    shape_msgs
 )

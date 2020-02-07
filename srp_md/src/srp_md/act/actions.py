@@ -14,6 +14,8 @@ import message_filters
 
 import numpy as np
 
+from moveit_msgs.msg import PlanningScene, CollisionObject
+from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
@@ -369,7 +371,7 @@ def PickAct(name, key_str):
     Picks up object given the key to blackboard
     """
     # Retrieve object name and its graspable pose from blackboard
-    obj_name, grasp_pose = py_trees.blackboard.Blackboard().get(key_str)
+    grasp_pose = py_trees.blackboard.Blackboard().get(key_str)
 
     # Generate a pre-grasp pose that is displaced in z-direction of grasp pose
     r = R.from_quat([grasp_pose.orientation.w, grasp_pose.orientation.x, grasp_pose.orientation.y, grasp_pose.orientation.z])
@@ -405,7 +407,7 @@ def PlaceAct(name, key_str):
     """
 
     # Retrieve object name and its graspable pose from blackboard
-    obj_name, des_pose = py_trees.blackboard.Blackboard().get(key_str)
+    des_pose = py_trees.blackboard.Blackboard().get(key_str)
 
     # Generate pre-up pose that is displaced in z-direction of desired pose in world coordinate
     pre_up_pose = deepcopy(des_pose)
@@ -588,4 +590,55 @@ class PCPubAct(py_trees.behaviour.Behaviour):
         if self._pc is None:
             return py_trees.Status.FAILURE
         self.pub.publish(self._pc)
+        return py_trees.Status.SUCCESS
+
+# Move group planning scene
+class AddCollisionBoxAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, frame_id='base_link', box_name=None, box_pose=None, box_size=None, box_bb_key=None):
+        """!
+        @brief      Add a collision box to the planning scene
+
+        @param      name        Name of the behavior
+        @param      frame_id    TF frame to place the box in
+        @param      box_name    String id for the box, used to update and remove the box from planning scene
+        @param      box_pose    The center box pose as geometry_msgs.msg.Pose
+        @param      box_size    The box size as a list with [x, y, z]
+        @param      box_bb_key  The box bb key if provided will read a box from the blackboard and overwrite the other
+                                parameters, the blackboard value should be a list as such [box_name, box_pose, box_size]
+        """
+        super(AddCollisionBoxAct, self).__init__(name)
+        self._pub = None
+        self._frame_id = frame_id
+        self._box_name = box_name
+        self._box_pose = box_pose
+        self._box_size = box_size
+        self._box_bb_key = box_bb_key
+
+    def setup(self, timeout):
+        self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        return True
+
+    def initialise(self):
+        if self._box_bb_key is not None:
+            self._box_name, self._box_pose, self._box_size = py_trees.blackboard.Blackboard().get(self._box_bb_key)
+
+    def update(self):
+        # Make the box
+        box = SolidPrimitive()
+        box.type = SolidPrimitive.BOX
+        box.dimensions = self._box_size
+
+        # Define the collision object
+        obj = CollisionObject()
+        obj.header.frame_id = self._frame_id
+        obj.id = self._box_name
+        obj.primitives.append(box)
+        obj.primitive_poses.append(self._box_pose)
+        obj.operation = obj.ADD
+
+        # Update the planning scene
+        planning_scene = PlanningScene()
+        planning_scene.is_diff = True
+        planning_scene.world.collision_objects.append(obj);
+        self._pub.publish(planning_scene);
         return py_trees.Status.SUCCESS

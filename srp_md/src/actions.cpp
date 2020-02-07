@@ -751,12 +751,12 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         points_pcl.swap (cloud_f);
         i++;
 
-        
+
         // Normalize the coefficients A, B and C from [A, B, C, D] and take dot product with [0, 0, 1] (essentially just C normalized)
         // If the value is greater than cos(5deg), get the table by getting min_x, min_y, max_x, max_y for bounding box and averaging them
         // for centroid. Width = (max_x - min_x), Height = (max_y - min_y). Make pose with zero quaternion and (avg_x, avg_y, avg_z) and append
         // to poses vector. Make Vector3 with (width, height, degree) and save to sizes vector
-        float norm_div = sqrt(coefficients->values[0] * coefficients->values[0] + 
+        float norm_div = sqrt(coefficients->values[0] * coefficients->values[0] +
                               coefficients->values[1] * coefficients->values[1] +
                               coefficients->values[2] * coefficients->values[2]);
         float dotproduct = coefficients->values[2] / norm_div;
