@@ -37,6 +37,7 @@ add_action_files(
     GrasplocPick.action
     MoveToPose.action
     MoveToRelativePose.action
+    MoveToFirstPose.action
     CropPC.action
     TFPC.action
 )
