@@ -11,12 +11,15 @@ import tf
 import py_trees
 import py_trees_ros
 import message_filters
+
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
 from geometry_msgs.msg import Pose, PoseStamped, Transform
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 import actionlib_msgs.msg as actionlib_msgs
+from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal
+
 from scipy.spatial.transform import Rotation as R
 
 import fetch_manipulation_pipeline.msg
@@ -169,6 +172,66 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
+            return py_trees.Status.RUNNING
+
+class GrasplocAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, in_pc_key, output_key='grasploc'):
+        super(GrasplocAct, self).__init__(
+            name=name,
+            action_spec=GrasplocAction,
+            action_goal=GrasplocGoal(),
+            action_namespace='/grasploc'
+        )
+        self._in_pc_key = in_pc_key
+        self._pc = None
+        self._output_key = output_key
+
+    def initialise(self):
+        super(GrasplocAct, self).initialise()
+
+        # Get the point cloud
+        blackboard = py_trees.blackboard.Blackboard()
+        self._pc = blackboard.get(self._in_pc_key)
+        self.action_goal.input_pc = self._pc
+
+        # Location of head depth frame when head fully extended
+        # TODO(...): Actually get the pose of the depth frame from tf
+        self.action_goal.viewpoint.x = 0.159
+        self.action_goal.viewpoint.y = 0.05
+        self.action_goal.viewpoint.z = 1.414
+
+    def update(self):
+        """
+        Check only to see whether the underlying action server has
+        succeeded, is running, or has cancelled/aborted for some reason and
+        map these to the usual behaviour return states.
+        """
+        self.logger.debug("{0}.update()".format(self.__class__.__name__))
+        if not self.action_client:
+            self.feedback_message = "no action client, did you call setup() on your tree?"
+            return py_trees.Status.INVALID
+        # Ensure we have a pc
+        if self.action_goal.input_pc is None:
+            return py_trees.Status.FAILURE
+        # pity there is no 'is_connected' api like there is for c++
+        if not self.sent_goal:
+            self.action_client.send_goal(self.action_goal)
+            self.sent_goal = True
+            self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+        if self.action_client.get_state() == actionlib_msgs.GoalStatus.ABORTED:
+            return py_trees.Status.FAILURE
+
+        result = self.action_client.get_result()
+        if result:
+            self.feedback_message = "goal reached"
+            # Write result to blackboard
+            if self._output_key is not None:
+                blackboard = py_trees.blackboard.Blackboard()
+                blackboard.set(self._output_key, result)
+            return py_trees.Status.SUCCESS
+        else:
+            self.feedback_message = "moving"
             return py_trees.Status.RUNNING
 
 class GrasplocPickBehavior(py_trees_ros.actions.ActionClient):

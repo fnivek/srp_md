@@ -12,3 +12,4 @@ from .actions import CropPCAct
 from .actions import TFPCAct
 from .actions import PCPubAct
 from .actions import ChooseGrasplocObjAct
+from .actions import GrasplocAct
