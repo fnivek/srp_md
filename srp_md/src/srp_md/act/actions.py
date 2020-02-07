@@ -12,13 +12,15 @@ import py_trees
 import py_trees_ros
 import message_filters
 
+import numpy as np
+
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
 from geometry_msgs.msg import Pose, PoseStamped, Transform
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 import actionlib_msgs.msg as actionlib_msgs
-from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal
+from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
 
 from scipy.spatial.transform import Rotation as R
 
@@ -287,6 +289,34 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
 
         # TODO(Kevin): Get which object to grab from the plan
         blackboard.set(self._crop_box_key, bboxes.values()[0])
+        return py_trees.Status.SUCCESS
+
+class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
+    def __init__(self, name, grasp_points_key='grasploc', filtered_grasp_points_key='filtered_grasploc'):
+        super(FilterGrasplocPoints, self).__init__(name)
+        self._grasp_points_key = grasp_points_key
+        self._filtered_grasp_points_key = filtered_grasp_points_key
+        self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
+        self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
+
+    def update(self):
+        blackboard = py_trees.blackboard.Blackboard()
+        grasploc = blackboard.get(self._grasp_points_key)
+        if grasploc is None:
+            return py_trees.Status.FAILURE
+
+        filtered_grasploc = GrasplocResult()
+        filtered_grasploc.graspable_points.header = grasploc.graspable_points.header
+        for i, ros_norm in enumerate(grasploc.normal):
+            norm = np.array([ros_norm.x, ros_norm.y, ros_norm.z])
+            norm = norm / np.linalg.norm(norm)
+            if np.dot(norm, self._center_axis) > self._min_cos_theta:
+                filtered_grasploc.graspable_points.poses.append(grasploc.graspable_points.poses[i])
+                filtered_grasploc.normal.append(grasploc.normal[i])
+                filtered_grasploc.principal.append(grasploc.principal[i])
+
+        # TODO(Kevin): Get which object to grab from the plan
+        blackboard.set(self._filtered_grasp_points_key, filtered_grasploc)
         return py_trees.Status.SUCCESS
 
 class GetTableAct(py_trees_ros.actions.ActionClient):

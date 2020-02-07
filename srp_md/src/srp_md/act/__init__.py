@@ -13,3 +13,4 @@ from .actions import TFPCAct
 from .actions import PCPubAct
 from .actions import ChooseGrasplocObjAct
 from .actions import GrasplocAct
+from .actions import FilterGrasplocPoints
