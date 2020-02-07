@@ -210,6 +210,22 @@ class GrasplocPickBehavior(py_trees_ros.actions.ActionClient):
         self.action_goal.centroid = centroid
         rospy.loginfo('Grasploc Pick Goal Constructed.')
 
+class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, bbox_key='obj_bboxes', crop_box_key='crop_box'):
+        super(ChooseGrasplocObjAct, self).__init__(name)
+        self._bbox_key = bbox_key
+        self._crop_box_key = crop_box_key
+
+    def update(self):
+        blackboard = py_trees.blackboard.Blackboard()
+        bboxes = blackboard.get(self._bbox_key)
+        if bboxes is None or len(bboxes) == 0:
+            return py_trees.Status.FAILURE
+
+        # TODO(Kevin): Get which object to grab from the plan
+        blackboard.set(self._crop_box_key, bboxes.values()[0])
+        return py_trees.Status.SUCCESS
+
 class GetTableAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, *argv, **kwargs):
         super(GetTableAct, self).__init__(
