@@ -103,10 +103,19 @@ def build_tree():
     right_wall_pose.orientation.y = 0.0
     right_wall_pose.orientation.z = 0.0
 
+    bot_wall_pose = Pose()
+    bot_wall_pose.position.x = 0.0
+    bot_wall_pose.position.y = 0.0
+    bot_wall_pose.position.z = 0.45
+    bot_wall_pose.orientation.w = 1.0
+    bot_wall_pose.orientation.x = 0.0
+    bot_wall_pose.orientation.y = 0.0
+    bot_wall_pose.orientation.z = 0.0
+
     table = Pose()
     table.position.x = 1.0
     table.position.y = 0.0
-    table.position.z = 0.4
+    table.position.z = 0.37
     table.orientation.w = 1.0
     table.orientation.x = 0.0
     table.orientation.y = 0.0
@@ -116,6 +125,7 @@ def build_tree():
     root.add_children([
         AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
         AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
+        AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
         # py_trees.meta.oneshot(ResetAct)('reset'),
         # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),
