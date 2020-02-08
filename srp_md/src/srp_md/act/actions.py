@@ -94,6 +94,22 @@ class MoveToPoseAct(py_trees_ros.actions.ActionClient):
         self.pose = pose
         self.action_goal.pose = self.pose
 
+class MoveToFirstPoseAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, poses_key, *argv, **kwargs):
+        super(MoveToFirstPoseAct, self).__init__(
+            name=name,
+            action_spec=MoveToFirstPoseAction,
+            action_goal=MoveToFirstPoseGoal(),
+            action_namespace='move_to_first_pose',
+            *argv,
+            **kwargs
+        )
+        self._poses_key = poses_key
+
+    def initialise(self):
+        super(MoveToFirstPoseAct, self).initialise()
+        self.action_goal.poses = py_trees.blackboard.Blackboard().get(self._poses_key)
+
 class MoveToRelativePoseAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, transform=Transform(), *argv, **kwargs):
         super(MoveToRelativePoseAct, self).__init__(
@@ -318,7 +334,7 @@ class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
                 filtered_grasploc.principal.append(grasploc.principal[i])
 
         # TODO(Kevin): Get which object to grab from the plan
-        blackboard.set(self._filtered_grasp_points_key, filtered_grasploc)
+        blackboard.set(self._filtered_grasp_points_key, filtered_grasploc.graspable_points.poses)
         return py_trees.Status.SUCCESS
 
 class GetTableAct(py_trees_ros.actions.ActionClient):

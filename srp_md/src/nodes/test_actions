@@ -13,13 +13,13 @@ from vision_msgs.msg import BoundingBox3D
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
-                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct,
+                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct
                         FreeSpaceFinderAct)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
 
-TICKPERIOD = 100  # ms
+TICKPERIOD = 500  # ms
 
 
 def build_tree():
@@ -116,7 +116,7 @@ def build_tree():
     table = Pose()
     table.position.x = 1.0
     table.position.y = 0.0
-    table.position.z = 0.37
+    table.position.z = 0.32
     table.orientation.w = 1.0
     table.orientation.x = 0.0
     table.orientation.y = 0.0
@@ -133,7 +133,7 @@ def build_tree():
         # FullyExtendTorso('act_please_extend_torso'),
         # FullyCollapseTorso('act_please_collapse_torso'),
         # GetDopeSnapshotAct('act_get_dope_snapshot'),
-        PickAct('pick_1', 'grasp_pose'),
+        # PickAct('pick_1', 'grasp_pose'),
         TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
         # PlaceAct('place_1', 'grasp_pose'),
         # MoveToPoseAct('move_to_test_pose', pose=test_pose),
@@ -154,7 +154,8 @@ def build_tree():
         CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
         PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
         GrasplocAct('act_grasploc', 'croped_pc', 'grasploc'),
-        FilterGrasplocPoints('act_filt_grasploc')
+        FilterGrasplocPoints('act_filt_grasploc'),
+        MoveToFirstPoseAct('act_move_to_first_pose', 'filtered_grasploc')
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
@@ -169,7 +170,7 @@ def main():
     rospy.init_node('srp_md_actions_test')
 
     # This is a test tree so initilize set debug level
-    # py_trees.logging.level = py_trees.logging.Level.DEBUG
+    py_trees.logging.level = py_trees.logging.Level.DEBUG
 
     # Build a tree
     tree = build_tree()

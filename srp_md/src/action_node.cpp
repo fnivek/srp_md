@@ -20,6 +20,8 @@ int main(int argc, char** argv)
     // Include necessary action servers
     MoveToPoseAS moveToPoseAS(nh, act, "move");
     ROS_INFO("Created MoveToPoseAS.");
+    MoveToFirstPoseAS moveToFirstPoseAS(nh, act, "move_to_first_pose");
+    ROS_INFO("Created MoveToFirstPoseAS.");
     MoveToRelativePoseAS moveToRelativePoseAS(nh, act, "relative_move");
     ROS_INFO("Created MoveToRelativePoseAS.");
     GetTableAS getTableAS(nh, act, "get_table");
