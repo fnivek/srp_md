@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   control_msgs
   dope_msgs
   geometry_msgs
+  vision_msgs
   tf
   tf_conversions
   tf2_geometry_msgs
@@ -65,6 +66,7 @@ catkin_package(
     control_msgs
     dope_msgs
     geometry_msgs
+    vision_msgs
     tf
     tf_conversions
     tf2_geometry_msgs

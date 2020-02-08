@@ -38,6 +38,7 @@ add_action_files(
     MoveToPose.action
     MoveToRelativePose.action
     CropPC.action
+    FreeSpaceFinder.action
     TFPC.action
 )
 

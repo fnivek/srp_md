@@ -13,7 +13,8 @@ from vision_msgs.msg import BoundingBox3D
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
-                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct)
+                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct,
+                        FreeSpaceFinderAct)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *

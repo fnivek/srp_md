@@ -366,6 +366,37 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
 
+class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, *argv, **kwargs):
+        super(FreeSpaceFinderAct, self).__init__(
+            name=name,
+            action_spec=FreeSpaceFinderAction,
+            action_goal=FreeSpaceFinderGoal(),
+            action_namespace='free_space_finder',
+            *argv,
+            **kwargs
+        )
+
+    def update(self):
+        if not self.action_client:
+            self.feedback_message = "no action client, did you call setup() on your tree?"
+            return py_trees.Status.INVALID
+        if not self.sent_goal:
+            self.action_client.send_goal(self.action_goal)
+            self.sent_goal = True
+            self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+        self.feedback_message = self.action_client.get_goal_status_text()
+        if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
+                                              actionlib_msgs.GoalStatus.PREEMPTED]:
+            return py_trees.Status.FAILURE
+        result = self.action_client.get_result()
+        if result:
+            return py_trees.Status.SUCCESS
+        else:
+            self.feedback_message = self.override_feedback_message_on_running
+            return py_trees.Status.RUNNING
+
 def PickAct(name, key_str):
     """
     Picks up object given the key to blackboard

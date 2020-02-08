@@ -714,6 +714,7 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     // Creating filtering object
     pcl::ExtractIndices<pcl::PointXYZ> extract;
 
+    // Save the original size of point cloud
     int i = 0, nr_points = (int) points_pcl->points.size ();
 
     //std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> plane_cloud_vector;
@@ -816,6 +817,22 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         poses.push_back(pose_msg);
     }
     std::cout<<"all planes: "<<poses.size()<<std::endl;
+    bool success = true;
+    return success;
+}
+
+/*  function: free_space_finder()
+    description:
+        finds a free space of the table
+    args:
+
+    return:
+
+*/
+bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
+    const vision_msgs::BoundingBox3D& obj_bbox, geometry_msgs::Pose& pose)
+{
+    // Return true for now
     bool success = true;
     return success;
 }

@@ -4,6 +4,7 @@
 #include "srp_md/action_servers/move_to_relative_pose_as.h"
 #include "srp_md/action_servers/get_table_as.h"
 #include "srp_md/action_servers/point_cloud_as.h"
+#include "srp_md/action_servers/free_space_finder_as.h"
 
 // ROS
 #include <ros/ros.h>
@@ -22,11 +23,13 @@ int main(int argc, char** argv)
     MoveToRelativePoseAS moveToRelativePoseAS(nh, act, "relative_move");
     ROS_INFO("Created MoveToRelativePoseAS.");
     GetTableAS getTableAS(nh, act, "get_table");
-    ROS_INFO("Created GetTable.");
+    ROS_INFO("Created GetTableAS.");
     CropPCAS cropPCAS(nh, act, "crop_pc");
     ROS_INFO("Created cropPCAS.");
     TFPCAS tfPCAS(nh, act, "tf_pc");
     ROS_INFO("Created tfPCAS.");
+    FreeSpaceFinderAS freeSpaceFindereAS(nh, act, "free_space_finder");
+    ROS_INFO("Created FreeSpaceFinderAS.");
 
 
     // Loop forever

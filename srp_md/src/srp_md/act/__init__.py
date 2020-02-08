@@ -15,3 +15,4 @@ from .actions import ChooseGrasplocObjAct
 from .actions import GrasplocAct
 from .actions import FilterGrasplocPoints
 from .actions import AddCollisionBoxAct
+from .actions import FreeSpaceFinderAct

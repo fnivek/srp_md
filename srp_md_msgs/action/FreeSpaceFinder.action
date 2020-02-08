@@ -1,0 +1,10 @@
+#goal definition
+sensor_msgs/PointCloud2 points
+vision_msgs/BoundingBox3D plane_bbox
+vision_msgs/BoundingBox3D obj_bbox
+---
+#result definition
+geometry_msgs/Pose pose
+---
+#feedback
+string feedback
