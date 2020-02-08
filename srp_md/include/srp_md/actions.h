@@ -179,8 +179,7 @@ public:
 
     bool relative_move(const geometry_msgs::Transform &pose_diff, int max_try = 1);
 
-    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<geometry_msgs::Pose>& poses,
-                   std::vector<geometry_msgs::Vector3>& sizes);
+    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
 
     bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
                            const vision_msgs::BoundingBox3D& obj_bbox, geometry_msgs::Pose& pose);

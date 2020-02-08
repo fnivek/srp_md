@@ -2,8 +2,7 @@
 sensor_msgs/PointCloud2 points
 ---
 #result definition
-geometry_msgs/Pose[] poses
-geometry_msgs/Vector3[] sizes
+vision_msgs/BoundingBox3D[] plane_bboxes
 ---
 #feedback
 string feedback

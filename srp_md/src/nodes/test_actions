@@ -13,7 +13,7 @@ from vision_msgs.msg import BoundingBox3D
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
-                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct
+                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
                         FreeSpaceFinderAct)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
@@ -134,28 +134,30 @@ def build_tree():
         # FullyCollapseTorso('act_please_collapse_torso'),
         # GetDopeSnapshotAct('act_get_dope_snapshot'),
         # PickAct('pick_1', 'grasp_pose'),
-        TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
+        # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
         # PlaceAct('place_1', 'grasp_pose'),
         # MoveToPoseAct('move_to_test_pose', pose=test_pose),
         # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
         # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
         # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
         # GetTableAct('act_get_table'),
-        GetDopeSnapshotAct('act_get_dope_snapshot'),
-        ChooseGrasplocObjAct('act_choose_grasploc_obj'),
-        py_trees_ros.subscribers.ToBlackboard(
-            name='act_get_pc',
-            topic_name='/head_camera/depth_registered/points',
-            topic_type=PointCloud2,
-            blackboard_variables={'in_pc': None},
-            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        TFPCAct('act_tf_pc', 'in_pc', 'base_link', 'tfed_pc'),
-        PCPubAct('act_pub_tfed_pc', 'tfed_pc', 'tfed_pc'),
-        CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
-        PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
-        GrasplocAct('act_grasploc', 'croped_pc', 'grasploc'),
-        FilterGrasplocPoints('act_filt_grasploc'),
-        MoveToFirstPoseAct('act_move_to_first_pose', 'filtered_grasploc')
+        # GetDopeSnapshotAct('act_get_dope_snapshot'),
+        # ChooseGrasplocObjAct('act_choose_grasploc_obj'),
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_pc',
+        #     topic_name='/head_camera/depth_registered/points',
+        #     topic_type=PointCloud2,
+        #     blackboard_variables={'in_pc': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # TFPCAct('act_tf_pc', 'in_pc', 'base_link', 'tfed_pc'),
+        # PCPubAct('act_pub_tfed_pc', 'tfed_pc', 'tfed_pc'),
+        # CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
+        # PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
+        # GrasplocAct('act_grasploc', 'croped_pc', 'grasploc'),
+        # FilterGrasplocPoints('act_filt_grasploc'),
+        # MoveToFirstPoseAct('act_move_to_first_pose', 'filtered_grasploc'),
+        GetTableAct('act_get_table')
+
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 

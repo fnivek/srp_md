@@ -685,8 +685,7 @@ geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Ve
     return:
 
 */
-bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<geometry_msgs::Pose>& poses,
-    std::vector<geometry_msgs::Vector3>& sizes)
+bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes)
 {
     // Initialize variables
     sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
@@ -739,7 +738,7 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         pcl::toROSMsg(*cloud_p,points_cloud_msg );
         test_plane_pub_.publish(points_cloud_msg);
 
-        //std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+        std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points, out of " << nr_points << " total points." << std::endl;
         for (auto&& value : coefficients->values) {
             std::cerr << "Coefficient: " << value << std::endl;
         }
@@ -802,7 +801,7 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         plane_area[j+1]=key;
     }
     std::vector<float>::iterator iter;
-    for (int i = 1; i < plane_area.size(); i++) {
+    for (int i = 0; i < plane_area.size(); i++) {
         iter = find(plane_area_copy.begin(), plane_area_copy.end(), plane_area[i]);
 
         plane_index = std::distance(plane_area_copy.begin(), iter);
@@ -813,10 +812,12 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         tf2::toMsg(poses_tf_vector[plane_index], pose_msg);
         std::cerr<<"size_msg: "<<"index: "<<plane_index<<std::endl<<size_msg<<std::endl;
         std::cerr<<"pose_msg: "<<"index: "<<plane_index<<std::endl<<pose_msg<<std::endl;
-        sizes.push_back(size_msg);
-        poses.push_back(pose_msg);
+        vision_msgs::BoundingBox3D plane_bbox;
+        plane_bbox.center = pose_msg;
+        plane_bbox.size = size_msg;
+        plane_bboxes.push_back(plane_bbox);
     }
-    std::cout<<"all planes: "<<poses.size()<<std::endl;
+    std::cout<<"all planes: "<<plane_bboxes.size()<<std::endl;
     bool success = true;
     return success;
 }

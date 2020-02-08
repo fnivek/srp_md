@@ -377,6 +377,7 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
         result = self.action_client.get_result()
         if result:
             py_trees.blackboard.Blackboard().set('planes', result)
+            print(result)
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
