@@ -21,6 +21,7 @@ from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
 from geometry_msgs.msg import Pose, PoseStamped, Transform
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
+from vision_msgs.msg import BoundingBox3D
 import actionlib_msgs.msg as actionlib_msgs
 from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
 
@@ -376,15 +377,14 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
-            py_trees.blackboard.Blackboard().set('planes', result)
-            print(result)
+            py_trees.blackboard.Blackboard().set('plane_bboxes', result.plane_bboxes)
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
 
 class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, *argv, **kwargs):
+    def __init__(self, name, obj_dim=None, *argv, **kwargs):
         super(FreeSpaceFinderAct, self).__init__(
             name=name,
             action_spec=FreeSpaceFinderAction,
@@ -393,6 +393,13 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             *argv,
             **kwargs
         )
+        # If the current object class is unknown, use default BoundingBox3D object
+        if cur_obj is None:
+            self.action_goal.obj_bbox = BoundingBox3D()
+
+        # Else if provided, get the predefined bounding box from blackboard <- This need to be done in separate action?
+        else:
+             py_trees.blackboard.Blackboard().get(cur_obj + '_bbox', self.action_goal.obj_bbox)
 
     def update(self):
         if not self.action_client:
@@ -409,6 +416,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
+            py_trees.blackboard.Blackboard().set('free_space_pose', result.pose)
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
@@ -488,7 +496,7 @@ def PlaceAct(name, key_str):
     ])
     return root
 
-def GetDesiredPose(obj_poses, cur_obj, surface):
+def GetDesiredPoseAct(name, surface, cur_obj):
     """
     Get_Desired_Pose
     - Input: Specifies which surface to put the object
@@ -501,16 +509,27 @@ def GetDesiredPose(obj_poses, cur_obj, surface):
     -     Get the bounding box of the bottom object and current gripped object to compute the z height it needs to be placed
     -     Place on top of (x, y) of the bottom object with computed z height plus some buffer
     """
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='seq_{}'.format(name),
+        children=None)
+
+    # Get the dimensions of current object
+    print(rospy.get_param('~host', 'localhost'))
+    cur_dim = tuple(rospy.get_param("~dimensions")[cur_obj])
+
     # If desired surface is table, do:
     if surface == "table":
-        table = Table_Detector()
-        rand_points = Gen_Rand_Points_On_Table(table)
-        point = Max_Min_Distance(obj_poses, rand_points)
+        # Add steps to detect the table and get the desired pose based on free space
+        root.add_children([
+            GetTableAct(name='act_{}_get_table'.format(name)),
+            FreeSpaceFinderAct(name='act_{}_free_space_finder'.format(name), obj_dim=cur_dim),
+        ])
     # If desired surface is on an object, do:
     else:
         des_pose = obj_poses[surface]
         des_pose.position.z += cur_obj.height / 2 + 0.5 # add buffer
-    return des_pose
+    return root
 
 """
 Table_Detector
