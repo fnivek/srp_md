@@ -19,7 +19,7 @@ from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
-from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray
+from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 import actionlib_msgs.msg as actionlib_msgs
 from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
@@ -111,7 +111,7 @@ class MoveToFirstPoseAct(py_trees_ros.actions.ActionClient):
         self.action_goal.poses = py_trees.blackboard.Blackboard().get(self._poses_key)
 
 class MoveToRelativePoseAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, transform=Transform(), *argv, **kwargs):
+    def __init__(self, name, transform=TransformStamped(), *argv, **kwargs):
         super(MoveToRelativePoseAct, self).__init__(
             name=name,
             action_spec=MoveToRelativePoseAction,

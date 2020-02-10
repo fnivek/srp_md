@@ -17,6 +17,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/TransformStamped.h>
 
 #include <sensor_msgs/PointCloud2.h>
 
@@ -48,6 +49,8 @@
 #include <tf2/LinearMath/Transform.h>
 #include <tf2/transform_datatypes.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_eigen/tf2_eigen.h>
 
 #include <moveit_msgs/GetPlanningScene.h>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -117,6 +120,8 @@ protected:
     const robot_state::JointModelGroup* joint_model_group_;
 
     tf::TransformListener tf_listener_;
+    tf2_ros::Buffer tf2_buffer_;
+    tf2_ros::TransformListener tf2_listener_;
 
     const double PI;
     const double MAX_HEAD_PAN, MIN_HEAD_PAN, MAX_HEAD_TILT, MIN_HEAD_TILT;
@@ -177,7 +182,7 @@ public:
     bool move(const geometry_msgs::Pose &pose, int max_try = 1);
     bool move(moveit::planning_interface::MoveGroupInterface::Plan move_plan);
 
-    bool relative_move(const geometry_msgs::Transform &pose_diff, int max_try = 1);
+    bool relative_move(const geometry_msgs::TransformStamped &pose_diff, int max_try = 1);
 
     bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
 

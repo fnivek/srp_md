@@ -7,14 +7,14 @@ import rospy
 import py_trees
 import py_trees_ros
 
-from geometry_msgs.msg import Pose, Transform
+from geometry_msgs.msg import Pose, Transform, TransformStamped
 from sensor_msgs.msg import PointCloud2
 from vision_msgs.msg import BoundingBox3D
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
-                        FreeSpaceFinderAct)
+                        FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
@@ -25,41 +25,44 @@ TICKPERIOD = 500  # ms
 def build_tree():
     root = py_trees.composites.Sequence(name='srp_md_actions_test')
 
-    # test_pose = Pose()
-    # test_pose.position.x = 0.75
-    # test_pose.position.y = 0.
-    # test_pose.position.z = 1.0
-    # test_pose.orientation.w = 0.707
-    # test_pose.orientation.x = 0.707
-    # test_pose.orientation.y = 0.
-    # test_pose.orientation.z = 0.
+    test_pose = Pose()
+    test_pose.position.x = 0.75
+    test_pose.position.y = 0.
+    test_pose.position.z = 1.0
+    test_pose.orientation.w = 0.707
+    test_pose.orientation.x = 0.707
+    test_pose.orientation.y = 0.
+    test_pose.orientation.z = 0.
 
-    # test_transform1 = Transform()
-    # test_transform1.translation.x = 0.
-    # test_transform1.translation.y = 0.
-    # test_transform1.translation.z = 0.25
-    # test_transform1.rotation.x = 0.707
-    # test_transform1.rotation.y = 0.
-    # test_transform1.rotation.z = 0.
-    # test_transform1.rotation.w = 0.707
+    test_transform1 = TransformStamped()
+    test_transform1.header.frame_id = "base_link"
+    test_transform1.transform.translation.x = 0.
+    test_transform1.transform.translation.y = 0.
+    test_transform1.transform.translation.z = 0.25
+    test_transform1.transform.rotation.x = 0.707
+    test_transform1.transform.rotation.y = 0.
+    test_transform1.transform.rotation.z = 0.
+    test_transform1.transform.rotation.w = 0.707
 
-    # test_transform2 = Transform()
-    # test_transform2.translation.x = 0.
-    # test_transform2.translation.y = 0.25
-    # test_transform2.translation.z = 0.
-    # test_transform2.rotation.x = 0.707
-    # test_transform2.rotation.y = 0.
-    # test_transform2.rotation.z = 0.
-    # test_transform2.rotation.w = 0.707
+    test_transform2 = TransformStamped()
+    test_transform2.header.frame_id = "gripper_link"
+    test_transform2.transform.translation.x = 0.
+    test_transform2.transform.translation.y = 0.25
+    test_transform2.transform.translation.z = 0.
+    test_transform2.transform.rotation.x = 0.707
+    test_transform2.transform.rotation.y = 0.
+    test_transform2.transform.rotation.z = 0.
+    test_transform2.transform.rotation.w = 0.707
 
-    # test_transform3 = Transform()
-    # test_transform3.translation.x = 0.
-    # test_transform3.translation.y = 0.
-    # test_transform3.translation.z = -0.25
-    # test_transform3.rotation.x = 0.707
-    # test_transform3.rotation.y = 0.
-    # test_transform3.rotation.z = 0.
-    # test_transform3.rotation.w = 0.707
+    test_transform3 = TransformStamped()
+    test_transform3.header.frame_id = "gripper_link"
+    test_transform3.transform.translation.x = 0.
+    test_transform3.transform.translation.y = 0.
+    test_transform3.transform.translation.z = -0.25
+    test_transform3.transform.rotation.x = 0.707
+    test_transform3.transform.rotation.y = 0.
+    test_transform3.transform.rotation.z = 0.
+    test_transform3.transform.rotation.w = 0.707
 
     blackboard = py_trees.blackboard.Blackboard()
 
@@ -116,30 +119,33 @@ def build_tree():
     table = Pose()
     table.position.x = 1.0
     table.position.y = 0.0
-    table.position.z = 0.32
+    table.position.z = 0.38
     table.orientation.w = 1.0
     table.orientation.x = 0.0
     table.orientation.y = 0.0
     table.orientation.z = 0.0
     blackboard.set('table_collision_obj', ['table', table, [0.8, 4, table.position.z * 2]])
 
+    gripper_length = 0.154
+    pre_grasp_offset = 0.05
+
     root.add_children([
-        AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
-        AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
-        AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
-        AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
+        # AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
+        # AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
+        # AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
+        # AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
         # py_trees.meta.oneshot(ResetAct)('reset'),
         # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),
         # FullyExtendTorso('act_please_extend_torso'),
-        # FullyCollapseTorso('act_please_collapse_torso'),
-        # GetDopeSnapshotAct('act_get_dope_snapshot'),
-        # PickAct('pick_1', 'grasp_pose'),
+        # # FullyCollapseTorso('act_please_collapse_torso'),
+        # # GetDopeSnapshotAct('act_get_dope_snapshot'),
+        # # PickAct('pick_1', 'grasp_pose'),
         # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
-        # PlaceAct('place_1', 'grasp_pose'),
-        # MoveToPoseAct('move_to_test_pose', pose=test_pose),
-        # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
-        # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
-        # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
+        # # PlaceAct('place_1', 'grasp_pose'),
+        MoveToPoseAct('move_to_test_pose', pose=test_pose),
+        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
+        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
+        MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
         # GetTableAct('act_get_table'),
         # GetDopeSnapshotAct('act_get_dope_snapshot'),
         # ChooseGrasplocObjAct('act_choose_grasploc_obj'),
@@ -150,14 +156,16 @@ def build_tree():
         #     blackboard_variables={'in_pc': None},
         #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         # TFPCAct('act_tf_pc', 'in_pc', 'base_link', 'tfed_pc'),
-        # PCPubAct('act_pub_tfed_pc', 'tfed_pc', 'tfed_pc'),
+        # # PCPubAct('act_pub_tfed_pc', 'tfed_pc', 'tfed_pc'),
         # CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
         # PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
         # GrasplocAct('act_grasploc', 'croped_pc', 'grasploc'),
         # FilterGrasplocPoints('act_filt_grasploc'),
-        # MoveToFirstPoseAct('act_move_to_first_pose', 'filtered_grasploc'),
-        GetTableAct('act_get_table')
-
+        # OffsetPoses('act_offset_grasploc_poses',
+        #             offset=[-(gripper_length + pre_grasp_offset), 0, 0],
+        #             in_poses_key='filtered_grasploc',
+        #             out_poses_key='offset_grasploc', debug=True), # The gripper origin is in the wrist so move out along x
+        # GrasplocPickAct('act_grasploc_pick', 'offset_grasploc')
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
@@ -172,7 +180,7 @@ def main():
     rospy.init_node('srp_md_actions_test')
 
     # This is a test tree so initilize set debug level
-    py_trees.logging.level = py_trees.logging.Level.DEBUG
+    # py_trees.logging.level = py_trees.logging.Level.DEBUG
 
     # Build a tree
     tree = build_tree()

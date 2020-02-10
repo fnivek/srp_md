@@ -20,6 +20,7 @@ Act::Act(ros::NodeHandle &nh)
   , MIN_TORSO_HEIGHT(0.05)
   , MAX_GRIPPER_VAL(1.0)
   , MIN_GRIPPER_VAL(0.0)
+  , tf2_listener_(tf2_buffer_)
 {
     wait_for_server(ac_arm_joints_, "/arm_controller/follow_joint_trajectory");
     wait_for_server(ac_gripper_, "/gripper_controller/gripper_action");
@@ -598,20 +599,40 @@ bool Act::move(moveit::planning_interface::MoveGroupInterface::Plan move_plan)
     return:
         bool (true for success)
 */
-bool Act::relative_move(const geometry_msgs::Transform &pose_diff, int max_try /* = 1 */)
+bool Act::relative_move(const geometry_msgs::TransformStamped &pose_diff_msg, int max_try /* = 1 */)
 {
-    geometry_msgs::Pose current_pose = move_group_.getCurrentPose().pose;
-    tf2::Transform current_pose_tf;
-    tf2::fromMsg(current_pose, current_pose_tf);
+    // Convert to Eigen
+    Eigen::Affine3d pose_diff = tf2::transformToEigen(pose_diff_msg);
+    if(pose_diff_msg.header.frame_id != "base_link")
+    {
+        // Transform the transform to "base_link"
+        geometry_msgs::TransformStamped tf;
+        try
+        {
+            // Get transform to base_link
+            tf = tf2_buffer_.lookupTransform("base_link", pose_diff_msg.header.frame_id, ros::Time(0));
+            // Convert to Eigen
+            Eigen::Affine3d tf_eigen = tf2::transformToEigen(tf);
+            // Only apply rotation to translation
+            pose_diff.translation() = tf_eigen.linear() * pose_diff.translation();
+        }
+        catch(tf2::TransformException &ex)
+        {
+            ROS_WARN("%s", ex.what());
+            return false;
+        }
+    }
 
-    tf2::Transform pose_diff_tf;
-    tf2::fromMsg(pose_diff, pose_diff_tf);
+    // Get the current pose
+    geometry_msgs::Pose current_pose_msg = move_group_.getCurrentPose().pose;
+    Eigen::Affine3d current_pose;
+    tf2::fromMsg(current_pose_msg, current_pose);
 
-    tf2::Transform computed_tf(pose_diff_tf.getRotation() * current_pose_tf.getRotation(),
-        pose_diff_tf.getOrigin() + current_pose_tf.getOrigin());
-    geometry_msgs::Pose computed;
-    tf2::toMsg(computed_tf, computed);
+    // Apply relative transform to current_pose
+    pose_diff.linear() *= current_pose.linear();
+    pose_diff.translation() += current_pose.translation();
 
+    geometry_msgs::Pose computed = tf2::toMsg(pose_diff);
     auto plan_result = this->plan(computed, max_try);
     if (!plan_result.first)
         return false;
