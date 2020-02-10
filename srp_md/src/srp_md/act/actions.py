@@ -422,7 +422,7 @@ def PickAct(name, key_str):
     grasp_pose = py_trees.blackboard.Blackboard().get(key_str)
 
     # Generate a pre-grasp pose that is displaced in z-direction of grasp pose
-    r = R.from_quat([grasp_pose.orientation.w, grasp_pose.orientation.x, grasp_pose.orientation.y, grasp_pose.orientation.z])
+    r = R.from_quat([grasp_pose.orientation.x, grasp_pose.orientation.y, grasp_pose.orientation.z, grasp_pose.orientation.w])
     position = r.apply([0, 0, -0.1])
     pre_grasp_pose = deepcopy(grasp_pose)
     pre_grasp_pose.position.x += position[0]
@@ -462,7 +462,7 @@ def PlaceAct(name, key_str):
     pre_up_pose.position.z += 0.25
 
     # Generate a post-desired pose that is displaced in z-direction of desired pose
-    r = R.from_quat([des_pose.orientation.w, des_pose.orientation.x, des_pose.orientation.y, des_pose.orientation.z])
+    r = R.from_quat([des_pose.orientation.x, des_pose.orientation.y, des_pose.orientation.z, des_pose.orientation.w])
     position = r.apply([0, 0, -0.1])
     post_des_pose = deepcopy(des_pose)
     post_des_pose.position.x += position[0]
