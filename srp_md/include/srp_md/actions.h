@@ -61,6 +61,7 @@
 #include <pcl/io/pcd_io.h>
 
 #include <math.h>
+#include <ctime>
 #include <algorithm>
 #include <thread>
 class Act;
@@ -152,6 +153,8 @@ public:
 
     bool boolean_interface(const std::string &action);
 
+    void crop_box_filt_pcl_pc(const pcl::PCLPointCloud2::Ptr pcl_in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                              pcl::PCLPointCloud2& pcl_out_pc);
     // Point clouds
     void crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
                           sensor_msgs::PointCloud2& out_pc);

@@ -294,14 +294,9 @@ bool Act::record_trajectory(const moveit::planning_interface::MoveGroupInterface
     return true;
 }
 
-// Pont clouds
-void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
-                           sensor_msgs::PointCloud2& out_pc)
+void Act::crop_box_filt_pcl_pc(const pcl::PCLPointCloud2::Ptr pcl_in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                           pcl::PCLPointCloud2& pcl_out_pc)
 {
-    // Convert to pcl point cloud 2
-    pcl::PCLPointCloud2::Ptr pcl_in_pc(new pcl::PCLPointCloud2);
-    pcl_conversions::toPCL(in_pc, *pcl_in_pc);
-    // Make a crop box filter
     pcl::CropBox<pcl::PCLPointCloud2> filt;
     filt.setInputCloud(pcl_in_pc);
     // Generate the max and min points of the bounding box
@@ -314,9 +309,19 @@ void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_m
     filt.setMax(max_pt);
     filt.setMin(min_pt);
     filt.setTransform(tf.inverse());
-    // Filter the point cloud
-    pcl::PCLPointCloud2 pcl_out_pc;
     filt.filter(pcl_out_pc);
+}
+
+// Pont clouds
+void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                           sensor_msgs::PointCloud2& out_pc)
+{
+    // Convert to pcl point cloud 2
+    pcl::PCLPointCloud2::Ptr pcl_in_pc(new pcl::PCLPointCloud2);
+    pcl::PCLPointCloud2 pcl_out_pc;
+    pcl_conversions::toPCL(in_pc, *pcl_in_pc);
+    // Make a crop box filter
+    crop_box_filt_pcl_pc(pcl_in_pc, crop_box, pcl_out_pc);
 
     // Move output data over
     pcl_conversions::moveFromPCL(pcl_out_pc, out_pc);
@@ -830,10 +835,63 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     return:
 
 */
+
+
+
 bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
     const vision_msgs::BoundingBox3D& obj_bbox, geometry_msgs::Pose& pose)
 {
-    // Return true for now
-    bool success = true;
+    // Initialize variables
+    sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
+    geometry_msgs::Pose plane_pose = plane_bbox.center;
+    geometry_msgs::Vector3 plane_size = plane_bbox.size;
+    bool success = false;
+
+    // Transform the pointcloud to base frame
+    transform_pc(*points, "base_link", *points_tf);
+
+    // Convert to PCL PointCloudc
+    pcl::PCLPointCloud2::Ptr points_pcl2(new pcl::PCLPointCloud2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr points_pcl_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PCLPointCloud2::Ptr points_pcl2_filtered (new pcl::PCLPointCloud2);
+    pcl_conversions::toPCL(*points_tf, *points_pcl2);
+
+    // Crop out the plane
+    crop_box_filt_pcl_pc(points_pcl2, test_bbxox, *points_pcl2_filtered);
+
+    // Initialize structures for random sampling
+    static std::default_random_engine e(time(0));
+    static std::normal_distribution<double> n(MU,SIGMA);
+    static std::uniform_real_distribution<double> dis(1.0, 2.0);
+
+    // Might want to cap this at limit 1000 or sth
+    while (true) {
+
+        // Generate random pose on the table
+        double x_random, y_random;
+        x_random = ?;
+        y_random = ?;
+        geometry_msgs::Pose test_object_pose = plane_pose;
+        test_object_pose.x = test_object_pose.x + x_random - plane_size.x / 2;
+        test_object_pose.y = test_object_pose.y + y_random - plane_size.y / 2;
+        test_object_pose.z = ?; // May need to add the bounding box height / 2
+        test_object_pose.orientation = ?; // random rotation?
+        
+
+        vision_msgs::BoundingBox3D test_bbxox;
+        test_bbxox.size = obj_bbox.size;
+        test_bbxox.center = test_object_pose;
+        crop_box_filt_pcl_pc(points_pcl2, test_bbxox, *points_pcl2_filtered);
+        pcl::fromPCLPointCloud2 (*points_pcl2_filtered, *points_pcl_filtered); // Is this step needed?
+
+        // If it is not in collision with other objects, return the pose
+        if (points_pcl_filtered->points.size() > 0) { // Maybe 0 is too strict
+            continue; // right syntax?
+        } else {
+            pose = test_object_pose;
+            bool success = true;
+            break;
+        }
+    }
     return success;
 }
