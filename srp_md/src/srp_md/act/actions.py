@@ -19,7 +19,7 @@ from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
-from geometry_msgs.msg import Pose, PoseStamped, Transform
+from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 import actionlib_msgs.msg as actionlib_msgs
 from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
@@ -254,44 +254,104 @@ class GrasplocAct(py_trees_ros.actions.ActionClient):
             self.feedback_message = "moving"
             return py_trees.Status.RUNNING
 
-class GrasplocPickBehavior(py_trees_ros.actions.ActionClient):
+class OffsetPoses(py_trees.behaviour.Behaviour):
+    """!
+    @brief      Add an offset to an iterable of poses.
     """
-    - From the bounding box, get the intersection point cloud and find graspable pose for grip using grasploc?
-    - Pick the best graspable pose by pruning undesired approach angles with dot product of z-axis?
-    - Move the gripper to the pose with trajectory planning (move somewhere to the top, go down to the offset and go to the object)
-    - Pick up the object by actuating gripper
-    """
-    def __init__(self, name, input_key='grasploc', centroid_key='centroid_3d_point', filter_off=False, *argv, **kwargs):
-        super(GrasplocPickBehavior, self).__init__(
-            name=name,
-            action_spec=fetch_manipulation_pipeline.msg.GrasplocPickAction,
-            action_goal=fetch_manipulation_pipeline.msg.GrasplocPickGoal(),
-            action_namespace='grasploc_pick',
-            *argv,
-            **kwargs
-        )
-        self._input_key = input_key
-        self._filter_off = filter_off
-        self._centroid_key = centroid_key
-        loadPredefined("/Prepare_Grasploc_Pick")
+    def __init__(self, name, in_poses_key, out_poses_key, offset, debug=False):
+        """!
+        @brief      Constructs a new instance.
 
-    def initialise(self):
-        super(GrasplocPickBehavior, self).initialise()
-        # Get centroid and shelf id from blackboard
+        @param      name           Behavior name
+        @param      in_poses_key   In poses blackboard key
+        @param      out_poses_key  The out poses blackboard key
+        @param      offset         The offset in the poses frame of reference as will be used to create a
+                                   numpy.array(offset)
+        """
+        super(OffsetPoses, self).__init__(name)
+        self._in_poses_key = in_poses_key
+        self._out_poses_key = out_poses_key
+        self._offset = offset
+        self._orig_pub = None
+        self._new_pub = None
+        self._debug = debug
+
+    def setup(self, timeout):
+        if self._debug:
+            self._orig_pub = rospy.Publisher('/original_grasploc_poses', PoseArray, queue_size=10)
+            self._new_pub = rospy.Publisher('/new_grasploc_poses', PoseArray, queue_size=10)
+        return True
+
+    def update(self):
         blackboard = py_trees.blackboard.Blackboard()
-        poseArray = blackboard.get(self._input_key)
-        centroid = blackboard.get(self._centroid_key)
+        poses = blackboard.get(self._in_poses_key)
+        if poses is None:
+            return py_trees.Status.FAILURE
 
-        if poseArray is None:
-            rospy.logerr('PoseArray was not defined for pick behavior')
-            self.action_goal = fetch_manipulation_pipeline.msg.GrasplocPickGoal()
-            return
-        self.action_goal.grasp_poses = poseArray.graspable_points.poses
-        self.action_goal.normal = poseArray.normal
-        self.action_goal.principal = poseArray.principal
-        self.action_goal.filter_off = self._filter_off
-        self.action_goal.centroid = centroid
-        rospy.loginfo('Grasploc Pick Goal Constructed.')
+        # Handle iterables and single poses
+        try:
+            pose_iter = iter(poses)
+        except TypeError as e:
+            pose_iter = iter([poses])
+
+        offset_poses = []
+        for pose in pose_iter:
+            # Apply offset in poses frame of reference
+            tf = R.from_quat([
+                pose.orientation.x,
+                pose.orientation.y,
+                pose.orientation.z,
+                pose.orientation.w])
+            offset = tf.apply(self._offset)
+            offset_pose = deepcopy(pose)
+            offset_pose.position.x = pose.position.x + offset[0]
+            offset_pose.position.y = pose.position.y + offset[1]
+            offset_pose.position.z = pose.position.z + offset[2]
+            offset_poses.append(offset_pose)
+
+        if self._debug:
+            orig = PoseArray()
+            new = PoseArray()
+            orig.header.frame_id = 'base_link'
+            new.header.frame_id = 'base_link'
+            orig.poses = poses
+            new.poses = offset_poses
+            self._orig_pub.publish(orig)
+            self._new_pub.publish(new)
+
+        blackboard.set(self._out_poses_key, offset_poses)
+        return py_trees.Status.SUCCESS
+
+def GrasplocPickAct(name, poses_key):
+    temp_wall_pose = Pose()
+    temp_wall_pose.position.x = 0.65
+    temp_wall_pose.position.y = 0.0
+    temp_wall_pose.position.z = 0.0
+    temp_wall_pose.orientation.w = 1.0
+    temp_wall_pose.orientation.x = 0.0
+    temp_wall_pose.orientation.y = 0.0
+    temp_wall_pose.orientation.z = 0.0
+
+    pre_grasp = Transform()
+    pre_grasp.translation.x = 0.4
+    pre_grasp.translation.y = -0.2
+    pre_grasp.translation.z = 0.45
+    pre_grasp.rotation.x = 0.0
+    pre_grasp.rotation.y = 1.0
+    pre_grasp.rotation.z = 0.0
+    pre_grasp.rotation.w = 0.0
+
+    root = py_trees.composites.Sequence(name='seq_{}'.format(name))
+    root.add_children([
+        AddCollisionBoxAct('act_{}_temp_front_wall'.format(name), box_name='{}_temp_front_wall'.format(name),
+                           box_pose=temp_wall_pose, box_size=[0.05, 10, 10]),
+        TuckWithCondBehavior('act_{}_start_tucked'.format(name), tuck_pose='tuck'),
+        OpenGripperAct('act_{}_open_gripper'.format(name)),
+        MoveToRelativePoseAct('act_{}_move_pre_grasp'.format(name), pre_grasp),
+        RemoveCollisionBoxAct('act_{}_remove_temp_wall', box_name='{}_temp_front_wall'.format(name)),
+        MoveToFirstPoseAct('act_{}_pick_grasploc'.format(name), poses_key=poses_key)
+    ])
+    return root
 
 class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
     def __init__(self, name, bbox_key='obj_bboxes', crop_box_key='crop_box'):
@@ -440,6 +500,7 @@ def PickAct(name, key_str):
 
     # Add steps to execute pick action
     root.add_children([
+        OpenGripperAct('act_{}_open_gripper'.format(name)),
         MoveToPoseAct(name='act_{}_move_to_up_pose_1'.format(name), pose=up_pose),
         MoveToPoseAct(name='act_{}_move_to_pre_grasp_pose_1'.format(name), pose=pre_grasp_pose),
         MoveToPoseAct(name='act_{}_move_to_grasp_pose'.format(name), pose=grasp_pose),
@@ -683,6 +744,43 @@ class AddCollisionBoxAct(py_trees.behaviour.Behaviour):
         obj.primitives.append(box)
         obj.primitive_poses.append(self._box_pose)
         obj.operation = obj.ADD
+
+        # Update the planning scene
+        planning_scene = PlanningScene()
+        planning_scene.is_diff = True
+        planning_scene.world.collision_objects.append(obj);
+        self._pub.publish(planning_scene);
+        return py_trees.Status.SUCCESS
+
+# Move group planning scene
+class RemoveCollisionBoxAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, box_name=None, box_bb_key=None):
+        """!
+        @brief      Add a collision box to the planning scene
+
+        @param      name        Name of the behavior
+        @param      box_name    String id for the box, used to update and remove the box from planning scene
+        @param      box_bb_key  The box bb key if provided will read a box from the blackboard and overwrite the other
+                                parameters, the blackboard value should be a list as such [box_name, box_pose, box_size]
+        """
+        super(RemoveCollisionBoxAct, self).__init__(name)
+        self._pub = None
+        self._box_name = box_name
+        self._box_bb_key = box_bb_key
+
+    def setup(self, timeout):
+        self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        return True
+
+    def initialise(self):
+        if self._box_bb_key is not None:
+            self._box_name, _, _ = py_trees.blackboard.Blackboard().get(self._box_bb_key)
+
+    def update(self):
+        # Define the collision object
+        obj = CollisionObject()
+        obj.id = self._box_name
+        obj.operation = obj.REMOVE
 
         # Update the planning scene
         planning_scene = PlanningScene()

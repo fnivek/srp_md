@@ -15,5 +15,8 @@ from .actions import PCPubAct
 from .actions import ChooseGrasplocObjAct
 from .actions import GrasplocAct
 from .actions import FilterGrasplocPoints
+from .actions import GrasplocPickAct
 from .actions import AddCollisionBoxAct
+from .actions import RemoveCollisionBoxAct
 from .actions import FreeSpaceFinderAct
+from .actions import OffsetPoses
