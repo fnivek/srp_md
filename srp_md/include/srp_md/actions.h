@@ -185,7 +185,7 @@ public:
     bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
 
     bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
-                           const vision_msgs::BoundingBox3D& obj_bbox, geometry_msgs::Pose& pose);
+                           const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose);
 
 };
 

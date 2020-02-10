@@ -19,7 +19,7 @@ from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
-from geometry_msgs.msg import Pose, PoseStamped, Transform
+from geometry_msgs.msg import Pose, PoseStamped, Transform, Vector3
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 from vision_msgs.msg import BoundingBox3D
 import actionlib_msgs.msg as actionlib_msgs
@@ -393,13 +393,25 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             *argv,
             **kwargs
         )
-        # If the current object class is unknown, use default BoundingBox3D object
-        if cur_obj is None:
-            self.action_goal.obj_bbox = BoundingBox3D()
+        self._timeout = 5
+        self._listener = tf.TransformListener()
 
-        # Else if provided, get the predefined bounding box from blackboard <- This need to be done in separate action?
+        self.pcl_sub = message_filters.Subscriber(
+            '/head_camera/depth_downsample/points',
+            PointCloud2
+        )
+        self.pcl_sub.registerCallback(self.callback)
+
+    def callback(self, pcl):
+        self.action_goal = GetTableGoal()
+        self.action_goal.points = pcl
+        if obj_dim is None:
+            self.action_goal.obj_dim = Vector3()
+
         else:
-             py_trees.blackboard.Blackboard().get(cur_obj + '_bbox', self.action_goal.obj_bbox)
+             self.action_goal.obj_dim = obj_dim
+        py_trees.blackboard.Blackboard().get('plane_bboxes', plane_bboxes)
+        self.action_goal.plane_bbox = plane_bboxes[0]
 
     def update(self):
         if not self.action_client:
@@ -515,15 +527,25 @@ def GetDesiredPoseAct(name, surface, cur_obj):
         children=None)
 
     # Get the dimensions of current object
-    print(rospy.get_param('~host', 'localhost'))
-    cur_dim = tuple(rospy.get_param("~dimensions")[cur_obj])
+    cur_dim = tuple(rospy.get_param("/dope/dimensions")[cur_obj])
+    # print("Bleach Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["bleach"]))
+    # print("Cracker Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["cracker"]))
+    # print("Gelatin Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["gelatin"]))
+    # print("Meat Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["meat"]))
+    # print("Mustard Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["mustard"]))
+    # print("Soup Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["soup"]))
+    # print("Sugar Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["sugar"]))
+    obj_dim = Vector3()
+    obj_dim.x = cur_dim[0]
+    obj_dim.y = cur_dim[1]
+    obj_dim.z = cur_dim[2]
 
     # If desired surface is table, do:
     if surface == "table":
         # Add steps to detect the table and get the desired pose based on free space
         root.add_children([
             GetTableAct(name='act_{}_get_table'.format(name)),
-            FreeSpaceFinderAct(name='act_{}_free_space_finder'.format(name), obj_dim=cur_dim),
+            FreeSpaceFinderAct(name='act_{}_free_space_finder'.format(name), obj_dim=obj_dim),
         ])
     # If desired surface is on an object, do:
     else:
