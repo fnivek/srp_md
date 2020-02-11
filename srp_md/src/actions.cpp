@@ -841,11 +841,13 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
 bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
     const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose)
 {
+    
     // Initialize variables
     sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
     geometry_msgs::Pose plane_pose = plane_bbox.center;
     geometry_msgs::Vector3 plane_size = plane_bbox.size;
     bool success = false;
+    float edge_deduction_ratio = 0.1;
 
     // Transform the pointcloud to base frame
     transform_pc(*points, "base_link", *points_tf);
@@ -857,33 +859,34 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     pcl_conversions::toPCL(*points_tf, *points_pcl2);
 
     // Crop out the plane
-    crop_box_filt_pcl_pc(points_pcl2, test_bbxox, *points_pcl2_filtered);
+    crop_box_filt_pcl_pc(points_pcl2, plane_bbox, *points_pcl2_filtered);
 
     // Initialize structures for random sampling
     static std::default_random_engine e(time(0));
-    static std::normal_distribution<double> n(MU,SIGMA);
-    static std::uniform_real_distribution<double> dis(1.0, 2.0);
+    //static std::normal_distribution<double> n(MU,SIGMA);
+    static std::uniform_real_distribution<double> dis(0.0, 100.0);
 
     // Might want to cap this at limit 1000 or sth
-    while (true) {
-
+    for (int loop_times = 0; loop_times < 1000; loop_times++) {
         // Generate random pose on the table
         double x_random, y_random;
-        x_random = ?;
-        y_random = ?;
+        x_random = dis(e);
+        y_random = dis(e);
+        std::cout<<"Coordinates on plane: "<<x_random<<" "<<y_random<<std::endl;
         geometry_msgs::Pose test_object_pose = plane_pose;
-        test_object_pose.x = test_object_pose.x + x_random - plane_size.x / 2;
-        test_object_pose.y = test_object_pose.y + y_random - plane_size.y / 2;
-        test_object_pose.z = ?; // May need to add the bounding box height / 2
-        test_object_pose.orientation = ?; // random rotation?
-
+        test_object_pose.position.x = test_object_pose.position.x + x_random / 100 * plane_size.x * (1 - edge_deduction_ratio)-
+                             plane_size.x / 2 * (1 - edge_deduction_ratio);
+        test_object_pose.position.y = test_object_pose.position.y + y_random / 100 * plane_size.y * (1 - edge_deduction_ratio) -
+                             plane_size.y / 2 * (1 - edge_deduction_ratio);
+        test_object_pose.position.z = test_object_pose.position.y + 1.05 * obj_dim.z * 0.5; // May need to add the bounding box 1.05 * height / 2
+        //test_object_pose.orientation = ?; // random rotation? first just skip this
 
         vision_msgs::BoundingBox3D test_bbxox;
-        test_bbxox.size = obj_bbox.size;
+        test_bbxox.size = obj_dim;
         test_bbxox.center = test_object_pose;
         crop_box_filt_pcl_pc(points_pcl2, test_bbxox, *points_pcl2_filtered);
         pcl::fromPCLPointCloud2 (*points_pcl2_filtered, *points_pcl_filtered); // Is this step needed?
-
+        std::cout<<"point num in cropbox: "<<points_pcl_filtered->points.size()<<std::endl;
         // If it is not in collision with other objects, return the pose
         if (points_pcl_filtered->points.size() > 0) { // Maybe 0 is too strict
             continue; // right syntax?
