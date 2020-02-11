@@ -14,7 +14,8 @@ import message_filters
 
 import numpy as np
 
-from moveit_msgs.msg import PlanningScene, CollisionObject
+from moveit_msgs.msg import PlanningScene, CollisionObject, PlanningSceneComponents
+from moveit_msgs.srv import GetPlanningScene
 from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
@@ -332,14 +333,15 @@ def GrasplocPickAct(name, poses_key):
     temp_wall_pose.orientation.y = 0.0
     temp_wall_pose.orientation.z = 0.0
 
-    pre_grasp = Transform()
-    pre_grasp.translation.x = 0.4
-    pre_grasp.translation.y = -0.2
-    pre_grasp.translation.z = 0.45
-    pre_grasp.rotation.x = 0.0
-    pre_grasp.rotation.y = 1.0
-    pre_grasp.rotation.z = 0.0
-    pre_grasp.rotation.w = 0.0
+    pre_grasp = TransformStamped()
+    pre_grasp.header.frame_id = 'base_link'
+    pre_grasp.transform.translation.x = 0.4
+    pre_grasp.transform.translation.y = -0.2
+    pre_grasp.transform.translation.z = 0.45
+    pre_grasp.transform.rotation.x = 0.0
+    pre_grasp.transform.rotation.y = 1.0
+    pre_grasp.transform.rotation.z = 0.0
+    pre_grasp.transform.rotation.w = 0.0
 
     root = py_trees.composites.Sequence(name='seq_{}'.format(name))
     root.add_children([
@@ -375,7 +377,9 @@ class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
         self._grasp_points_key = grasp_points_key
         self._filtered_grasp_points_key = filtered_grasp_points_key
         self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
-        self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
+        # self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
+        # self._center_axis = np.array([0, 0, 1]) # 0deg from vertical towards robot
+        self._min_cos_theta = np.cos(np.pi / 8) # cos(x) -> +- x rads
 
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
@@ -786,5 +790,48 @@ class RemoveCollisionBoxAct(py_trees.behaviour.Behaviour):
         planning_scene = PlanningScene()
         planning_scene.is_diff = True
         planning_scene.world.collision_objects.append(obj);
+        self._pub.publish(planning_scene);
+        return py_trees.Status.SUCCESS
+
+
+# Ignore collisions with gripper
+class SetAllowGripperCollisionAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, allow):
+        """!
+        @brief      Add a collision box to the planning scene
+
+        @param      name   Name of the behavior
+        @param      allow  True to allow gripper collision false to disallow
+        """
+        super(SetAllowGripperCollisionAct, self).__init__(name)
+        self._pub = None
+        self._get_scene_client = None
+        self._allow = allow
+
+    def setup(self, timeout):
+        self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        rospy.wait_for_service('/get_planning_scene', timeout=timeout)
+        self._get_scene_client = rospy.ServiceProxy("/get_planning_scene", GetPlanningScene)
+        return True
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        # Get the current scene
+        get_scene = PlanningSceneComponents(components = PlanningSceneComponents.ALLOWED_COLLISION_MATRIX)
+        allowed_collision_matrix = self._get_scene_client(get_scene).scene.allowed_collision_matrix
+        print(allowed_collision_matrix)
+        for link in ['l_gripper_finger_link', 'r_gripper_finger_link', 'gripper_link']:
+            try:
+                i = allowed_collision_matrix.default_entry_names.index(link)
+                allowed_collision_matrix.default_entry_values[i] = self._allow
+            except ValueError:
+                allowed_collision_matrix.default_entry_names.append(link)
+                allowed_collision_matrix.default_entry_values.append(self._allow)
+        print(allowed_collision_matrix)
+
+        # Update the planning scene
+        planning_scene = PlanningScene(is_diff=True, allowed_collision_matrix=allowed_collision_matrix)
         self._pub.publish(planning_scene);
         return py_trees.Status.SUCCESS
