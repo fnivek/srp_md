@@ -376,9 +376,9 @@ class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
         super(FilterGrasplocPoints, self).__init__(name)
         self._grasp_points_key = grasp_points_key
         self._filtered_grasp_points_key = filtered_grasp_points_key
-        self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
+        # self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
         # self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
-        # self._center_axis = np.array([0, 0, 1]) # 0deg from vertical towards robot
+        self._center_axis = np.array([0, 0, 1]) # 0deg from vertical towards robot
         self._min_cos_theta = np.cos(np.pi / 8) # cos(x) -> +- x rads
 
     def update(self):
@@ -821,15 +821,18 @@ class SetAllowGripperCollisionAct(py_trees.behaviour.Behaviour):
         # Get the current scene
         get_scene = PlanningSceneComponents(components = PlanningSceneComponents.ALLOWED_COLLISION_MATRIX)
         allowed_collision_matrix = self._get_scene_client(get_scene).scene.allowed_collision_matrix
-        print(allowed_collision_matrix)
         for link in ['l_gripper_finger_link', 'r_gripper_finger_link', 'gripper_link']:
             try:
                 i = allowed_collision_matrix.default_entry_names.index(link)
-                allowed_collision_matrix.default_entry_values[i] = self._allow
+                if self._allow:
+                    allowed_collision_matrix.default_entry_values[i] = self._allow
+                else:
+                    del allowed_collision_matrix.default_entry_names[i]
+                    del allowed_collision_matrix.default_entry_values[i]
             except ValueError:
-                allowed_collision_matrix.default_entry_names.append(link)
-                allowed_collision_matrix.default_entry_values.append(self._allow)
-        print(allowed_collision_matrix)
+                if self._allow:
+                    allowed_collision_matrix.default_entry_names.append(link)
+                    allowed_collision_matrix.default_entry_values.append(self._allow)
 
         # Update the planning scene
         planning_scene = PlanningScene(is_diff=True, allowed_collision_matrix=allowed_collision_matrix)

@@ -153,12 +153,12 @@ def build_tree():
         # # PickAct('pick_1', 'grasp_pose'),
         OpenGripperAct('act_open_gripper'),
         TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
-        # # PlaceAct('place_1', 'grasp_pose'),
-        # MoveToPoseAct('move_to_test_pose', pose=test_pose),
-        # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
-        # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
-        # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
-        # GetTableAct('act_get_table'),
+        # # # PlaceAct('place_1', 'grasp_pose'),
+        # # MoveToPoseAct('move_to_test_pose', pose=test_pose),
+        # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
+        # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
+        # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
+        # # GetTableAct('act_get_table'),
         GetDopeSnapshotAct('act_get_dope_snapshot'),
         ChooseGrasplocObjAct('act_choose_grasploc_obj'),
         py_trees_ros.subscribers.ToBlackboard(
@@ -180,9 +180,9 @@ def build_tree():
         GrasplocPickAct('act_grasploc_pick', 'offset_grasploc'),
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
         MoveToRelativePoseAct('act_move_to_grasp_pose', transform=to_grasp_tf),
-        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
         CloseGripperAct('act_close_gripper'),
         MoveToRelativePoseAct('act_move_up', transform=up_tf),
+        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
