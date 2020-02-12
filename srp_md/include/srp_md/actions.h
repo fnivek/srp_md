@@ -22,6 +22,8 @@
 
 #include <vision_msgs/BoundingBox3D.h>
 
+#include <jsk_recognition_msgs/BoundingBox.h>
+
 #include <control_msgs/GripperCommandAction.h>
 #include <control_msgs/GripperCommand.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
@@ -126,6 +128,8 @@ protected:
 
     // Debug please delete
     ros::Publisher plane_cropped_;
+    ros::Publisher plane_bounding_box_;
+    ros::Publisher object_bounding_box_;
 
 public:
     // default constructor that starts all the action client

@@ -394,7 +394,10 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         else:
              self.action_goal.obj_dim = self._obj_dim
         plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
-        self.action_goal.plane_bbox = plane_bboxes[0]
+        if len(plane_bboxes) == 0:
+            self.action_goal.plane_bbox = BoundingBox3D()
+        else:
+            self.action_goal.plane_bbox = plane_bboxes[0]
 
     def update(self):
         if not self.action_client:
@@ -519,9 +522,9 @@ def GetDesiredPoseAct(name, surface, cur_obj):
     # print("Soup Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["soup"]))
     # print("Sugar Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["sugar"]))
     obj_dim = Vector3()
-    obj_dim.x = cur_dim[0]
-    obj_dim.y = cur_dim[2]
-    obj_dim.z = cur_dim[1]
+    obj_dim.x = cur_dim[0] / 100
+    obj_dim.y = cur_dim[2] / 100
+    obj_dim.z = cur_dim[1] / 100
 
     # If desired surface is table, do:
     if surface == "table":
