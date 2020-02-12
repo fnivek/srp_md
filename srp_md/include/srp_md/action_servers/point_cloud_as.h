@@ -25,7 +25,8 @@ public:
     }
 
     void goalCB(const typename GoalMsg::ConstPtr& goal) {
-        act_.crop_box_filt_pc(goal->in_pc, goal->crop_box, result_.out_pc);
+        sensor_msgs::PointCloud2::Ptr points(new sensor_msgs::PointCloud2(goal->in_pc));
+        act_.crop_box_filt_pc(points, goal->crop_box, result_.out_pc, goal->invert);
         as_.setSucceeded(result_);
     }
 

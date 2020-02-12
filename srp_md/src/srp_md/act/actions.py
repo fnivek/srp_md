@@ -349,18 +349,10 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             **kwargs
         )
 
-        self._timeout = 5
-        self._listener = tf.TransformListener()
-
-        self.pcl_sub = message_filters.Subscriber(
-            '/head_camera/depth_downsample/points',
-            PointCloud2
-        )
-        self.pcl_sub.registerCallback(self.callback)
-
-    def callback(self, pcl):
-        self.action_goal = GetTableGoal()
-        self.action_goal.points = pcl
+    def initialise(self):
+        self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
+        cropped_pc_pub = rospy.Publisher('cropped_pc', PointCloud2, queue_size=10)
+        cropped_pc_pub.publish(self.action_goal.points)
 
     def update(self):
         if not self.action_client:
@@ -393,24 +385,15 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             *argv,
             **kwargs
         )
-        self._timeout = 5
-        self._listener = tf.TransformListener()
+        self._obj_dim = obj_dim
 
-        self.pcl_sub = message_filters.Subscriber(
-            '/head_camera/depth_downsample/points',
-            PointCloud2
-        )
-        self.pcl_sub.registerCallback(self.callback)
-
-    def callback(self, pcl):
-        self.action_goal = GetTableGoal()
-        self.action_goal.points = pcl
-        if obj_dim is None:
+    def initialise(self):
+        self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
+        if self._obj_dim is None:
             self.action_goal.obj_dim = Vector3()
-
         else:
-             self.action_goal.obj_dim = obj_dim
-        py_trees.blackboard.Blackboard().get('plane_bboxes', plane_bboxes)
+             self.action_goal.obj_dim = self._obj_dim
+        plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
         self.action_goal.plane_bbox = plane_bboxes[0]
 
     def update(self):
@@ -537,8 +520,8 @@ def GetDesiredPoseAct(name, surface, cur_obj):
     # print("Sugar Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["sugar"]))
     obj_dim = Vector3()
     obj_dim.x = cur_dim[0]
-    obj_dim.y = cur_dim[1]
-    obj_dim.z = cur_dim[2]
+    obj_dim.y = cur_dim[2]
+    obj_dim.z = cur_dim[1]
 
     # If desired surface is table, do:
     if surface == "table":
@@ -563,7 +546,7 @@ Table_Detector
 """
 
 class CropPCAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, in_pc_key, crop_box_key, out_pc_key, *argv, **kwargs):
+    def __init__(self, name, in_pc_key, crop_box_key, out_pc_key, invert=False, *argv, **kwargs):
         super(CropPCAct, self).__init__(
             name=name,
             action_spec=CropPCAction,
@@ -575,6 +558,7 @@ class CropPCAct(py_trees_ros.actions.ActionClient):
         self._in_pc_key = in_pc_key
         self._crop_box_key = crop_box_key
         self._out_pc_key = out_pc_key
+        self._invert = invert
 
     def initialise(self):
         super(CropPCAct, self).initialise()
@@ -582,6 +566,7 @@ class CropPCAct(py_trees_ros.actions.ActionClient):
         blackboard = py_trees.blackboard.Blackboard()
         self.action_goal.in_pc = blackboard.get(self._in_pc_key)
         self.action_goal.crop_box = blackboard.get(self._crop_box_key)
+        self.action_goal.invert = self._invert
 
     def update(self):
         """

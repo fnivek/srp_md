@@ -39,7 +39,7 @@ Act::Act(ros::NodeHandle &nh)
     // load_predefined_poses();
 
     // Debug please delete
-    test_plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("test_plane", 1000);
+    plane_cropped_ = nh_.advertise<sensor_msgs::PointCloud2>("plane_cropped", 1000);
 
     ROS_INFO("Manipulation pipeline ready!");
 }
@@ -295,7 +295,7 @@ bool Act::record_trajectory(const moveit::planning_interface::MoveGroupInterface
 }
 
 void Act::crop_box_filt_pcl_pc(const pcl::PCLPointCloud2::Ptr pcl_in_pc, const vision_msgs::BoundingBox3D& crop_box,
-                           pcl::PCLPointCloud2& pcl_out_pc)
+                           pcl::PCLPointCloud2& pcl_out_pc, bool invert)
 {
     pcl::CropBox<pcl::PCLPointCloud2> filt;
     filt.setInputCloud(pcl_in_pc);
@@ -309,19 +309,20 @@ void Act::crop_box_filt_pcl_pc(const pcl::PCLPointCloud2::Ptr pcl_in_pc, const v
     filt.setMax(max_pt);
     filt.setMin(min_pt);
     filt.setTransform(tf.inverse());
+    filt.setNegative(invert);
     filt.filter(pcl_out_pc);
 }
 
 // Pont clouds
-void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
-                           sensor_msgs::PointCloud2& out_pc)
+void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2::Ptr in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                           sensor_msgs::PointCloud2& out_pc, bool invert)
 {
     // Convert to pcl point cloud 2
     pcl::PCLPointCloud2::Ptr pcl_in_pc(new pcl::PCLPointCloud2);
     pcl::PCLPointCloud2 pcl_out_pc;
-    pcl_conversions::toPCL(in_pc, *pcl_in_pc);
+    pcl_conversions::toPCL(*in_pc, *pcl_in_pc);
     // Make a crop box filter
-    crop_box_filt_pcl_pc(pcl_in_pc, crop_box, pcl_out_pc);
+    crop_box_filt_pcl_pc(pcl_in_pc, crop_box, pcl_out_pc, invert);
 
     // Move output data over
     pcl_conversions::moveFromPCL(pcl_out_pc, out_pc);
@@ -741,12 +742,9 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
         extract.filter (*cloud_p);
         sensor_msgs::PointCloud2 points_cloud_msg;
         pcl::toROSMsg(*cloud_p,points_cloud_msg );
-        test_plane_pub_.publish(points_cloud_msg);
+        // test_plane_pub_.publish(points_cloud_msg);
 
-        std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points, out of " << nr_points << " total points." << std::endl;
-        for (auto&& value : coefficients->values) {
-            std::cerr << "Coefficient: " << value << std::endl;
-        }
+        // std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points, out of " << nr_points << " total points." << std::endl;
         // std::stringstream ss;
         //ss << "table_scene_lms400_plane_" << i << ".pcd";
         //writer.write<pcl::PointXYZ> (ss.str (), *cloud_p, false);
@@ -808,21 +806,22 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     std::vector<float>::iterator iter;
     for (int i = 0; i < plane_area.size(); i++) {
         iter = find(plane_area_copy.begin(), plane_area_copy.end(), plane_area[i]);
-
         plane_index = std::distance(plane_area_copy.begin(), iter);
-        std::cerr<<"area: "<<"index: "<<plane_index<<" "<<plane_area[i]<<std::endl;
+        // std::cerr<<"area: "<<"index: "<<plane_index<<" "<<plane_area[i]<<std::endl;
         geometry_msgs::Vector3 size_msg;
         geometry_msgs::Pose pose_msg;
         tf2::convert(sizes_tf_vector[plane_index], size_msg);
         tf2::toMsg(poses_tf_vector[plane_index], pose_msg);
-        std::cerr<<"size_msg: "<<"index: "<<plane_index<<std::endl<<size_msg<<std::endl;
-        std::cerr<<"pose_msg: "<<"index: "<<plane_index<<std::endl<<pose_msg<<std::endl;
+        // std::cerr<<"size_msg: "<<"index: "<<plane_index<<std::endl<<size_msg<<std::endl;
+        // std::cerr<<"pose_msg: "<<"index: "<<plane_index<<std::endl<<pose_msg<<std::endl;
         vision_msgs::BoundingBox3D plane_bbox;
         plane_bbox.center = pose_msg;
         plane_bbox.size = size_msg;
-        plane_bboxes.push_back(plane_bbox);
+        if (plane_bbox.center.position.z > 0.5) {
+            plane_bboxes.push_back(plane_bbox);
+        }
     }
-    std::cout<<"all planes: "<<plane_bboxes.size()<<std::endl;
+    // std::cout<<"all planes: "<<plane_bboxes.size()<<std::endl;
     bool success = true;
     return success;
 }
@@ -841,58 +840,60 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
 bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
     const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose)
 {
-    
+    std::cerr<<"pose of the table: "<<plane_bbox.center<<std::endl;
+    std::cerr<<"size of the table: "<<plane_bbox.size<<std::endl;
+
     // Initialize variables
-    sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
-    geometry_msgs::Pose plane_pose = plane_bbox.center;
-    geometry_msgs::Vector3 plane_size = plane_bbox.size;
     bool success = false;
+    sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
+    sensor_msgs::PointCloud2::Ptr points_plane_filtered(new sensor_msgs::PointCloud2);
+    sensor_msgs::PointCloud2::Ptr points_object_filtered(new sensor_msgs::PointCloud2);
+    vision_msgs::BoundingBox3D plane_bbox_mod = plane_bbox;
     float edge_deduction_ratio = 0.1;
+    float plane_expansion_ratio = 0.20;
+    float object_placing_offset = 0.05;
+    int points_threshold = 10;
 
     // Transform the pointcloud to base frame
     transform_pc(*points, "base_link", *points_tf);
 
-    // Convert to PCL PointCloudc
-    pcl::PCLPointCloud2::Ptr points_pcl2(new pcl::PCLPointCloud2);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr points_pcl_filtered (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PCLPointCloud2::Ptr points_pcl2_filtered (new pcl::PCLPointCloud2);
-    pcl_conversions::toPCL(*points_tf, *points_pcl2);
-
     // Crop out the plane
-    crop_box_filt_pcl_pc(points_pcl2, plane_bbox, *points_pcl2_filtered);
+    plane_bbox_mod.size.z = (1 + plane_expansion_ratio) * plane_bbox.size.z;
+    crop_box_filt_pc(points_tf, plane_bbox_mod, *points_plane_filtered, false);
+    plane_cropped_.publish(points_plane_filtered);
 
     // Initialize structures for random sampling
     static std::default_random_engine e(time(0));
     //static std::normal_distribution<double> n(MU,SIGMA);
-    static std::uniform_real_distribution<double> dis(0.0, 100.0);
+    static std::uniform_real_distribution<double> dis(0.0 + edge_deduction_ratio, 1.0 - edge_deduction_ratio);
 
     // Might want to cap this at limit 1000 or sth
     for (int loop_times = 0; loop_times < 1000; loop_times++) {
+
         // Generate random pose on the table
         double x_random, y_random;
         x_random = dis(e);
         y_random = dis(e);
-        std::cout<<"Coordinates on plane: "<<x_random<<" "<<y_random<<std::endl;
-        geometry_msgs::Pose test_object_pose = plane_pose;
-        test_object_pose.position.x = test_object_pose.position.x + x_random / 100 * plane_size.x * (1 - edge_deduction_ratio)-
-                             plane_size.x / 2 * (1 - edge_deduction_ratio);
-        test_object_pose.position.y = test_object_pose.position.y + y_random / 100 * plane_size.y * (1 - edge_deduction_ratio) -
-                             plane_size.y / 2 * (1 - edge_deduction_ratio);
-        test_object_pose.position.z = test_object_pose.position.y + 1.05 * obj_dim.z * 0.5; // May need to add the bounding box 1.05 * height / 2
+        // std::cout<<"Coordinates on plane: "<<x_random<<", "<<y_random<<std::endl;
+        geometry_msgs::Pose test_object_pose;
+        test_object_pose.position.x = plane_bbox.center.position.x + x_random * plane_bbox.size.x - plane_bbox.size.x / 2;
+        test_object_pose.position.y = plane_bbox.center.position.y + y_random * plane_bbox.size.y - plane_bbox.size.y / 2;
+        test_object_pose.position.z = plane_bbox.center.position.z + obj_dim.z * 0.5 + object_placing_offset;
         //test_object_pose.orientation = ?; // random rotation? first just skip this
 
-        vision_msgs::BoundingBox3D test_bbxox;
-        test_bbxox.size = obj_dim;
-        test_bbxox.center = test_object_pose;
-        crop_box_filt_pcl_pc(points_pcl2, test_bbxox, *points_pcl2_filtered);
-        pcl::fromPCLPointCloud2 (*points_pcl2_filtered, *points_pcl_filtered); // Is this step needed?
-        std::cout<<"point num in cropbox: "<<points_pcl_filtered->points.size()<<std::endl;
+        vision_msgs::BoundingBox3D test_bbox;
+        test_bbox.center = test_object_pose;
+        test_bbox.size = obj_dim;
+        crop_box_filt_pc(points_plane_filtered, test_bbox, *points_object_filtered, false);
+        int num_points = points_object_filtered->height * points_object_filtered->width;
+        // std::cout<<"point num in cropbox: "<<num_points<<std::endl;
         // If it is not in collision with other objects, return the pose
-        if (points_pcl_filtered->points.size() > 0) { // Maybe 0 is too strict
+        if (num_points > points_threshold) { // Maybe 0 is too strict
             continue; // right syntax?
         } else {
             pose = test_object_pose;
             bool success = true;
+            std::cout<<"pose: "<<pose<<std::endl;
             break;
         }
     }

@@ -87,41 +87,29 @@ def build_tree():
     blackboard.set('crop_box', bb)
 
     left_wall_pose = Pose()
-    left_wall_pose.position.x = 0.0
     left_wall_pose.position.y = 0.5
-    left_wall_pose.position.z = 0.0
     left_wall_pose.orientation.w = 1.0
-    left_wall_pose.orientation.x = 0.0
-    left_wall_pose.orientation.y = 0.0
-    left_wall_pose.orientation.z = 0.0
 
     right_wall_pose = Pose()
-    right_wall_pose.position.x = 0.0
     right_wall_pose.position.y = -0.5
-    right_wall_pose.position.z = 0.0
     right_wall_pose.orientation.w = 1.0
-    right_wall_pose.orientation.x = 0.0
-    right_wall_pose.orientation.y = 0.0
-    right_wall_pose.orientation.z = 0.0
 
     bot_wall_pose = Pose()
-    bot_wall_pose.position.x = 0.0
-    bot_wall_pose.position.y = 0.0
     bot_wall_pose.position.z = 0.45
     bot_wall_pose.orientation.w = 1.0
-    bot_wall_pose.orientation.x = 0.0
-    bot_wall_pose.orientation.y = 0.0
-    bot_wall_pose.orientation.z = 0.0
 
     table = Pose()
     table.position.x = 1.0
-    table.position.y = 0.0
     table.position.z = 0.32
     table.orientation.w = 1.0
-    table.orientation.x = 0.0
-    table.orientation.y = 0.0
-    table.orientation.z = 0.0
     blackboard.set('table_collision_obj', ['table', table, [0.8, 4, table.position.z * 2]])
+
+    table_crop_box = BoundingBox3D()
+    table_crop_box.center.orientation.w = 1.0
+    table_crop_box.size.x = 20
+    table_crop_box.size.y = 20
+    table_crop_box.size.z = 4
+    py_trees.blackboard.Blackboard().set('table_crop_box', table_crop_box)
 
     root.add_children([
         AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
@@ -149,6 +137,12 @@ def build_tree():
         #     topic_type=PointCloud2,
         #     blackboard_variables={'in_pc': None},
         #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_pc',
+            topic_name='/head_camera/depth_downsample/points',
+            topic_type=PointCloud2,
+            blackboard_variables={'depth_downsampled_premod': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         # TFPCAct('act_tf_pc', 'in_pc', 'base_link', 'tfed_pc'),
         # PCPubAct('act_pub_tfed_pc', 'tfed_pc', 'tfed_pc'),
         # CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
@@ -157,6 +151,7 @@ def build_tree():
         # FilterGrasplocPoints('act_filt_grasploc'),
         # MoveToFirstPoseAct('act_move_to_first_pose', 'filtered_grasploc'),
         # GetTableAct('act_get_table'),
+        CropPCAct('act_test_crop_pc', 'depth_downsampled_premod', 'table_crop_box', 'depth_downsampled'),
         GetDesiredPoseAct('act_get_desired_pose', 'table', 'cracker'),
     ])
     return py_trees_ros.trees.BehaviourTree(root)
