@@ -29,6 +29,13 @@ class DopeSensor(sense.BaseSensor):
         # Initilize properties
         self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach']}
 
+        # Action clients
+        self._dope_goal = None
+        self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
+        self._table_goal = None
+        self._table_client = actionlib.SimpleActionClient('get_table', GetTableAction)
+        self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
+
         # Start ROS subscribers
         self.image_sub = message_filters.Subscriber(
             '/head_camera/rgb/image_raw',
@@ -40,13 +47,6 @@ class DopeSensor(sense.BaseSensor):
         )
         self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
         self.ts.registerCallback(self.image_callback)
-
-        # Action client
-        self._dope_goal = None
-        self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
-        self._plane_goal = None
-        self._plane_client = actionlib.SimpleActionClient('plane_detector', GetTableAction)
-        self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
 
     def get_next_image(self, timeout=None):
         # Reset goal
@@ -88,9 +88,6 @@ class DopeSensor(sense.BaseSensor):
         self._dope_goal.cam_info = info
 
     def process_data(self, data):
-        # Start looking for the table
-        self._plane_client.send_goal(self._plane_goal)
-
         # Get Dope detections
         #   First get the current image
         self.get_next_image(self._timeout)
@@ -100,7 +97,6 @@ class DopeSensor(sense.BaseSensor):
 
         # Wait for action servers to return
         self._dope_client.wait_for_result(rospy.Duration(self._timeout))
-        self._plane_client.wait_for_result(rospy.Duration(self._timeout))
 
         # Get Dope result
         dope_result = self._dope_client.get_result()
@@ -108,13 +104,6 @@ class DopeSensor(sense.BaseSensor):
             self._logger.error('Failed to get result from Dope within {}s'.format(self._timeout))
             return None
         self._logger.debug('Dope result is {}'.format(dope_result))
-
-        # Get table result
-        plane_result = self._plane_client.get_result()
-        if plane_result is None:
-            self._logger.error('Failed to get result from plane detector within {}s'.format(self._timeout))
-            return None
-        self._logger.debug('Plane detector result is {}'.format(plane_result))
 
         # Transform dope msgs
         for detection in dope_result.detections:
