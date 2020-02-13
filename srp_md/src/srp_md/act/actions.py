@@ -20,8 +20,9 @@ from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal
-from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped
+from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped, Vector3
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
+from vision_msgs.msg import BoundingBox3D
 import actionlib_msgs.msg as actionlib_msgs
 from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
 
@@ -412,18 +413,10 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             **kwargs
         )
 
-        self._timeout = 5
-        self._listener = tf.TransformListener()
-
-        self.pcl_sub = message_filters.Subscriber(
-            '/head_camera/depth_downsample/points',
-            PointCloud2
-        )
-        self.pcl_sub.registerCallback(self.callback)
-
-    def callback(self, pcl):
-        self.action_goal = GetTableGoal()
-        self.action_goal.points = pcl
+    def initialise(self):
+        self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
+        cropped_pc_pub = rospy.Publisher('cropped_pc', PointCloud2, queue_size=10)
+        cropped_pc_pub.publish(self.action_goal.points)
 
     def update(self):
         if not self.action_client:
@@ -440,15 +433,14 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
-            py_trees.blackboard.Blackboard().set('planes', result)
-            print(result)
+            py_trees.blackboard.Blackboard().set('plane_bboxes', result.plane_bboxes)
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
 
 class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, *argv, **kwargs):
+    def __init__(self, name, obj_dim=None, *argv, **kwargs):
         super(FreeSpaceFinderAct, self).__init__(
             name=name,
             action_spec=FreeSpaceFinderAction,
@@ -457,6 +449,19 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             *argv,
             **kwargs
         )
+        self._obj_dim = obj_dim
+
+    def initialise(self):
+        self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
+        if self._obj_dim is None:
+            self.action_goal.obj_dim = Vector3()
+        else:
+             self.action_goal.obj_dim = self._obj_dim
+        plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
+        if len(plane_bboxes) == 0:
+            self.action_goal.plane_bbox = BoundingBox3D()
+        else:
+            self.action_goal.plane_bbox = plane_bboxes[0]
 
     def update(self):
         if not self.action_client:
@@ -473,6 +478,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
+            py_trees.blackboard.Blackboard().set('free_space_pose', result.pose)
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
@@ -553,7 +559,7 @@ def PlaceAct(name, key_str):
     ])
     return root
 
-def GetDesiredPose(obj_poses, cur_obj, surface):
+def GetDesiredPoseAct(name, surface, cur_obj):
     """
     Get_Desired_Pose
     - Input: Specifies which surface to put the object
@@ -566,16 +572,37 @@ def GetDesiredPose(obj_poses, cur_obj, surface):
     -     Get the bounding box of the bottom object and current gripped object to compute the z height it needs to be placed
     -     Place on top of (x, y) of the bottom object with computed z height plus some buffer
     """
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='seq_{}'.format(name),
+        children=None)
+
+    # Get the dimensions of current object
+    cur_dim = tuple(rospy.get_param("/dope/dimensions")[cur_obj])
+    # print("Bleach Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["bleach"]))
+    # print("Cracker Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["cracker"]))
+    # print("Gelatin Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["gelatin"]))
+    # print("Meat Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["meat"]))
+    # print("Mustard Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["mustard"]))
+    # print("Soup Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["soup"]))
+    # print("Sugar Dimensions: ", tuple(rospy.get_param("/dope/dimensions")["sugar"]))
+    obj_dim = Vector3()
+    obj_dim.x = cur_dim[0] / 100
+    obj_dim.y = cur_dim[2] / 100
+    obj_dim.z = cur_dim[1] / 100
+
     # If desired surface is table, do:
     if surface == "table":
-        table = Table_Detector()
-        rand_points = Gen_Rand_Points_On_Table(table)
-        point = Max_Min_Distance(obj_poses, rand_points)
+        # Add steps to detect the table and get the desired pose based on free space
+        root.add_children([
+            GetTableAct(name='act_{}_get_table'.format(name)),
+            FreeSpaceFinderAct(name='act_{}_free_space_finder'.format(name), obj_dim=obj_dim),
+        ])
     # If desired surface is on an object, do:
     else:
         des_pose = obj_poses[surface]
         des_pose.position.z += cur_obj.height / 2 + 0.5 # add buffer
-    return des_pose
+    return root
 
 """
 Table_Detector
@@ -587,7 +614,7 @@ Table_Detector
 """
 
 class CropPCAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, in_pc_key, crop_box_key, out_pc_key, *argv, **kwargs):
+    def __init__(self, name, in_pc_key, crop_box_key, out_pc_key, invert=False, *argv, **kwargs):
         super(CropPCAct, self).__init__(
             name=name,
             action_spec=CropPCAction,
@@ -599,6 +626,7 @@ class CropPCAct(py_trees_ros.actions.ActionClient):
         self._in_pc_key = in_pc_key
         self._crop_box_key = crop_box_key
         self._out_pc_key = out_pc_key
+        self._invert = invert
 
     def initialise(self):
         super(CropPCAct, self).initialise()
@@ -606,6 +634,7 @@ class CropPCAct(py_trees_ros.actions.ActionClient):
         blackboard = py_trees.blackboard.Blackboard()
         self.action_goal.in_pc = blackboard.get(self._in_pc_key)
         self.action_goal.crop_box = blackboard.get(self._crop_box_key)
+        self.action_goal.invert = self._invert
 
     def update(self):
         """

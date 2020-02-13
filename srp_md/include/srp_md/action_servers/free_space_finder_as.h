@@ -26,7 +26,7 @@ public:
     void goalCB(const typename GoalMsg::ConstPtr& goal) {
         ROS_INFO("FreeSpaceFinderAS goalCB");
         sensor_msgs::PointCloud2::ConstPtr points(new sensor_msgs::PointCloud2(goal->points));
-        act_.free_space_finder(points, goal->plane_bbox, goal->obj_bbox, result_.pose);
+        act_.free_space_finder(points, goal->plane_bbox, goal->obj_dim, result_.pose);
         feedback_.feedback = "";
 
         as_.publishFeedback(feedback_);

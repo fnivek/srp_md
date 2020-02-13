@@ -16,6 +16,7 @@
   <depend>dope_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>vision_msgs</depend>
+  <depend>jsk_recognition_msgs</depend>
   <depend>tf</depend>
   <depend>tf_conversions</depend>
   <depend>tf2</depend>

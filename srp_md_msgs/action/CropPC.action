@@ -1,6 +1,7 @@
 # Goal
 sensor_msgs/PointCloud2 in_pc
 vision_msgs/BoundingBox3D crop_box
+bool invert
 ---
 # Result
 sensor_msgs/PointCloud2 out_pc

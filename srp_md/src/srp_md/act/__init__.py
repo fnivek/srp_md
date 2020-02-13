@@ -21,3 +21,4 @@ from .actions import RemoveCollisionBoxAct
 from .actions import FreeSpaceFinderAct
 from .actions import OffsetPoses
 from .actions import SetAllowGripperCollisionAct
+from .actions import GetDesiredPoseAct

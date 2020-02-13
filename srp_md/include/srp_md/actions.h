@@ -23,6 +23,8 @@
 
 #include <vision_msgs/BoundingBox3D.h>
 
+#include <jsk_recognition_msgs/BoundingBox.h>
+
 #include <control_msgs/GripperCommandAction.h>
 #include <control_msgs/GripperCommand.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
@@ -64,6 +66,7 @@
 #include <pcl/io/pcd_io.h>
 
 #include <math.h>
+#include <ctime>
 #include <algorithm>
 #include <thread>
 class Act;
@@ -129,7 +132,9 @@ protected:
     const double MAX_GRIPPER_VAL, MIN_GRIPPER_VAL;
 
     // Debug please delete
-    ros::Publisher test_plane_pub_;
+    ros::Publisher plane_cropped_;
+    ros::Publisher plane_bounding_box_;
+    ros::Publisher object_bounding_box_;
 
 public:
     // default constructor that starts all the action client
@@ -157,9 +162,11 @@ public:
 
     bool boolean_interface(const std::string &action);
 
+    void crop_box_filt_pcl_pc(const pcl::PCLPointCloud2::Ptr pcl_in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                              pcl::PCLPointCloud2& pcl_out_pc, bool invert);
     // Point clouds
-    void crop_box_filt_pc(const sensor_msgs::PointCloud2& in_pc, const vision_msgs::BoundingBox3D& crop_box,
-                          sensor_msgs::PointCloud2& out_pc);
+    void crop_box_filt_pc(const sensor_msgs::PointCloud2::Ptr in_pc, const vision_msgs::BoundingBox3D& crop_box,
+                          sensor_msgs::PointCloud2& out_pc, bool invert);
     void transform_pc(const sensor_msgs::PointCloud2& in_pc, std::string frame_id,
                       sensor_msgs::PointCloud2& out_pc);
 
@@ -187,7 +194,7 @@ public:
     bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
 
     bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
-                           const vision_msgs::BoundingBox3D& obj_bbox, geometry_msgs::Pose& pose);
+                           const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose);
 
 };
 
