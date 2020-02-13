@@ -154,9 +154,15 @@ class SrpMd(object):
             self._logger.error('Please select goal generator!')
         else:
             if self.get_learner() == 'factor_graph_learner':
-                self._goal_instance = self._goal_generator.generate_goal(
-                    self._factors, self._sensor.process_data(self._raw_data))
-                self._current_graph = self._goal_instance
+                if self._current_graph is None:
+                    self._logger.info('No scene detected, generating goal from arbitrary scene...\n')
+                    self._goal_instance = self._goal_generator.generate_goal(
+                        self._factors, self._sensor.process_data(self._raw_data))
+                else:
+                    self._logger.info('Generating goal from current scene...\n')
+                    self._goal_instance = self._goal_generator.generate_goal(
+                        self._factors, self._current_graph)
+                # self._current_graph = self._goal_instance
             else:
                 self._goal_instance = self._goal_generator.generate_goal()
 
@@ -300,4 +306,8 @@ class SrpMd(object):
             # plt.show()
 
     def plan(self):
-        self._planner.plan()
+        if self._current_graph is None or self._goal_instance is None:
+            self._planner.plan()
+        else:
+            # For this to work properly, generate goal must be run before hands!
+            self._planner.plan(self._current_graph, self._goal_instance)
