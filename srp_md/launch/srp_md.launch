@@ -1,6 +1,7 @@
 <launch>
   <node pkg="srp_md" name="srp_md" type="srp_md_node" output="screen"/>
   <node pkg="srp_md" name="factor_graph_node" type="factor_graph_node" output="screen"/>
-  <node pkg="srp_md" name="action_node" type="action_node" output="screen"/>
   <node pkg="srp_md" name="pose_to_scene_graph_node" type="pose_to_scene_graph_node" output="screen"/>
+  <node pkg="fetch_manipulation_pipeline" name="fetch_manipulation_server" type="fetch_manipulation_server" output="screen"/>
+  <node pkg="srp_md" name="action_node" type="action_node" output="screen"/>
 </launch>
