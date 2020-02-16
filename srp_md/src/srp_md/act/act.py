@@ -33,7 +33,7 @@ class Actor(object):
         # Initialize the behavior tree
         self._logger.debug('Setting up behavior tree...')
         root = py_trees.composites.Sequence(name='srp_md_act')
-        py_trees.logging.level = py_trees.logging.Level.DEBUG
+        # py_trees.logging.level = py_trees.logging.Level.DEBUG
         root.add_children([AddAllCollisionBoxesAct(name='srp_md'), MoveToStartAct(name='srp_md')])
 
         # Read in the solution file, and do:
@@ -67,13 +67,14 @@ class Actor(object):
         self._logger.debug('Executing the behavior tree')
         tree.setup(timeout=10)
 
-        if not py_trees.Status.SUCCESS or not py_trees.Status.FAILURE:
+        while True:
             tree.tick()
-        else if py_trees.Status.SUCCESS:
-            return
-        else:
-            self._logger.error('Action pipeline not successful!')
-            sys.exit(1)
+
+            if tree.root.status == py_trees.Status.SUCCESS:
+                return
+            elif tree.root.status == py_trees.Status.FAILURE:
+                self._logger.error('Action pipeline not successful!')
+                sys.exit(1)
 
 
 

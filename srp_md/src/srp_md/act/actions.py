@@ -170,7 +170,6 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
-            print("Result is seen!")
             obj_bboxes_prev = py_trees.blackboard.Blackboard().get('obj_bboxes')
             obj_bboxes_post = {}
             uuid = 0
@@ -192,7 +191,8 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
                 obj_bboxes_post[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
                 uuid += 1
 
-            print("Comparing the objects...")
+            # print 'obj_bboxes_post: {}'.format(obj_bboxes_post)
+
             obj_bboxes = obj_bboxes_prev
             for obj_prev_key in obj_bboxes_prev.keys():
                 closest_obj_name = None
@@ -203,8 +203,8 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
                         closest_dist = dist
                         closest_obj_name = obj_post_key
 
-                print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
-                if closest_dist <= 1.0:
+                # print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
+                if closest_dist <= 0.01:
                     obj_bboxes[obj_prev_key] = obj_bboxes_post[closest_obj_name]
                     del obj_bboxes_post[closest_obj_name]
                 else:
@@ -938,7 +938,7 @@ def MoveToStartAct(name):
     root.add_children([
         FullyExtendTorso('act_{}_extend_torso'.format(name)),
         TuckWithCondBehavior('act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
-        HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight'),
+        # HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight'),
         OpenGripperAct('act_{}_open_gripper'.format(name))
     ])
     return root

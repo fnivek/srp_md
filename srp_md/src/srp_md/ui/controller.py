@@ -79,7 +79,7 @@ class Controller(object):
 
     def get_init_scene(self):
         # TODO: Not add it to list of demonstrations! Keep it in separate variable.
-        self._model.generate_demo()
+        self.generate_demo()
 
     def act(self):
         self._model.act()

@@ -109,4 +109,6 @@ def pose_difference(pose_1, pose_2):
                             (pose_1.position.z - pose_2.position.z) ** 2)
     orientation_diff = 1 - (pose_1.orientation.x * pose_2.orientation.x + pose_1.orientation.y * pose_2.orientation.y +
                             pose_1.orientation.z * pose_2.orientation.z + pose_1.orientation.w * pose_2.orientation.w)
+    # print "position_diff", position_diff
+    # print "orientation_diff", orientation_diff
     return np.sqrt(position_diff ** 2 + orientation_diff ** 2)
