@@ -12,6 +12,7 @@ from . import sense
 from . import goal
 from . import evaluate
 from . import plan
+from . import act
 
 # Python imports
 import logging as log
@@ -49,6 +50,7 @@ class SrpMd(object):
                                 'version': ['example_sensor', 'can_tower_sensor'],
                                 'factor': ['posecnn_sensor', 'block_world_sensor', 'pen_world_sensor',
                                            'book_world_sensor', 'abstract_world_sensor']}
+        self._solution_filename = None
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -56,6 +58,7 @@ class SrpMd(object):
         self.set_goal_generator(goal_generator)
         self.set_goal_evaluator(goal_evaluator)
         self._planner = plan.Planner()
+        self._actor = act.Actor()
 
     def get_num_demos(self):
         return len(self._obs)
@@ -311,3 +314,10 @@ class SrpMd(object):
         else:
             # For this to work properly, generate goal must be run before hands!
             self._planner.plan(self._current_graph, self._goal_instance)
+
+    def act(self):
+        if self._solution_filename is None:
+            self._actor.act()
+        else:
+            # For this to work properly, generate goal must be run before hands!
+            self._actor.act(self._solution_filename)

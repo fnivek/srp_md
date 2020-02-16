@@ -11,6 +11,7 @@ from dope_msgs.msg import DopeAction, DopeGoal
 import srp_md
 from srp_md_msgs.msg import GetTableAction, GetTableGoal
 from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
+import py_trees
 
 
 class DopeSensor(sense.BaseSensor):
@@ -109,6 +110,7 @@ class DopeSensor(sense.BaseSensor):
                 return None
 
         # Build scene graph
+        obj_bboxes = {}
         req = PoseToSceneGraphRequest()
         req.names = []
         req.objects = []
@@ -116,9 +118,14 @@ class DopeSensor(sense.BaseSensor):
         class_names = {class_id: name for name, class_id in class_ids.iteritems()}
         uuid = 0
         for detection in dope_result.detections:
+            obj_bboxes[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
             req.names.append(class_names[detection.results[0].id] + '_' + str(uuid))
             uuid += 1
             req.objects.append(detection.bbox)
+
+        py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
+        self._logger.debug('The object bboxes: {}'.format(obj_bboxes))
+
         try:
             resp = self._pose_to_scene_graph_client(req)
         except rospy.ServiceException, e:

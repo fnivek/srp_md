@@ -59,7 +59,6 @@ class Controller(object):
     def plan(self):
         self._model.plan()
 
-    # Actions added
     def write_demos(self, filename):
         self._model.write_demos(filename)
 
@@ -77,3 +76,10 @@ class Controller(object):
 
     def show_graph(self):
         self._model.show_graph(self._model._current_graph)
+
+    def get_init_scene(self):
+        # TODO: Not add it to list of demonstrations! Keep it in separate variable.
+        self._model.generate_demo()
+
+    def act(self):
+        self._model.act()

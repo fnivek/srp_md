@@ -78,6 +78,8 @@ class PyQtView(view.BaseView):
         self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
         self._gui.evaluate_goal.pressed.connect(self._ctrl.evaluate_goal)
         self._gui.plan.pressed.connect(self._ctrl.plan)
+        self._gui.get_init_scene.pressed.connect(self._ctrl.get_init_scene)
+        self._gui.act.pressed.connect(self._ctrl.act)
 
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_goal_type_list)

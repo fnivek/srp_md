@@ -37,6 +37,20 @@ color: rgb(150, 150, 150)
        <number>2</number>
       </property>
       <layout class="QGridLayout" name="actionsLayout">
+       <item row="4" column="0">
+        <widget class="QPushButton" name="act">
+         <property name="text">
+          <string>Act</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="evaluate_goal">
+         <property name="text">
+          <string>Evaluate Goal</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QPushButton" name="get_demo">
          <property name="text">
@@ -51,13 +65,6 @@ color: rgb(150, 150, 150)
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QPushButton" name="evaluate_goal">
-         <property name="text">
-          <string>Evaluate Goal</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="1">
         <widget class="QPushButton" name="learn">
          <property name="text">
@@ -66,16 +73,23 @@ color: rgb(150, 150, 150)
         </widget>
        </item>
        <item row="3" column="0">
-        <widget class="QPushButton" name="plan">
+        <widget class="QPushButton" name="get_init_scene">
          <property name="text">
-          <string>Plan</string>
+          <string>Get Initial Scene</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QPushButton" name="show_graph">
+         <property name="text">
+          <string>Show Graph</string>
          </property>
         </widget>
        </item>
        <item row="3" column="1">
-        <widget class="QPushButton" name="show_graph">
+        <widget class="QPushButton" name="plan">
          <property name="text">
-          <string>Show Graph</string>
+          <string>Plan</string>
          </property>
         </widget>
        </item>
@@ -129,7 +143,7 @@ color: rgb(150, 150, 150)
          <property name="layoutDirection">
           <enum>Qt::LeftToRight</enum>
          </property>
-         <property name="currentText" stdset="0">
+         <property name="currentText">
           <string/>
          </property>
         </widget>
@@ -227,7 +241,7 @@ color: rgb(150, 150, 150)
      <x>0</x>
      <y>0</y>
      <width>835</width>
-     <height>20</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
