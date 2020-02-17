@@ -24,156 +24,8 @@ background-color: rgb(0, 0, 0);
 color: rgb(150, 150, 150)
 }</string>
    </property>
-   <layout class="QGridLayout" name="mainLayout" rowstretch="0,0" columnstretch="1,1">
-    <item row="0" column="1">
-     <widget class="QFrame" name="actionsFrame">
-      <property name="frameShape">
-       <enum>QFrame::Box</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Plain</enum>
-      </property>
-      <property name="lineWidth">
-       <number>2</number>
-      </property>
-      <layout class="QGridLayout" name="actionsLayout">
-       <item row="4" column="0">
-        <widget class="QPushButton" name="act">
-         <property name="text">
-          <string>Act</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QPushButton" name="evaluate_goal">
-         <property name="text">
-          <string>Evaluate Goal</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QPushButton" name="get_demo">
-         <property name="text">
-          <string>Get demo</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="generate_goal">
-         <property name="text">
-          <string>Generate Goal</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QPushButton" name="learn">
-         <property name="text">
-          <string>Learn</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QPushButton" name="get_init_scene">
-         <property name="text">
-          <string>Get Initial Scene</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QPushButton" name="show_graph">
-         <property name="text">
-          <string>Show Graph</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QPushButton" name="plan">
-         <property name="text">
-          <string>Plan</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QFrame" name="slFrame">
-      <property name="frameShape">
-       <enum>QFrame::Box</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Plain</enum>
-      </property>
-      <property name="lineWidth">
-       <number>2</number>
-      </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="1" column="0">
-        <widget class="QLabel" name="num_demos">
-         <property name="text">
-          <string>Number of Demos:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0" colspan="2">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="numLabel">
-         <property name="text">
-          <string>0</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QComboBox" name="sensorComboBox">
-         <property name="cursor">
-          <cursorShape>ArrowCursor</cursorShape>
-         </property>
-         <property name="layoutDirection">
-          <enum>Qt::LeftToRight</enum>
-         </property>
-         <property name="currentText">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0" colspan="2">
-        <spacer name="horizontalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="5" column="1">
-        <widget class="QComboBox" name="goalGeneratorComboBox"/>
-       </item>
-       <item row="3" column="1">
-        <widget class="QComboBox" name="learnerComboBox"/>
-       </item>
-       <item row="5" column="0">
-        <widget class="QComboBox" name="getDemoComboBox"/>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="1" column="0" colspan="2">
+   <layout class="QGridLayout" name="mainLayout" rowstretch="0,0" columnstretch="1,1,0">
+    <item row="1" column="0" colspan="3">
      <layout class="QVBoxLayout" name="loggerLayout" stretch="0,0">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
@@ -233,6 +85,182 @@ color: rgb(150, 150, 150)
       </item>
      </layout>
     </item>
+    <item row="0" column="0">
+     <widget class="QFrame" name="slFrame">
+      <property name="frameShape">
+       <enum>QFrame::Box</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>2</number>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="4" column="0">
+        <widget class="QComboBox" name="sensorComboBox">
+         <property name="cursor">
+          <cursorShape>ArrowCursor</cursorShape>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="currentText">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QComboBox" name="learnerComboBox"/>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="numDemos">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QComboBox" name="getDemoComboBox"/>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="numInits">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="num_inits">
+         <property name="text">
+          <string>Number of Initial Scenes:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QComboBox" name="goalGeneratorComboBox"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="num_demos">
+         <property name="text">
+          <string>Number of Demos:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="2">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="3" column="0" colspan="2">
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QFrame" name="actionsFrame">
+      <property name="frameShape">
+       <enum>QFrame::Box</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>2</number>
+      </property>
+      <layout class="QGridLayout" name="actionsLayout">
+       <item row="0" column="0">
+        <widget class="QPushButton" name="get_demo">
+         <property name="text">
+          <string>Take Image</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="process_demos">
+         <property name="text">
+          <string>Process Images</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="learn">
+         <property name="text">
+          <string>Learn</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="get_init_scene">
+         <property name="text">
+          <string>Get Initial Scene</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QPushButton" name="generate_goal">
+         <property name="text">
+          <string>Generate Goal Scene</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QPushButton" name="evaluate_goal">
+         <property name="text">
+          <string>Evaluate Goal Scene</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QPushButton" name="plan">
+         <property name="text">
+          <string>Plan to Goal</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QPushButton" name="show_graph">
+         <property name="text">
+          <string>Show Graph</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QPushButton" name="act">
+         <property name="text">
+          <string>Act</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QPushButton" name="experiment">
+         <property name="text">
+          <string>Experiment!</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -248,8 +276,11 @@ color: rgb(150, 150, 150)
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="load_demos"/>
     <addaction name="write_demos"/>
+    <addaction name="load_demos"/>
+    <addaction name="write_inits"/>
+    <addaction name="load_inits"/>
+    <addaction name="write_goals"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -258,6 +289,8 @@ color: rgb(150, 150, 150)
     <addaction name="undo_demo"/>
     <addaction name="redo_demo"/>
     <addaction name="clear_demos"/>
+    <addaction name="clear_inits"/>
+    <addaction name="clear_goals"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -265,7 +298,7 @@ color: rgb(150, 150, 150)
   <widget class="QStatusBar" name="statusbar"/>
   <action name="load_demos">
    <property name="text">
-    <string>Load demos</string>
+    <string>Load Images</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
@@ -273,7 +306,7 @@ color: rgb(150, 150, 150)
   </action>
   <action name="write_demos">
    <property name="text">
-    <string>Save demos</string>
+    <string>Save Images</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
@@ -281,7 +314,7 @@ color: rgb(150, 150, 150)
   </action>
   <action name="undo_demo">
    <property name="text">
-    <string>Undo demo</string>
+    <string>Undo Image</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Z</string>
@@ -289,7 +322,7 @@ color: rgb(150, 150, 150)
   </action>
   <action name="redo_demo">
    <property name="text">
-    <string>Redo demo</string>
+    <string>Redo Image</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+R</string>
@@ -297,10 +330,44 @@ color: rgb(150, 150, 150)
   </action>
   <action name="clear_demos">
    <property name="text">
-    <string>Clear demos</string>
+    <string>Clear Images</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+Z</string>
+   </property>
+  </action>
+  <action name="write_inits">
+   <property name="text">
+    <string>Save Initial Scenes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="load_inits">
+   <property name="text">
+    <string>Load Initial Scenes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
+  <action name="write_goals">
+   <property name="text">
+    <string>Save Goal Scenes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+S</string>
+   </property>
+  </action>
+  <action name="clear_inits">
+   <property name="text">
+    <string>Clear Initial Scenes</string>
+   </property>
+  </action>
+  <action name="clear_goals">
+   <property name="text">
+    <string>Clear Goal Scenes</string>
    </property>
   </action>
  </widget>

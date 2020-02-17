@@ -21,7 +21,7 @@ class DopeSensor(sense.BaseSensor):
         # Initialize logger
         self._logger = logging.getLogger(__name__)
 
-        # Timing
+        # Set timeout
         self._timeout = 5
 
         # Transforms
@@ -36,50 +36,12 @@ class DopeSensor(sense.BaseSensor):
         self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
         self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
 
-        # Start ROS subscribers
-        self.image_sub = message_filters.Subscriber(
-            '/head_camera/rgb/image_raw',
-            ImageSensor_msg
-        )
-        self.info_sub = message_filters.Subscriber(
-            '/head_camera/rgb/camera_info',
-            CameraInfo
-        )
-        self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
-        # ts = message_filters.ApproximateTimeSynchronizer([image_sub, info_sub], queue_size=10, slop=1)
-        self.ts.registerCallback(self.image_callback)
-
-    def get_next_image(self, timeout=None):
-        # Reset goal
-        self._dope_goal = None
-
-        # Wait for message with timeout
-        start = rospy.get_rostime()
-        if timeout is None:
-            timeout = 0
-        else:
-            timeout = rospy.Duration(timeout)
-        rate = rospy.Rate(100)
-        while (self._dope_goal is None and (not rospy.is_shutdown()) and
-                                           (timeout == 0 or rospy.get_rostime() - start < timeout)):
-            rate.sleep()
-
-        if self._dope_goal is None:
-            self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
-
-        # Unregister image subscription
-        # image_sub.unregister()
-        # info_sub.unregister()
-
-    def image_callback(self, image, info):
-        self._dope_goal = DopeGoal()
-        self._dope_goal.image = image
-        self._dope_goal.cam_info = info
-
     def process_data(self, data):
         # Get Dope detections
         #   First get the current image
-        self.get_next_image(self._timeout)
+        self._dope_goal = DopeGoal()
+        self._dope_goal.image = data["image"]
+        self._dope_goal.cam_info = data["info"]
         if self._dope_goal is None:
             return None
         self._dope_client.send_goal(self._dope_goal)

@@ -67,19 +67,25 @@ class PyQtView(view.BaseView):
         self._gui.fileLogFormatComboBox.addItems(error_types)
 
         # Connect the buttons to actions
-        self._gui.get_demo.pressed.connect(self._ctrl.generate_demo)
         self._gui.write_demos.triggered.connect(self.write_demos)
         self._gui.load_demos.triggered.connect(self.load_demos)
-        self._gui.clear_demos.triggered.connect(self._ctrl.clear_demos)
+        self._gui.write_inits.triggered.connect(self.write_inits)
+        self._gui.load_inits.triggered.connect(self.load_inits)
+        self._gui.write_goals.triggered.connect(self.write_goals)
         self._gui.undo_demo.triggered.connect(self._ctrl.undo_demo)
         self._gui.redo_demo.triggered.connect(self._ctrl.redo_demo)
+        self._gui.clear_demos.triggered.connect(self._ctrl.clear_demos)
+        self._gui.clear_inits.triggered.connect(self._ctrl.clear_inits)
+        self._gui.clear_goals.triggered.connect(self._ctrl.clear_goals)
+        self._gui.get_demo.pressed.connect(self._ctrl.get_demo)
+        self._gui.process_demos.pressed.connect(self._ctrl.process_data)
         self._gui.learn.pressed.connect(self._ctrl.learn)
-        self._gui.show_graph.pressed.connect(self._ctrl.show_graph)
+        self._gui.get_init_scene.pressed.connect(self._ctrl.get_init_scene)
         self._gui.generate_goal.pressed.connect(self._ctrl.generate_goal)
         self._gui.evaluate_goal.pressed.connect(self._ctrl.evaluate_goal)
         self._gui.plan.pressed.connect(self._ctrl.plan)
-        self._gui.get_init_scene.pressed.connect(self._ctrl.get_init_scene)
         self._gui.act.pressed.connect(self._ctrl.act)
+        self._gui.show_graph.pressed.connect(self._ctrl.show_graph)
 
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_goal_type_list)
@@ -123,7 +129,8 @@ class PyQtView(view.BaseView):
             self._stream.truncate(0)
             for line in new_text.splitlines():
                 self._gui.loggerText.append(line)
-        self._gui.numLabel.setText('{}'.format(self._model.get_num_demos()))
+        self._gui.numDemos.setText('{}'.format(self._model.get_num_demos()))
+        self._gui.numInits.setText('{}'.format(self._model.get_num_inits()))
 
     def update_sensor(self):
         if self._gui.sensorComboBox.currentText()[0] == " ":
@@ -227,6 +234,30 @@ class PyQtView(view.BaseView):
             pass
         else:
             self._ctrl.load_demos(demo_file[0])
+
+    def write_inits(self):
+        init_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
+                                                filter='Inits (*.init);;All files (*.*)')
+        if init_file[0] == '':
+            pass
+        else:
+            self._ctrl.write_inits(init_file[0])
+
+    def load_inits(self):
+        init_file = QFileDialog.getOpenFileName(self._gui, caption='Open File',
+                                                filter='Inits (*.init);;All files (*.*)')
+        if init_file[0] == '':
+            pass
+        else:
+            self._ctrl.load_inits(init_file[0])
+
+    def write_goals(self):
+        goal_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
+                                                filter='Goals (*.goal);;All files (*.*)')
+        if goal_file[0] == '':
+            pass
+        else:
+            self._ctrl.write_goals(goal_file[0])
 
     def configure_learner(self, pos):
         # Currently only factor_graph_learner is configurable
