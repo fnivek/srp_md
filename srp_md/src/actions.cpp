@@ -363,10 +363,86 @@ bool Act::cartesian_grasp(const std::vector<geometry_msgs::Pose> &waypoints, int
     return:
         pair<bool (true for success), moveit::planning_interface::MoveGroupInterface::Plan>
 */
+
 std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-Act::cartesian_move(const geometry_msgs::Pose &end_pose, int max_try /* = 3 */)
+Act::relative_cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg,
+                    int max_try /* = 3 */)
 {
-    std::vector<geometry_msgs::Pose> waypoints = { end_pose };
+    Eigen::Affine3d pose_diff = tf2::transformToEigen(pose_diff_msg);
+    if(pose_diff_msg.header.frame_id != "base_link")
+    {
+        // Transform the transform to "base_link"
+        geometry_msgs::TransformStamped tf;
+        try
+        {
+            // Get transform to base_link
+            tf = tf2_buffer_.lookupTransform("base_link", pose_diff_msg.header.frame_id, ros::Time(0));
+            // Convert to Eigen
+            Eigen::Affine3d tf_eigen = tf2::transformToEigen(tf);
+            // Only apply rotation to translation
+            pose_diff.translation() = tf_eigen.linear() * pose_diff.translation();
+        }
+        catch(tf2::TransformException &ex)
+        {
+            ROS_WARN("%s", ex.what());
+            moveit::planning_interface::MoveGroupInterface::Plan plan;
+            return {false, plan};
+        }
+    }
+
+    // Get the current pose
+    geometry_msgs::Pose current_pose_msg = move_group_.getCurrentPose().pose;
+    Eigen::Affine3d current_pose;
+    tf2::fromMsg(current_pose_msg, current_pose);
+
+    // Apply relative transform to current_pose
+    pose_diff.linear() *= current_pose.linear();
+    pose_diff.translation() += current_pose.translation();
+
+    geometry_msgs::Pose computed = tf2::toMsg(pose_diff);
+
+    std::vector<geometry_msgs::Pose> waypoints = { computed };
+    return cartesian_move(waypoints, max_try);
+}
+
+std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
+Act::cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg,
+                    int max_try /* = 3 */)
+{
+    Eigen::Affine3d pose_diff = tf2::transformToEigen(pose_diff_msg);
+    if(pose_diff_msg.header.frame_id != "base_link")
+    {
+        // Transform the transform to "base_link"
+        geometry_msgs::TransformStamped tf;
+        try
+        {
+            // Get transform to base_link
+            tf = tf2_buffer_.lookupTransform("base_link", pose_diff_msg.header.frame_id, ros::Time(0));
+            // Convert to Eigen
+            Eigen::Affine3d tf_eigen = tf2::transformToEigen(tf);
+            // Only apply rotation to translation
+            pose_diff = tf_eigen * pose_diff;
+        }
+        catch(tf2::TransformException &ex)
+        {
+            ROS_WARN("%s", ex.what());
+            moveit::planning_interface::MoveGroupInterface::Plan plan;
+            return {false, plan};
+        }
+    }
+
+    // Get the current pose
+    geometry_msgs::Pose current_pose_msg = move_group_.getCurrentPose().pose;
+    Eigen::Affine3d current_pose;
+    tf2::fromMsg(current_pose_msg, current_pose);
+
+    // Apply relative transform to current_pose
+    // pose_diff.linear() *= current_pose.linear();
+    // pose_diff.translation() += current_pose.translation();
+
+    geometry_msgs::Pose computed = tf2::toMsg(pose_diff);
+
+    std::vector<geometry_msgs::Pose> waypoints = { computed };
     return cartesian_move(waypoints, max_try);
 }
 

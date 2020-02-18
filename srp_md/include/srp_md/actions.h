@@ -172,7 +172,9 @@ public:
 
     bool cartesian_grasp(const std::vector<geometry_msgs::Pose> &waypoints, int max_try /* = 3 */);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    cartesian_move(const geometry_msgs::Pose &end_pose, int max_try = 3);
+    relative_cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg, int max_try = 3);
+    std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
+    cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg, int max_try = 3);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
     cartesian_move(const std::vector<geometry_msgs::Pose> &waypoints, int max_try = 3);
     std::pair<bool, moveit_msgs::RobotTrajectory>

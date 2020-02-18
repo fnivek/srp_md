@@ -22,3 +22,5 @@ from .actions import FreeSpaceFinderAct
 from .actions import OffsetPoses
 from .actions import SetAllowGripperCollisionAct
 from .actions import GetDesiredPoseAct
+from .actions import RelativeCartesianMoveAct
+from .actions import GraspPoseGeneration

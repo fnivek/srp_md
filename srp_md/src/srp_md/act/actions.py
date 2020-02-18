@@ -124,6 +124,18 @@ class MoveToRelativePoseAct(py_trees_ros.actions.ActionClient):
         )
         self.action_goal.transform = transform
 
+class RelativeCartesianMoveAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, pose_diff_msg=TransformStamped(), *argv, **kwargs):
+        super(RelativeCartesianMoveAct, self).__init__(
+            name=name,
+            action_spec=RelativeCartesianMoveAction,
+            action_goal=RelativeCartesianMoveGoal(),
+            action_namespace='relative_cartesian_move',
+            *argv,
+            **kwargs
+        )
+        self.action_goal.pose_diff_msg = pose_diff_msg
+
 class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, *argv, **kwargs):
         super(GetDopeSnapshotAct, self).__init__(
@@ -207,6 +219,7 @@ class GrasplocAct(py_trees_ros.actions.ActionClient):
         self._in_pc_key = in_pc_key
         self._pc = None
         self._output_key = output_key
+        self._test_bbox = None
 
     def initialise(self):
         super(GrasplocAct, self).initialise()
@@ -215,9 +228,6 @@ class GrasplocAct(py_trees_ros.actions.ActionClient):
         blackboard = py_trees.blackboard.Blackboard()
         self._pc = blackboard.get(self._in_pc_key)
         self.action_goal.input_pc = self._pc
-
-        # Location of head depth frame when head fully extended
-        # TODO(...): Actually get the pose of the depth frame from tf
         self.action_goal.viewpoint.x = 0.159
         self.action_goal.viewpoint.y = 0.05
         self.action_goal.viewpoint.z = 1.414
@@ -229,6 +239,7 @@ class GrasplocAct(py_trees_ros.actions.ActionClient):
         map these to the usual behaviour return states.
         """
         self.logger.debug("{0}.update()".format(self.__class__.__name__))
+
         if not self.action_client:
             self.feedback_message = "no action client, did you call setup() on your tree?"
             return py_trees.Status.INVALID
@@ -310,7 +321,17 @@ class OffsetPoses(py_trees.behaviour.Behaviour):
             offset_pose.position.y = pose.position.y + offset[1]
             offset_pose.position.z = pose.position.z + offset[2]
             offset_poses.append(offset_pose)
-
+        object_bbox = blackboard.get('crop_box')
+        cracker_box = object_bbox
+        offset = 0.254
+        offset_upper_offset = min(0.025, cracker_box.size.y / 4)
+        offset_bottom_offset = max(0.02, cracker_box.size.y / 2)
+        poses_filtered_half = list(filter(lambda x:(x.position.z - offset + offset_upper_offset)<= cracker_box.center.position.z + cracker_box.size.y / 2,
+                                     offset_poses)
+                             )
+        poses_filtered_offset = list(filter(lambda x:x.position.z - offset >= cracker_box.center.position.z - cracker_box.size.y / 2 + offset_bottom_offset,
+                                     poses_filtered_half)
+                             )
         if self._debug:
             orig = PoseArray()
             new = PoseArray()
@@ -318,9 +339,11 @@ class OffsetPoses(py_trees.behaviour.Behaviour):
             new.header.frame_id = 'base_link'
             orig.poses = poses
             new.poses = offset_poses
+            print(orig)
             self._orig_pub.publish(orig)
             self._new_pub.publish(new)
 
+        # blackboard.set(self._out_poses_key, offset_poses)
         blackboard.set(self._out_poses_key, offset_poses)
         return py_trees.Status.SUCCESS
 
@@ -357,10 +380,11 @@ def GrasplocPickAct(name, poses_key):
     return root
 
 class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, bbox_key='obj_bboxes', crop_box_key='crop_box'):
+    def __init__(self, name, bbox_key='obj_bboxes', crop_box_key='crop_box', obj_dim_key = 'object_dim'):
         super(ChooseGrasplocObjAct, self).__init__(name)
         self._bbox_key = bbox_key
         self._crop_box_key = crop_box_key
+        self._obj_dim_key = obj_dim_key
 
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
@@ -370,40 +394,127 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
 
         # TODO(Kevin): Get which object to grab from the plan
         blackboard.set(self._crop_box_key, bboxes.values()[0])
+        blackboard.set(self._obj_dim_key, bboxes.values()[0].size)
+        # print(bboxes.values()[0])
+        # print(type(bboxes.size))
+        return py_trees.Status.SUCCESS
+
+class GraspPoseGeneration(py_trees.behaviour.Behaviour):
+    def __init__(self, name, object_bbox_key='crop_box', grasp_points_key='grasp_pose', x_axis_key='x_normal'):
+        super(GraspPoseGeneration, self).__init__(name)
+        self._object_bbox_key = object_bbox_key
+        self._grasp_points_key = grasp_points_key
+        blackboard = py_trees.blackboard.Blackboard()
+        self._test_bbox = blackboard.get(self._object_bbox_key)
+        self._x_axis_key = x_axis_key
+        # self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
+        # self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
+        
+        # need to be tuned
+    def update(self):
+        # grasploc = blackboard.get(self._grasp_points_key)
+        blackboard = py_trees.blackboard.Blackboard()
+        self._test_bbox = blackboard.get(self._object_bbox_key)
+        print(self._test_bbox)
+        object_bbox = self._test_bbox
+        object_pose = object_bbox.center
+        test_pose = Pose(object_pose.position, object_pose.orientation)
+
+        gripper_ori_relative = []
+        gripper_ori_relative.append(R.from_quat([0.7071068,0,0,0.7071068]))
+        gripper_ori_relative.append(R.from_quat([-0.7071068,0,0,0.7071068]))
+
+        gripper_ori_relative.append(R.from_quat([0.5,0.5,0.5,0.5]))
+        gripper_ori_relative.append(R.from_quat([0.5,-0.5,-0.5,0.5]))
+        gripper_ori_relative.append(R.from_quat([-0.5,0.5,-0.5,0.5]))
+        gripper_ori_relative.append(R.from_quat([-0.5,-0.5,0.5,0.5]))
+
+        gripper_ori_relative.append(R.from_quat([0,0.7071068,-0.7071068,0]))
+        gripper_ori_relative.append(R.from_quat([0,0.7071068,0.7071068,0]))
+
+        gripper_grasp_length = min(0.017, object_bbox.size.y / 4)
+        gripper_offset = []
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        # gripper_offset.append([0, 0, 0])
+        crack_ori = R.from_quat([
+                object_pose.orientation.x,
+                object_pose.orientation.y,
+                object_pose.orientation.z,
+                object_pose.orientation.w])
+
+        test_gripper_poses = []
+        x_axises = []
+        for i in range(len(gripper_ori_relative)):
+            rotated_gripper = crack_ori * gripper_ori_relative[i]
+            print('rotated_gripper', rotated_gripper.as_quat())
+            offset = rotated_gripper.apply(gripper_offset[i])
+            gripper_pose = Pose()
+            crack_ori_quat = rotated_gripper.as_quat()
+            gripper_pose.orientation.x = crack_ori_quat[0]
+            gripper_pose.orientation.y = crack_ori_quat[1]
+            gripper_pose.orientation.z = crack_ori_quat[2]
+            gripper_pose.orientation.w = crack_ori_quat[3]
+
+            x_axis = rotated_gripper.apply([1,0,0]) 
+            x_axises.append(x_axis)
+
+            gripper_pose.position.x = object_pose.position.x + offset[0]
+            gripper_pose.position.y = object_pose.position.y + offset[1]
+            gripper_pose.position.z = object_pose.position.z + offset[2]
+            test_gripper_poses.append(gripper_pose)
+        print(x_axises)
+
+        blackboard.set(self._grasp_points_key, test_gripper_poses)
+        blackboard.set(self._x_axis_key, x_axises)
         return py_trees.Status.SUCCESS
 
 class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
-    def __init__(self, name, grasp_points_key='grasploc', filtered_grasp_points_key='filtered_grasploc'):
+    def __init__(self, name, grasp_points_key='grasp_pose', normal_key='x_normal', filtered_grasp_points_key='filtered_grasploc'):
         super(FilterGrasplocPoints, self).__init__(name)
         self._grasp_points_key = grasp_points_key
+        self._normal_key = normal_key
         self._filtered_grasp_points_key = filtered_grasp_points_key
         # self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
         # self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
         self._center_axis = np.array([0, 0, 1]) # 0deg from vertical towards robot
-        self._min_cos_theta = np.cos(np.pi / 8) # cos(x) -> +- x rads
-
+        self._min_cos_theta = np.cos(np.pi / 3.8) # cos(x) -> +- x rads
+        
+        # need to be tuned
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
-        grasploc = blackboard.get(self._grasp_points_key)
-        if grasploc is None:
+        test_gripper_poses = blackboard.get(self._grasp_points_key)
+        x_axises = blackboard.get(self._normal_key)
+
+        if test_gripper_poses is None:
             return py_trees.Status.FAILURE
 
-        filtered_grasploc = GrasplocResult()
-        filtered_grasploc.graspable_points.header = grasploc.graspable_points.header
-        for i, ros_norm in enumerate(grasploc.normal):
-            norm = np.array([ros_norm.x, ros_norm.y, ros_norm.z])
+        poses_z_value = []
+        test_gripper_poses_filtered = []
+        for i in range(len(test_gripper_poses)):
+            norm = np.array([x_axises[i][0], x_axises[i][1], x_axises[i][2]])
             norm = norm / np.linalg.norm(norm)
-            if np.dot(norm, self._center_axis) > self._min_cos_theta:
-                filtered_grasploc.graspable_points.poses.append(grasploc.graspable_points.poses[i])
-                filtered_grasploc.normal.append(grasploc.normal[i])
-                filtered_grasploc.principal.append(grasploc.principal[i])
+            print(norm, np.arccos(np.dot(norm, self._center_axis)) * 180 / np.pi)
+            if np.dot(norm, self._center_axis) > self._min_cos_theta or np.dot(norm, self._center_axis) < self._min_cos_theta - 1:
+                print('good')
+                test_gripper_poses_filtered.append(test_gripper_poses[i])
+                poses_z_value.append(test_gripper_poses[i].position.z)
+            else:
+                print('bad')
 
+        test_gripper_poses_filtered.sort(key=lambda x:x.position.z, reverse = True)
         # TODO(Kevin): Get which object to grab from the plan
-        blackboard.set(self._filtered_grasp_points_key, filtered_grasploc.graspable_points.poses)
+        blackboard.set(self._filtered_grasp_points_key, test_gripper_poses_filtered)
         return py_trees.Status.SUCCESS
 
 class GetTableAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, *argv, **kwargs):
+    def __init__(self, name, pc_key = 'depth_downsampled', *argv, **kwargs):
         super(GetTableAct, self).__init__(
             name=name,
             action_spec=GetTableAction,
@@ -412,11 +523,12 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             *argv,
             **kwargs
         )
+        self._pc_key = pc_key
 
     def initialise(self):
-        self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
-        cropped_pc_pub = rospy.Publisher('cropped_pc', PointCloud2, queue_size=10)
-        cropped_pc_pub.publish(self.action_goal.points)
+        self.action_goal.points = py_trees.blackboard.Blackboard().get(self._pc_key)
+        # cropped_pc_pub = rospy.Publisher('cropped_pc', PointCloud2, queue_size=10)
+        # cropped_pc_pub.publish(self.action_goal.points)
 
     def update(self):
         if not self.action_client:
@@ -440,7 +552,7 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.RUNNING
 
 class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, obj_dim=None, *argv, **kwargs):
+    def __init__(self, name, obj_bbox_key='crop_box', *argv, **kwargs):
         super(FreeSpaceFinderAct, self).__init__(
             name=name,
             action_spec=FreeSpaceFinderAction,
@@ -449,14 +561,22 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             *argv,
             **kwargs
         )
-        self._obj_dim = obj_dim
+        self._obj_bbox_key = obj_bbox_key
+        self._obj_bbox = None
+        self._plane_bboxes = None
+        self._grasp_pose = None
 
     def initialise(self):
         self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
+        self._obj_bbox = py_trees.blackboard.Blackboard().get(self._obj_bbox_key)
+        self._obj_dim = self._obj_bbox.size
+        grasp_poses = py_trees.blackboard.Blackboard().get('filtered_grasploc')
+        self._grasp_pose = grasp_poses[0]
         if self._obj_dim is None:
             self.action_goal.obj_dim = Vector3()
         else:
              self.action_goal.obj_dim = self._obj_dim
+        self._plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
         plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
         if len(plane_bboxes) == 0:
             self.action_goal.plane_bbox = BoundingBox3D()
@@ -478,7 +598,17 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
-            py_trees.blackboard.Blackboard().set('free_space_pose', result.pose)
+            poses = []
+            result.pose.orientation.x = 0
+            result.pose.orientation.y = 0.7071068
+            result.pose.orientation.z = 0
+            result.pose.orientation.w = 0.7071068
+            result.pose.position.z = self._grasp_pose.position.z
+            # result.pose.orientation = self._plane_bboxes[0].center.orientation
+            print('result.pose: ', result.pose)
+            print('table pose: ', self._plane_bboxes)
+            poses.append(result.pose)
+            py_trees.blackboard.Blackboard().set('free_space_poses', poses)
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running

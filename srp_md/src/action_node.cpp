@@ -5,7 +5,7 @@
 #include "srp_md/action_servers/get_table_as.h"
 #include "srp_md/action_servers/point_cloud_as.h"
 #include "srp_md/action_servers/free_space_finder_as.h"
-
+#include "srp_md/action_servers/relative_cartesian_move_as.h"
 // ROS
 #include <ros/ros.h>
 
@@ -32,7 +32,8 @@ int main(int argc, char** argv)
     ROS_INFO("Created tfPCAS.");
     FreeSpaceFinderAS freeSpaceFindereAS(nh, act, "free_space_finder");
     ROS_INFO("Created FreeSpaceFinderAS.");
-
+    RelativeCartesianMoveAS RelativeCartesianMoveAS(nh, act, "relative_cartesian_move");
+    ROS_INFO("Created RelativeCartesianMoveAS.");
 
     // Loop forever
     ros::Rate sleep_rate(100);
