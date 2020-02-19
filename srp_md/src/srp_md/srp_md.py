@@ -108,7 +108,7 @@ class SrpMd(object):
             self._logger.error('Please select learner!')
         else:
             self._logger.debug('Learning...')
-            if len(self._demo_graphs) == 0:
+            if None in self._demo_graphs or len(self._demo_graphs) == 0:
                 self._logger.warning('No processed data to be learned from!')
             elif self.get_learner() == 'factor_graph_learner':
                 self._factors = self._learner.learn(self._demo_graphs, self._sensor.properties)
