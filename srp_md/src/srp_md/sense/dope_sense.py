@@ -30,7 +30,7 @@ class DopeSensor(sense.BaseSensor):
 
         # Initilize properties
         # TODO(Henry): Add properties?
-        self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach']}
+        self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach', 'table']}
 
         # Action clients
         self._dope_goal = None
