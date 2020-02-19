@@ -6,6 +6,7 @@ import tf
 import actionlib
 import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
+from vision_msgs.msg import BoundingBox3D
 from geometry_msgs.msg import PoseStamped
 from dope_msgs.msg import DopeAction, DopeGoal
 import srp_md
@@ -85,6 +86,9 @@ class DopeSensor(sense.BaseSensor):
             req.names.append(class_names[detection.results[0].id] + '_' + str(uuid))
             uuid += 1
             req.objects.append(detection.bbox)
+        # Add the table
+        req.names.append('table_{}'.format(uuid))
+        req.objects.append(BoundingBox3D())
 
         py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
         self._logger.debug('The object bboxes: {}'.format(obj_bboxes))
