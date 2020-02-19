@@ -42,6 +42,7 @@ class DopeSensor(sense.BaseSensor):
         self._dope_goal = DopeGoal()
         self._dope_goal.image = data["image"]
         self._dope_goal.cam_info = data["info"]
+        self._dope_goal.pc = data['points']
         if self._dope_goal is None:
             return None
         self._dope_client.send_goal(self._dope_goal)

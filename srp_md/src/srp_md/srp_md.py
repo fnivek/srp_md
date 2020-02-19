@@ -47,6 +47,8 @@ class SrpMd(object):
         self._initial_graphs = []
         self._goal = None
         self._goal_instances = []
+        self._new_image = None
+        self._new_pcd = None
 
         self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
                          4: 'Redo demo', 5: 'Clear demos'}
@@ -70,7 +72,7 @@ class SrpMd(object):
         # Make subscribers for image
         self._image_sub = message_filters.Subscriber('/head_camera/rgb/image_raw', ImageSensor_msg)
         self._info_sub = message_filters.Subscriber('/head_camera/rgb/camera_info', CameraInfo)
-        self._points_sub = message_filters.Subscriber('/head_camera/depth_downsample/points', PointCloud2)
+        self._points_sub = message_filters.Subscriber('/head_camera/depth/points', PointCloud2)
         self._ts = message_filters.TimeSynchronizer([self._image_sub, self._info_sub], 100)
         self._ts.registerCallback(self.image_callback)
         self._points_sub.registerCallback(self.points_callback)
@@ -146,14 +148,14 @@ class SrpMd(object):
 
         # Wait for message with timeout
         start = rospy.get_rostime()
-        timeout = rospy.Duration(5) # Wait for 5 seconds?
+        timeout = rospy.Duration(15) # Wait for x seconds?
         rate = rospy.Rate(100)
         while ((self._new_image is None or self._new_pcd is None) and
                 (not rospy.is_shutdown()) and (rospy.get_rostime() - start < timeout)):
             rate.sleep()
 
         # If no image was got from listener, then log error
-        if len(self._new_image.keys()) == 0:
+        if self._new_image is None or len(self._new_image.keys()) == 0:
             self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
         elif self._new_pcd is None:
             self._logger.error('Failed to get the pcd within {}s'.format(timeout.to_sec()))
