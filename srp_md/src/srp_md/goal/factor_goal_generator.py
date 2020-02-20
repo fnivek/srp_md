@@ -19,13 +19,14 @@ import srp_md
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
     def __init__(self):
         super(FactorGraphGoalGenerator, self).__init__()
-        self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense'])
+        self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense', 'use_no_float'])
         self._logger = logging.getLogger(__name__)
         self._goal_client = None
         self._goal_client_name = '/get_goal'
         self._goal_client_changed = True
         self.use_consistency = True
         self.use_commonsense = False
+        self.use_no_float = True
 
     @property
     def goal_client(self):
@@ -48,6 +49,8 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             prior_knowledge.append(GetGoalRequest.CONSISTENCY_PRIOR)
         if self.use_commonsense:
             prior_knowledge.append(GetGoalRequest.COMMON_SENSE_PRIOR)
+        if self.use_no_float:
+            prior_knowledge.append(GetGoalRequest.NO_FLOAT_PRIOR)
         return prior_knowledge
 
     def generate_goal(self, factors, obs):
