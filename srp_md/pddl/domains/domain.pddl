@@ -77,6 +77,7 @@
     :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)) (not (above ?obj ?stack2)) (not (above ?obj ?stack3)) (not (above ?obj ?stack4)))
   )
 
+  ; Commented out to save computational time
   ; (:action place_on_stack5
   ;   :parameters (?obj - object ?to - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object ?stack4 - object ?stack5 - object)
   ;   :precondition (and (clear ?to) (held ?obj ?grip) (on ?to ?stack2) (on ?stack2 ?stack3) (on ?stack3 ?stack4) (on ?stack4 ?stack5) (at ?stack5 ?surf))

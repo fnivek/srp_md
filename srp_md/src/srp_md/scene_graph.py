@@ -75,6 +75,9 @@ class SceneGraph(srp_md.FactorGraph):
         else:
             return None
 
+    def get_obj_by_name(self, name):
+        return [obj for obj in self.objs if obj.name == name][0]
+
     def generate_relations(self):
         """ Generate all relation variables
 
