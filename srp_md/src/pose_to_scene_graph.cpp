@@ -23,6 +23,17 @@ PoseToSceneGraph::PoseToSceneGraph()
 {
     // Start ros service
     ros::NodeHandle nh;
+
+    // Load dimensions from dope
+    std::map<std::string, std::vector<double>> dimensions;
+    XmlRpc::XmlRpcValue dimensions_params;
+    nh.getParam("/dope/dimensions", dimensions_params);
+    for (auto&& pair : dimensions_params)
+    {
+        dimensions_.emplace(std::piecewise_construct, std::forward_as_tuple(pair.first),
+            std::forward_as_tuple((double)pair.second[0], (double)pair.second[1], (double)pair.second[2]));
+    }
+
     server_ = nh.advertiseService("pose_to_scene_graph", &PoseToSceneGraph::CalcSceneGraph, this);
 }
 
