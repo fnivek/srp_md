@@ -6,6 +6,7 @@ import tf
 import actionlib
 import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
+from vision_msgs.msg import BoundingBox3D
 from geometry_msgs.msg import PoseStamped
 from dope_msgs.msg import DopeAction, DopeGoal
 import srp_md
@@ -29,7 +30,7 @@ class DopeSensor(sense.BaseSensor):
 
         # Initilize properties
         # TODO(Henry): Add properties?
-        self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach']}
+        self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach', 'table']}
 
         # Action clients
         self._dope_goal = None
@@ -42,6 +43,7 @@ class DopeSensor(sense.BaseSensor):
         self._dope_goal = DopeGoal()
         self._dope_goal.image = data["image"]
         self._dope_goal.cam_info = data["info"]
+        self._dope_goal.pc = data['points']
         if self._dope_goal is None:
             return None
         self._dope_client.send_goal(self._dope_goal)
@@ -84,6 +86,10 @@ class DopeSensor(sense.BaseSensor):
             req.names.append(class_names[detection.results[0].id] + '_' + str(uuid))
             uuid += 1
             req.objects.append(detection.bbox)
+        # Add the table
+        table_uuid = uuid
+        req.names.append('table')
+        req.objects.append(BoundingBox3D())
 
         py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
         self._logger.debug('The object bboxes: {}'.format(obj_bboxes))
@@ -98,15 +104,18 @@ class DopeSensor(sense.BaseSensor):
         # Make srp_md objects
         objs = []
         for name in req.names:
-            uuid = int(name[name.rfind('_') + 1:])
-            label = name[:name.rfind('_')]
+            label = name
+            uuid = table_uuid
+            if name.find('table') == -1:
+                label = name[:name.rfind('_')]
+                uuid = int(name[name.rfind('_') + 1:])
             objs.append(srp_md.Object(name=name, id_num=uuid, uuid=uuid, assignment={'class': label}))
         # Build the scene graph
         scene_graph = srp_md.SceneGraph(objs)
         # Update all relations from response
         for name1, name2, rel_value in zip(resp.object1, resp.object2, resp.relation):
-            obj1 = srp_md.Var(uuid=int(name1[name1.rfind('_') + 1:]))
-            obj2 = srp_md.Var(uuid=int(name2[name2.rfind('_') + 1:]))
+            obj1 = scene_graph.get_obj_by_name(name1)
+            obj2 = scene_graph.get_obj_by_name(name2)
             rel = scene_graph.get_rel_by_objs(obj1, obj2)
             rel.value = rel_value
             # Check if obj1 and obj2 are fliped

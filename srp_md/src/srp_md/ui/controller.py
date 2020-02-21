@@ -40,8 +40,8 @@ class Controller(object):
     def process_data(self):
         try:
             self._model.process_data()
-        except ValueError:
-            self._errors.append("Failed to process data")
+        except ValueError as e:
+            self._errors.append("Failed to process data: {}".format(e))
 
     def set_goal_generator(self, goal_generator):
         self._model.set_goal_generator(goal_generator)
@@ -49,8 +49,8 @@ class Controller(object):
     def generate_goal(self):
         try:
             self._model.generate_goal()
-        except ValueError:
-            self._errors.append("Failed to generate goal")
+        except ValueError as e:
+            self._errors.append("Failed to generate goal: {}".format(e))
 
     def evaluate_goal(self):
         self._model.evaluate_goal()

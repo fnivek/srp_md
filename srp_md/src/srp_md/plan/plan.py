@@ -43,76 +43,113 @@ class Planner(object):
             # Make the problem file with input graphs
             with open(self._problem_file, "w+") as f_prob:
                 # Initialize indent and write basic structure
-                ind = ""
-                f_prob.write(ind + "(define (problem current-scene-to-goal-scene)\n\n")
-                ind += "\t"
-                f_prob.write(ind + "(:domain srp-md)\n\n")
+                ind = "  "
+                num_ind = [0]
+                write = lambda s: f_prob.write(ind * num_ind[0] + s)
+                write("(define (problem current-scene-to-goal-scene)\n\n")
+                num_ind[0] += 1
+                write("(:domain srp-md)\n\n")
 
                 # Write the objects
-                f_prob.write(ind + "(:objects\n")
-                ind += "\t"
+                write("(:objects\n")
+                num_ind[0] += 1
                 objects_str = ""
                 for obj_name in init_graph.get_obj_names():
+                    if obj_name == 'table':
+                        continue
                     objects_str += obj_name + " "
-                f_prob.write(ind + objects_str + "- object\n")
-                f_prob.write(ind + "table - surface\n")
-                f_prob.write(ind + "fetch_gripper - end_effector\n")
-                ind = ind[:-1]
-                f_prob.write(ind + ")\n\n")
+                write(objects_str + "- object\n")
+                write("table - surface\n")
+                write("fetch_gripper - end_effector\n")
+                num_ind[0] -= 1
+                write(")\n\n")
+
+                def graph_to_pddl(graph):
+                    num_ind[0] += 1
+                    sup_group = set([])
+                    on_dict = {}
+                    self._logger.debug('Build on stacks')
+                    for rel in graph.relations:
+                        self._logger.debug(rel)
+                        if rel.value == 'disjoint':
+                            continue
+                        top_obj = rel.obj1.name
+                        bot_obj = rel.obj2.name
+                        if rel.value == "support":
+                            self._logger.debug('support')
+                            top_obj = rel.obj2.name
+                            bot_obj = rel.obj1.name
+                        self._logger.debug('top {} / bot {}'.format(top_obj, bot_obj))
+                        sup_group.add(bot_obj)
+                        try:
+                            on_dict[top_obj].append(bot_obj)
+                        except KeyError:
+                            on_dict[top_obj] = [bot_obj]
+
+                    self._logger.debug('sup_group %s', sup_group)
+                    self._logger.debug('on_dict %s', on_dict)
+                    # Find the objects on top and bottom
+                    self._logger.debug('Recurse over stacks')
+                    above_set = set([])
+                    for obj_name in graph.get_obj_names():
+                        if obj_name not in sup_group:
+                            self._logger.debug('{} is on top and clear'.format(obj_name))
+                            write("(clear " + obj_name + ")\n")
+                            # Recurse through top objects to corectly write add above attribute
+                            def write_above(top_obj, above_objs=None):
+                                self._logger.debug('top_obj %s', top_obj)
+                                self._logger.debug('above_objs %s', above_objs)
+                                above_objs = [] if above_objs is None else above_objs
+                                try:
+                                    bot_objs = on_dict[top_obj]
+                                except KeyError:
+                                    bot_objs = []
+                                self._logger.debug('{} is on {}'.format(top_obj, bot_objs))
+                                # Check if its only on the table
+                                if len(bot_objs) == 1 and 'table' in bot_objs:
+                                    self._logger.debug('{} is on the table'.format(top_obj))
+                                    write("(at " + top_obj + " table)\n")
+                                    return
+                                for bot_obj in bot_objs:
+                                    if bot_obj == 'table':
+                                        self._logger.debug('{} is on the table'.format(top_obj))
+                                        continue
+                                    self._logger.debug('{} is on {}'.format(top_obj, bot_obj))
+                                    write("(on " + top_obj + " " + bot_obj + ")\n")
+                                    above_str = "(above {} {})\n".format(top_obj, bot_obj)
+                                    if above_str not in above_set:
+                                        write(above_str)
+                                        above_set.add(above_str)
+                                    for above_obj in above_objs:
+                                        above_str = "(above {} {})\n".format(above_obj, bot_obj)
+                                        if above_str not in above_set:
+                                            write(above_str)
+                                            above_set.add(above_str)
+                                    write_above(bot_obj, above_objs + [top_obj])
+                            write_above(obj_name)
+
+                    # Start with empty gripper hand
+                    write("(free fetch_gripper)\n")
+                    num_ind[0] -= 1
+                    write(")\n\n")
 
                 # Write the initial scene
-                f_prob.write(ind + "(:init\n")
-                ind += "\t"
-                on_group = set([])
-                sup_group = set([])
-                for rel in init_graph.relations:
-                    if rel.value == "on":
-                        f_prob.write(ind + "(on " + rel.obj1.name + " " + rel.obj2.name + ")\n")
-                        on_group.add(rel.obj1.name)
-                        sup_group.add(rel.obj2.name)
-                    elif rel.value == "support":
-                        f_prob.write(ind + "(on " + rel.obj2.name + " " + rel.obj1.name + ")\n")
-                        on_group.add(rel.obj2.name)
-                        sup_group.add(rel.obj1.name)
-                for obj_name in init_graph.get_obj_names():
-                    if obj_name not in on_group:
-                        f_prob.write(ind + "(at " + obj_name + " table)\n")
-                    if obj_name not in sup_group:
-                        f_prob.write(ind + "(clear " + obj_name + ")\n")
-                f_prob.write(ind + "(free fetch_gripper)\n")
-                ind = ind[:-1]
-                f_prob.write(ind + ")\n\n")
+                write("(:init\n")
+                self._logger.debug('Converting {} to an init scene'.format(init_graph))
+                graph_to_pddl(init_graph)
 
                 # Write the goal scene
-                f_prob.write(ind + "(:goal\n")
-                ind += "\t"
-                f_prob.write(ind + "(and\n")
-                ind += "\t"
-                on_group = set([])
-                sup_group = set([])
-                for rel in goal_graph.relations:
-                    if rel.value == "on":
-                        f_prob.write(ind + "(on " + rel.obj1.name + " " + rel.obj2.name + ")\n")
-                        on_group.add(rel.obj1.name)
-                        sup_group.add(rel.obj2.name)
-                    elif rel.value == "support":
-                        f_prob.write(ind + "(on " + rel.obj2.name + " " + rel.obj1.name + ")\n")
-                        on_group.add(rel.obj2.name)
-                        sup_group.add(rel.obj1.name)
-                for obj_name in goal_graph.get_obj_names():
-                    # if obj_name not in on_group:
-                    #     f_prob.write(ind + "(at " + obj_name + " table)\n")
-                    if obj_name not in sup_group:
-                        f_prob.write(ind + "(clear " + obj_name + ")\n")
-                f_prob.write(ind + "(free fetch_gripper)\n")
-                ind = ind[:-1]
-                f_prob.write(ind + ")\n")
-                ind = ind[:-1]
-                f_prob.write(ind + ")\n")
+                write("(:goal\n")
+                num_ind[0] += 1
+                write("(and\n")
+                self._logger.debug('Converting {} to a goal'.format(goal_graph))
+                graph_to_pddl(goal_graph)
+                num_ind[0] -= 1
+                write(")\n")
 
                 # End the paranthesis
-                ind = ind[:-1]
-                f_prob.write(ind + ")\n")
+                num_ind[0] -= 1
+                write(")\n")
 
 
 
