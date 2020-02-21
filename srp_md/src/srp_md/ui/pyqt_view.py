@@ -32,6 +32,9 @@ class PyQtView(view.BaseView):
         self._qt_handler.setFormatter(HtmlFormat())
         self._global_logger.addHandler(self._qt_handler)
 
+        script_path = os.path.dirname(os.path.realpath(__file__))
+        self._data_folder = os.path.realpath(script_path + '/../../../../data')
+
         # Initialize the GUI
         self.ImportGUI()
 
@@ -220,7 +223,7 @@ class PyQtView(view.BaseView):
             self._ctrl.set_goal_generator(self._gui.goalGeneratorComboBox.currentText())
 
     def write_demos(self):
-        demo_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
+        demo_file = QFileDialog.getSaveFileName(self._gui, caption='Save File', directory=self._data_folder,
                                                 filter='Demos (*.demo);;All files (*.*)')
         if demo_file[0] == '':
             pass
@@ -228,7 +231,7 @@ class PyQtView(view.BaseView):
             self._ctrl.write_demos(demo_file[0])
 
     def load_demos(self):
-        demo_file = QFileDialog.getOpenFileName(self._gui, caption='Open File',
+        demo_file = QFileDialog.getOpenFileName(self._gui, caption='Open File', directory=self._data_folder,
                                                 filter='Demos (*.demo);;All files (*.*)')
         if demo_file[0] == '':
             pass
@@ -236,7 +239,7 @@ class PyQtView(view.BaseView):
             self._ctrl.load_demos(demo_file[0])
 
     def write_inits(self):
-        init_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
+        init_file = QFileDialog.getSaveFileName(self._gui, caption='Save File', directory=self._data_folder,
                                                 filter='Inits (*.init);;All files (*.*)')
         if init_file[0] == '':
             pass
@@ -244,7 +247,7 @@ class PyQtView(view.BaseView):
             self._ctrl.write_inits(init_file[0])
 
     def load_inits(self):
-        init_file = QFileDialog.getOpenFileName(self._gui, caption='Open File',
+        init_file = QFileDialog.getOpenFileName(self._gui, caption='Open File', directory=self._data_folder,
                                                 filter='Inits (*.init);;All files (*.*)')
         if init_file[0] == '':
             pass
@@ -252,7 +255,7 @@ class PyQtView(view.BaseView):
             self._ctrl.load_inits(init_file[0])
 
     def write_goals(self):
-        goal_file = QFileDialog.getSaveFileName(self._gui, caption='Save File',
+        goal_file = QFileDialog.getSaveFileName(self._gui, caption='Save File', directory=self._data_folder,
                                                 filter='Goals (*.goal);;All files (*.*)')
         if goal_file[0] == '':
             pass
