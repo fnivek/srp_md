@@ -292,10 +292,10 @@ class SrpMd(object):
     Functions to execute actions.
 
     """
-    def save_for_user(self, filename):
+    def save_for_user(self, filename, image_set):
         ind = filename.rfind(".")
         filename = filename[:ind] + "_" + filename[ind + 1:]
-        for i, image in enumerate(self._raw_images):
+        for i, image in enumerate(image_set):
             br = bridge.CvBridge()
             cv_image = br.imgmsg_to_cv2(image["image"],)
             cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
@@ -310,7 +310,7 @@ class SrpMd(object):
     def write_demos(self, filename="./demos/raw_images.txt"):
         pickle.dump(self._raw_images, open(filename, 'wb'))
         self._logger.info('Success writing demo data to file {}\n'.format(filename))
-        self.save_for_user(filename)
+        self.save_for_user(filename, self._raw_images)
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def load_demos(self, filename="./demos/raw_images.txt"):
@@ -324,7 +324,7 @@ class SrpMd(object):
     def write_inits(self, filename="./inits/initial_scenes.txt"):
         pickle.dump(self._initial_scenes, open(filename, 'wb'))
         self._logger.info('Success writing initial scene images to file {}\n'.format(filename))
-        self.save_for_user(filename)
+        self.save_for_user(filename, self._initial_scenes)
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def load_inits(self, filename="./inits/initial_scenes.txt"):
