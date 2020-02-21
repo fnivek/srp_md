@@ -120,12 +120,22 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     {
         for (auto&& obj_it = pair.second.begin(); obj_it < pair.second.end(); ++obj_it)
         {
+            std::string obj_name = obj_it->name.substr(0, obj_it->name.rfind("_") + 1);
+            float obj_r = obj_it->dim.norm() / 2;
             for (auto&& obj_it_2 = obj_it + 1; obj_it_2 < pair.second.end(); ++obj_it_2)
             {
                 printf("%s and %s both on %s\n", obj_it->name.c_str(), obj_it_2->name.c_str(), pair.first.name.c_str());
                 // TODO(Kevin) Check the distance between the objects and add Proximity if less than threshold
-                scene_graph_.rel_list.emplace_back(
-                    scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
+                std::string obj_2_name = obj_it_2->name.substr(0, obj_it_2->name.rfind("_") + 1);
+                float obj_2_r = obj_it_2->dim.norm() / 2;
+                float dist = (obj_it->pose.translation() - obj_it_2->pose.translation()).norm();
+                float max_dist = (obj_r + obj_2_r) * 1.2;
+                if (dist < max_dist)
+                {
+                    printf("%s and %s are in proximity\n", obj_it->name.c_str(), obj_it_2->name.c_str());
+                    scene_graph_.rel_list.emplace_back(
+                        scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
+                }
             }
         }
     }
