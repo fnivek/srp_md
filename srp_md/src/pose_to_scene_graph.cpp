@@ -10,10 +10,10 @@
 // Helper functions not needed elsewhere
 bool ObjectCompByHeight(const scene_graph::Object& s1, const scene_graph::Object& s2)
 {
-    return s1.pose.pos_[2] > s2.pose.pos_[2];
+    return s1.pose.translation()[2] > s2.pose.translation()[2];
 }
 
-bool PointCompByHeight(const Eigen::Vector4f& p1, const Eigen::Vector4f& p2)
+bool PointCompByHeight(const Eigen::Vector4d& p1, const Eigen::Vector4d& p2)
 {
     return p1[2] < p2[2];
 }
@@ -68,8 +68,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         Eigen::Affine3d eigen_tf;
         vision_msgs::BoundingBox3D& ros_obj = req.objects[i];
         tf::poseMsgToTF(ros_obj.center, tf_pose);
-        tf::poseTFToEigen(tf_pose, eigen_tf);
-        obj.pose.PoseFromTransformation(eigen_tf.matrix().cast<float>());
+        tf::poseTFToEigen(tf_pose, obj.pose);
         // Get the dimensions of the object
         obj.dim[0] = req.objects[i].size.x;
         obj.dim[1] = req.objects[i].size.y;
@@ -143,7 +142,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     return true;
 }
 
-float PoseToSceneGraph::CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
+float PoseToSceneGraph::CalcMinAngle(Eigen::Vector3d v1, Eigen::Vector3d v2)
 {
     float cos_angle = v1.dot(v2) / (v1.norm() * v2.norm());
     float angle = acos(cos_angle);
@@ -160,33 +159,33 @@ float PoseToSceneGraph::CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2)
     return angle;
 }
 
-int PoseToSceneGraph::GetGravitationalAxis(Eigen::Matrix4f transform, float& angle)
+int PoseToSceneGraph::GetGravitationalAxis(Eigen::Affine3d transform, float& angle)
 {
     // axis ind: 0, 1, 2 corresponds to x, y, z axis
     // gravitational axis is (0, 0, 1) in world frame
-    Eigen::Vector4f origin(0, 0, 0, 1);
+    Eigen::Vector4d origin(0, 0, 0, 1);
     origin = transform * origin;
 
     // x-axis
-    Eigen::Vector4f x_axis(1, 0, 0, 1);
+    Eigen::Vector4d x_axis(1, 0, 0, 1);
     x_axis = transform * x_axis;
     x_axis = x_axis - origin;
 
     // y-axis
-    Eigen::Vector4f y_axis(0, 1, 0, 1);
+    Eigen::Vector4d y_axis(0, 1, 0, 1);
     y_axis = transform * y_axis;
     y_axis = y_axis - origin;
 
     // z-axis
-    Eigen::Vector4f z_axis(0, 0, 1, 1);
+    Eigen::Vector4d z_axis(0, 0, 1, 1);
     z_axis = transform * z_axis;
     z_axis = z_axis - origin;
 
     // compare with gravitational axis
-    Eigen::Vector3f grav_axis(0, 0, 1);
-    Eigen::Vector3f x_axis3(x_axis[0], x_axis[1], x_axis[2]);
-    Eigen::Vector3f y_axis3(y_axis[0], y_axis[1], y_axis[2]);
-    Eigen::Vector3f z_axis3(z_axis[0], z_axis[1], z_axis[2]);
+    Eigen::Vector3d grav_axis(0, 0, 1);
+    Eigen::Vector3d x_axis3(x_axis[0], x_axis[1], x_axis[2]);
+    Eigen::Vector3d y_axis3(y_axis[0], y_axis[1], y_axis[2]);
+    Eigen::Vector3d z_axis3(z_axis[0], z_axis[1], z_axis[2]);
 
     float angle_x = CalcMinAngle(x_axis3, grav_axis);
     float angle_y = CalcMinAngle(y_axis3, grav_axis);
@@ -214,39 +213,37 @@ int PoseToSceneGraph::GetGravitationalAxis(Eigen::Matrix4f transform, float& ang
     }
 }
 
-std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(scene_graph::Object object, std::string surface)
+std::vector<Eigen::Vector3d> PoseToSceneGraph::ProjectObjectBoudingBox(scene_graph::Object object, std::string surface)
 {
-    Eigen::Matrix4f transform = object.pose.TransformationFromPose();
-
     // object vertices
-    Eigen::Vector4f p0(object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p1(object.dim[0] / 2.0, object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p2(-object.dim[0] / 2.0, object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p3(-object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p4(object.dim[0] / 2.0, -object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p5(object.dim[0] / 2.0, object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p6(-object.dim[0] / 2.0, object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
-    Eigen::Vector4f p7(-object.dim[0] / 2.0, -object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p0(object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p1(object.dim[0] / 2.0, object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p2(-object.dim[0] / 2.0, object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p3(-object.dim[0] / 2.0, -object.dim[1] / 2.0, -object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p4(object.dim[0] / 2.0, -object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p5(object.dim[0] / 2.0, object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p6(-object.dim[0] / 2.0, object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
+    Eigen::Vector4d p7(-object.dim[0] / 2.0, -object.dim[1] / 2.0, object.dim[2] / 2.0, 1);
 
-    std::vector<Eigen::Vector4f> vertices{ p0, p1, p2, p3, p4, p5, p6, p7 };
+    std::vector<Eigen::Vector4d> vertices{ p0, p1, p2, p3, p4, p5, p6, p7 };
     for (auto& vertice : vertices)
-        vertice = transform * vertice;
+        vertice = object.pose * vertice;
 
     // sort in ascending order for z
     std::sort(vertices.begin(), vertices.end(), PointCompByHeight);
 
-    std::vector<Eigen::Vector3f> points;
+    std::vector<Eigen::Vector3d> points;
     if (surface == "upper")
     {
         // take highest 4 points
         for (int i = 4; i < vertices.size(); i++)
-            points.push_back(Eigen::Vector3f(vertices[i][0], vertices[i][1], vertices[i][2]));
+            points.push_back(Eigen::Vector3d(vertices[i][0], vertices[i][1], vertices[i][2]));
     }
     else if (surface == "bottom")
     {
         // take lowest 4 points
         for (int i = 0; i < 4; i++)
-            points.push_back(Eigen::Vector3f(vertices[i][0], vertices[i][1], vertices[i][2]));
+            points.push_back(Eigen::Vector3d(vertices[i][0], vertices[i][1], vertices[i][2]));
     }
     else
     {
@@ -257,7 +254,7 @@ std::vector<Eigen::Vector3f> PoseToSceneGraph::ProjectObjectBoudingBox(scene_gra
     return points;
 }
 
-void PoseToSceneGraph::DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> points)
+void PoseToSceneGraph::DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3d> points)
 {
     std::vector<cv::Point> cv_points(4);
     for (int i = 0; i < points.size(); i++)
@@ -286,13 +283,13 @@ bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Ob
 {
     // printf("check overlap (%s, %s): ", object1.name.c_str(), object2.name.c_str());
 
-    std::vector<Eigen::Vector3f> object1_points = ProjectObjectBoudingBox(object1, "bottom");
-    std::vector<Eigen::Vector3f> object2_points = ProjectObjectBoudingBox(object2, "upper");
+    std::vector<Eigen::Vector3d> object1_points = ProjectObjectBoudingBox(object1, "bottom");
+    std::vector<Eigen::Vector3d> object2_points = ProjectObjectBoudingBox(object2, "upper");
 
     // find min, max of x, y coordinates in all projected points
     float min_x = INFINITY, min_y = INFINITY;
     float max_x = -INFINITY, max_y = -INFINITY;
-    std::vector<Eigen::Vector3f> all_points;
+    std::vector<Eigen::Vector3d> all_points;
     all_points.insert(all_points.end(), object1_points.begin(), object1_points.end());
     all_points.insert(all_points.end(), object2_points.begin(), object2_points.end());
 
@@ -313,14 +310,14 @@ bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Ob
     // image with dimension 120x120
     for (auto& point : object1_points)
     {
-        point = point - Eigen::Vector3f(min_x, min_y, 0);
+        point = point - Eigen::Vector3d(min_x, min_y, 0);
         point[0] = point[0] * 100.0 / (max_x - min_x) + 10.0;
         point[1] = point[1] * 100.0 / (max_y - min_y) + 10.0;
     }
 
     for (auto& point : object2_points)
     {
-        point = point - Eigen::Vector3f(min_x, min_y, 0);
+        point = point - Eigen::Vector3d(min_x, min_y, 0);
         point[0] = point[0] * 100.0 / (max_x - min_x) + 10.0;
         point[1] = point[1] * 100.0 / (max_y - min_y) + 10.0;
     }

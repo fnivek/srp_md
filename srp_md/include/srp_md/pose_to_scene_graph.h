@@ -44,13 +44,13 @@ class PoseToSceneGraph
 
     bool CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req, srp_md_msgs::PoseToSceneGraph::Response& resp);
 
-    float CalcMinAngle(Eigen::Vector3f v1, Eigen::Vector3f v2);
+    float CalcMinAngle(Eigen::Vector3d v1, Eigen::Vector3d v2);
 
-    int GetGravitationalAxis(Eigen::Matrix4f transform, float& angle);
+    int GetGravitationalAxis(Eigen::Affine3d transform, float& angle);
 
-    std::vector<Eigen::Vector3f> ProjectObjectBoudingBox(scene_graph::Object object, std::string surface);
+    std::vector<Eigen::Vector3d> ProjectObjectBoudingBox(scene_graph::Object object, std::string surface);
 
-    void DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3f> points);
+    void DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3d> points);
 
     bool CheckOverlap(scene_graph::Object object1, scene_graph::Object object2);
 };

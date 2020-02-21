@@ -6,69 +6,17 @@
 // University of Michigan, 2016
 //
 
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 #include <eigen3/Eigen/Geometry>
 
 namespace scene_graph
 {
-class Pose
-{
-  public:
-    glm::vec3 pos_;
-    glm::vec3 euler_;
-
-    Pose()
-    {
-        pos_ = glm::vec3(0.0);
-        euler_ = glm::vec3(0.0);
-    }
-
-    void PoseFromTransformation(Eigen::Matrix4f transform)
-    {
-        Eigen::Matrix3f m = transform.block<3, 3>(0, 0);
-        Eigen::Vector3f euler = m.eulerAngles(0, 1, 2);
-        Eigen::Vector3f trans = transform.block<3, 1>(0, 3);
-
-        pos_.x = trans[0];
-        pos_.y = trans[1];
-        pos_.z = trans[2];
-        euler_.x = euler[0];
-        euler_.y = euler[1];
-        euler_.z = euler[2];
-    }
-
-    Eigen::Matrix4f TransformationFromPose()
-    {
-        Eigen::Matrix4f transform;
-        transform.setIdentity();
-
-        Eigen::Matrix3f m;
-        m = Eigen::AngleAxisf(euler_.x, Eigen::Vector3f::UnitX()) *
-            Eigen::AngleAxisf(euler_.y, Eigen::Vector3f::UnitY()) *
-            Eigen::AngleAxisf(euler_.z, Eigen::Vector3f::UnitZ());
-        transform.block<3, 3>(0, 0) = m;
-
-        Eigen::Vector3f trans(pos_.x, pos_.y, pos_.z);
-        transform.block<3, 1>(0, 3) = trans;
-
-        return transform;
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const Pose& pose)
-    {
-        os << pose.pos_.x << " " << pose.pos_.y << " " << pose.pos_.z << " " << pose.euler_.x << " " << pose.euler_.y
-           << " " << pose.euler_.z << "\n";
-        return os;
-    }
-};
 
 struct Object
 {
-    Pose pose;
-    glm::vec3 dim;
+    Eigen::Affine3d pose;
+    Eigen::Vector3d dim;
 
     std::string name;
     int id;
