@@ -32,6 +32,7 @@
   <depend>pcl_ros</depend>
   <depend>libpcl-all-dev</depend>
   <depend>libpcl-all</depend>
+  <depend>cv_bridge</depend>
   <test_depend>unittest</test_depend>
 
   <!-- The export tag contains other, unspecified, tags -->

@@ -13,6 +13,7 @@ from . import goal
 from . import evaluate
 from . import plan
 from . import act
+from .pcd_io import write_pcd
 
 # Python imports
 import logging as log
@@ -21,7 +22,12 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import rospy
 import message_filters
+import tf
+import cv_bridge as bridge
+import cv2
+import numpy as np
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
+from geometry_msgs.msg import PoseStamped
 
 
 class SrpMd(object):
@@ -74,6 +80,7 @@ class SrpMd(object):
         self._ts = message_filters.TimeSynchronizer([self._image_sub, self._info_sub], 100)
         self._ts.registerCallback(self.image_callback)
         self._points_sub.registerCallback(self.points_callback)
+        self._tf_sub = tf.TransformListener()
 
     def get_num_demos(self):
         return len(self._raw_images)
@@ -146,14 +153,14 @@ class SrpMd(object):
 
         # Wait for message with timeout
         start = rospy.get_rostime()
-        timeout = rospy.Duration(5) # Wait for 5 seconds?
+        timeout = rospy.Duration(10) # Wait for 5 seconds?
         rate = rospy.Rate(100)
         while ((self._new_image is None or self._new_pcd is None) and
                 (not rospy.is_shutdown()) and (rospy.get_rostime() - start < timeout)):
             rate.sleep()
 
         # If no image was got from listener, then log error
-        if len(self._new_image.keys()) == 0:
+        if self._new_image is None:
             self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
         elif self._new_pcd is None:
             self._logger.error('Failed to get the pcd within {}s'.format(timeout.to_sec()))
@@ -176,6 +183,15 @@ class SrpMd(object):
         self._new_image = {}
         self._new_image["image"] = image
         self._new_image["info"] = info
+
+        try:
+            trans, rot = self._tf_sub.lookupTransform('/base_link', '/head_tilt_link', rospy.Time(0))
+            mat1 = np.dot(tf.transformations.translation_matrix(trans), tf.transformations.quaternion_matrix(rot))
+            mat2 = np.dot(tf.transformations.translation_matrix([0.043, 0.021, 0.018]),
+                             tf.transformations.quaternion_matrix([-0.503, 0.503, -0.497, 0.497]))
+            self._new_image["tf"] = np.dot(mat1, mat2)
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
+            self._logger.error('Failed to transform from /head_tilt_link to /base_link: {}'.format(e))
 
     def points_callback(self, points):
         # Save the image and info got into new image dictionary
@@ -269,9 +285,26 @@ class SrpMd(object):
     Functions to execute actions.
 
     """
+    def save_for_user(self, filename):
+        ind = filename.rfind(".")
+        filename = filename[:ind] + "_" + filename[ind + 1:]
+        for i, image in enumerate(self._raw_images):
+            br = bridge.CvBridge()
+            cv_image = br.imgmsg_to_cv2(image["image"],)
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(filename + "_{}.png".format(i + 1), cv_image)
+            write_pcd(filename + "_{}.pcd".format(i + 1), image["points"], overwrite=True)
+            with open(filename + "_{}.txt".format(i + 1), "w") as f:
+                for i in range(image["tf"].shape[0]):
+                    for j in range(image["tf"].shape[1]):
+                        f.write("{} ".format(image["tf"][i, j]))
+                    f.write("\n")
+
     def write_demos(self, filename="./demos/raw_images.txt"):
         pickle.dump(self._raw_images, open(filename, 'wb'))
-        self._logger.info('Success writing demo images to file {}\n'.format(filename))
+        self._logger.info('Success writing demo data to file {}\n'.format(filename))
+        self.save_for_user(filename)
+        self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def load_demos(self, filename="./demos/raw_images.txt"):
         self._raw_images = pickle.load(open(filename, 'rb'))
@@ -284,6 +317,8 @@ class SrpMd(object):
     def write_inits(self, filename="./inits/initial_scenes.txt"):
         pickle.dump(self._initial_scenes, open(filename, 'wb'))
         self._logger.info('Success writing initial scene images to file {}\n'.format(filename))
+        self.save_for_user(filename)
+        self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def load_inits(self, filename="./inits/initial_scenes.txt"):
         self._initial_scenes = pickle.load(open(filename, 'rb'))

@@ -193,24 +193,28 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
 
             # print 'obj_bboxes_post: {}'.format(obj_bboxes_post)
 
-            obj_bboxes = obj_bboxes_prev
-            for obj_prev_key in obj_bboxes_prev.keys():
-                closest_obj_name = None
-                closest_dist = 10000
-                for obj_post_key in obj_bboxes_post.keys():
-                    dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
-                    if dist < closest_dist:
-                        closest_dist = dist
-                        closest_obj_name = obj_post_key
+            if obj_bboxes_prev is None:
+                obj_bboxes = obj_bboxes_post
+            else:
+                obj_bboxes = obj_bboxes_prev
+                for obj_prev_key in obj_bboxes_prev.keys():
+                    closest_obj_name = None
+                    closest_dist = 10000
+                    for obj_post_key in obj_bboxes_post.keys():
+                        dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
+                        if dist < closest_dist:
+                            closest_dist = dist
+                            closest_obj_name = obj_post_key
 
-                # print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
-                if closest_dist <= 0.01:
-                    obj_bboxes[obj_prev_key] = obj_bboxes_post[closest_obj_name]
-                    del obj_bboxes_post[closest_obj_name]
-                else:
-                    print 'No closest object found. Defaulting with previously seen object bbox value for {}'.format(obj_prev_key)
+                    # print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
+                    if closest_dist <= 0.01:
+                        obj_bboxes[obj_prev_key] = obj_bboxes_post[closest_obj_name]
+                        del obj_bboxes_post[closest_obj_name]
+                    else:
+                        print 'No closest object found. Defaulting with previously seen object bbox value for {}'.format(obj_prev_key)
 
             py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
+            print "obj bboxes: ", obj_bboxes
 
             return py_trees.Status.SUCCESS
         else:
