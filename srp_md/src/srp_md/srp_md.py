@@ -155,22 +155,14 @@ class SrpMd(object):
 
         # Wait for message with timeout
         start = rospy.get_rostime()
-<<<<<<< HEAD
-        timeout = rospy.Duration(10) # Wait for 5 seconds?
-=======
         timeout = rospy.Duration(15) # Wait for x seconds?
->>>>>>> 3d361850560c57fe08593a6d156afd7a1fa62fab
         rate = rospy.Rate(100)
         while ((self._new_image is None or self._new_pcd is None) and
                 (not rospy.is_shutdown()) and (rospy.get_rostime() - start < timeout)):
             rate.sleep()
 
         # If no image was got from listener, then log error
-<<<<<<< HEAD
-        if self._new_image is None:
-=======
         if self._new_image is None or len(self._new_image.keys()) == 0:
->>>>>>> 3d361850560c57fe08593a6d156afd7a1fa62fab
             self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
         elif self._new_pcd is None:
             self._logger.error('Failed to get the pcd within {}s'.format(timeout.to_sec()))
