@@ -77,6 +77,11 @@ struct Object
     Object() : pose_label(-1)
     {
     }
+
+    friend inline bool operator<(const Object& left, const Object& right)
+    {
+        return left.id < right.id;
+    }
 };
 
 typedef std::vector<Object> ObjectList;
@@ -84,7 +89,8 @@ typedef std::vector<Object> ObjectList;
 enum RelationType
 {
     kOn,
-    kSupport
+    kSupport,
+    kProximity
 };
 
 struct Relation
@@ -111,6 +117,11 @@ struct Relation
             case kSupport:
                 type_str = "support";
                 break;
+            case kProximity:
+                type_str = "proximity";
+                break;
+            default:
+                type_str = "disjoint";
         }
         return type_str;
     }
