@@ -200,6 +200,9 @@ class SrpMd(object):
         self._new_pcd = points
 
     def process_data(self):
+        # Reset all graphs
+        self._demo_graphs = []
+        self._initial_graphs = []
         # If sensor is not set, log error
         if self._sensor is None:
             self._logger.error('Please select sensor!')
@@ -232,6 +235,8 @@ class SrpMd(object):
             self._goal_generator = goal.goal_generators[goal_generator]()
 
     def generate_goal(self):
+        # Clear old goal instances
+        self._goal_instances = []
         # If goal generator is not set, log error
         if self._goal_generator is None:
             self._logger.error('Please select goal generator!')
