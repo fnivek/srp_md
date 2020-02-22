@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <random>
 #include <vector>
+#include <map>
 
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
@@ -69,6 +70,7 @@
 #include <ctime>
 #include <algorithm>
 #include <thread>
+#include <string>
 class Act;
 
 template<typename Goal>
@@ -195,9 +197,13 @@ public:
 
     bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
 
+    // bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
+    //                        const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose);
     bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
-                           const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose);
-
+                           const vision_msgs::BoundingBox3D& obj_bbox, const std::string& relation,
+                           const vision_msgs::BoundingBox3D& relative_obj_bbox, std::vector<geometry_msgs::Pose>& pose, 
+                           const float distance);
+    geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim);
 };
 
 
@@ -210,7 +216,7 @@ void Act::wait_for_server(Client &ac, const std::string &topic_name)
     ROS_INFO("Connected to \"%s\" action server!", topic_name.c_str());
 }
 
-geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim);
+
 
 
 // template<typename Goal>

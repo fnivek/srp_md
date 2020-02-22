@@ -6,6 +6,7 @@
 #include "srp_md/action_servers/point_cloud_as.h"
 #include "srp_md/action_servers/free_space_finder_as.h"
 #include "srp_md/action_servers/relative_cartesian_move_as.h"
+#include "srp_md/action_servers/get_stack_pose_as.h"
 // ROS
 #include <ros/ros.h>
 
@@ -34,6 +35,8 @@ int main(int argc, char** argv)
     ROS_INFO("Created FreeSpaceFinderAS.");
     RelativeCartesianMoveAS RelativeCartesianMoveAS(nh, act, "relative_cartesian_move");
     ROS_INFO("Created RelativeCartesianMoveAS.");
+    GetStackPoseAS GetStackPoseAS(nh, act, "GetStackPose");
+    ROS_INFO("Created GetStackPoseAS.");
 
     // Loop forever
     ros::Rate sleep_rate(100);

@@ -14,7 +14,7 @@ from vision_msgs.msg import BoundingBox3D
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
-                        FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses,
+                        FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct,
                         SetAllowGripperCollisionAct, GetDesiredPoseAct, RelativeCartesianMoveAct, GraspPoseGeneration)
 from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
                                                                    FullyCollapseTorso, FullyExtendTorso)
@@ -110,7 +110,8 @@ def build_tree():
     blackboard.set('table_collision_obj', ['table', table, [0.85, 4, table.position.z * 2]])
 
     # gripper_length = 0.154
-    gripper_length = 0.145
+    # gripper_length = 0.145
+    gripper_length = 0.150
     pre_grasp_offset = 0.1
 
     to_grasp_tf = TransformStamped()
@@ -120,7 +121,7 @@ def build_tree():
 
     to_place_tf = TransformStamped()
     to_place_tf.header.frame_id = "gripper_link"
-    to_place_tf.transform.translation.x = pre_grasp_offset * 0.7
+    to_place_tf.transform.translation.x = pre_grasp_offset * 0.8
     to_place_tf.transform.rotation.w = 1.0
 
     up_tf = TransformStamped()
@@ -199,6 +200,8 @@ def build_tree():
                     out_poses_key='offset_grasploc', debug=True), # The gripper origin is in the wrist so move out along x
         GetTableAct('act_get_table'),
         FreeSpaceFinderAct('act_find_free_space'),
+        GetStackPoseAct('act_get_stack_pose'),
+
         GrasplocPickAct('act_grasploc_pick', 'offset_grasploc'),
         grasploc_grasp_fall,
         
@@ -209,6 +212,9 @@ def build_tree():
         MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose'),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
         OpenGripperAct('act_open_gripper'),
+        RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
+        # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
+
         # CropPCAct('act_test_crop_pc', 'depth_downsampled_premod', 'table_crop_box', 'depth_downsampled'),
         # GetDesiredPoseAct('act_get_desired_pose', 'table', 'cracker'),
     ])
