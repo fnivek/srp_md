@@ -39,8 +39,8 @@ class SrpMd(object):
 
     """
     # TODO(Kevin): Set defaults when they exist
-    def __init__(self, learner=None, sensor=None, goal_generator=None,
-                 goal_evaluator='adapt_goal_evaluator'):
+    def __init__(self, learner='factor_graph_learner', sensor='dope_sensor',
+        goal_generator='factor_graph_goal_generator', goal_evaluator='adapt_goal_evaluator'):
         # Logging
         self._logger = log.getLogger(__name__)
 

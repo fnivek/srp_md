@@ -15,7 +15,7 @@ class FactorGraphLearner(learn.BaseLearner):
         super(FactorGraphLearner, self).__init__()
         self._logger = logging.getLogger(__name__)
         self._factors_to_learn = [2]
-        self._factor_learner = FACTOR_LEARNERS.keys()[0]
+        self.factor_learner = 'decision_tree'
         self._allowed_config_keys.extend(['factor_learner', 'factors_to_learn'])
 
     @property

@@ -64,6 +64,12 @@ class PyQtView(view.BaseView):
         # self._gui.getDemoComboBox.addItems(list(sense.goal_types[self._model._sensor]))
         self._gui.goalGeneratorComboBox.addItems(list(srp_md.goal.goal_generators.keys()))
 
+        # Set the combo boxes to the current value
+        self._gui.sensorComboBox.setCurrentIndex(self._gui.sensorComboBox.findText(self._model.get_sensor()))
+        self._gui.learnerComboBox.setCurrentIndex(self._gui.learnerComboBox.findText(self._model.get_learner()))
+        self._gui.goalGeneratorComboBox.setCurrentIndex(
+            self._gui.goalGeneratorComboBox.findText(self._model.get_goal_generator()))
+
         error_types = ['Critical', 'Error', 'Warning', 'Info', 'Debug']
         self._gui.guiLogFormatComboBox.addItems(error_types)
         self._gui.terminalLogFormatComboBox.addItems(error_types)
