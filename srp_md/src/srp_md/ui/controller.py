@@ -31,9 +31,17 @@ class Controller(object):
     def update_sensor_config(self, **kwargs):
         self._model.update_sensor_config(**kwargs)
 
-    def generate_demo(self):
-        self._model.accept_data([])
-        self._model.process_data()
+    def get_demo(self):
+        self._model.accept_data("demonstration")
+
+    def get_init_scene(self):
+        self._model.accept_data("initial scene")
+
+    def process_data(self):
+        try:
+            self._model.process_data()
+        except ValueError as e:
+            self._errors.append("Failed to process data: {}".format(e))
 
     def set_goal_generator(self, goal_generator):
         self._model.set_goal_generator(goal_generator)
@@ -41,30 +49,29 @@ class Controller(object):
     def generate_goal(self):
         try:
             self._model.generate_goal()
-        except ValueError:
-            self._errors.append("Failed to generate goal")
+        except ValueError as e:
+            self._errors.append("Failed to generate goal: {}".format(e))
 
     def evaluate_goal(self):
         self._model.evaluate_goal()
 
-    def accept_data(self):
-        self._model.accept_data([])
-
-    def process_data(self):
-        try:
-            self._model.process_data()
-        except ValueError:
-            self._errors.append("Failed to process data")
-
     def plan(self):
         self._model.plan()
 
-    # Actions added
     def write_demos(self, filename):
         self._model.write_demos(filename)
 
     def load_demos(self, filename):
         self._model.load_demos(filename)
+
+    def write_inits(self, filename):
+        self._model.write_inits(filename)
+
+    def load_inits(self, filename):
+        self._model.load_inits(filename)
+
+    def write_goals(self, filename):
+        self._model.write_goals(filename)
 
     def undo_demo(self):
         self._model.undo_demo()
@@ -75,5 +82,14 @@ class Controller(object):
     def clear_demos(self):
         self._model.clear_demos()
 
+    def clear_inits(self):
+        self._model.clear_inits()
+
+    def clear_goals(self):
+        self._model.clear_goals()
+
     def show_graph(self):
-        self._model.show_graph(self._model._current_graph)
+        self._model.show_graph()
+
+    def act(self):
+        self._model.act()

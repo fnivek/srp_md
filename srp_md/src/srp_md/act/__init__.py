@@ -1,3 +1,4 @@
+from .act import Actor
 from .actions import ResetAct
 from .actions import GripperAct
 from .actions import OpenGripperAct
@@ -7,8 +8,8 @@ from .actions import MoveToFirstPoseAct
 from .actions import MoveToRelativePoseAct
 from .actions import GetDopeSnapshotAct
 from .actions import GetTableAct
-from .actions import PickAct
-from .actions import PlaceAct
+from .actions import PickWithPoseAct
+from .actions import PlaceWithPoseAct
 from .actions import CropPCAct
 from .actions import TFPCAct
 from .actions import PCPubAct
@@ -24,3 +25,7 @@ from .actions import SetAllowGripperCollisionAct
 from .actions import GetDesiredPoseAct
 from .actions import RelativeCartesianMoveAct
 from .actions import GraspPoseGeneration
+from .actions import AddAllCollisionBoxesAct
+from .actions import MoveToStartAct
+from .actions import PickAct
+from .actions import PlaceAct

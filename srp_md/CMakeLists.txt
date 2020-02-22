@@ -37,6 +37,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning_interface
   pcl_conversions
   pcl_ros
+  cv_bridge
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -84,6 +85,7 @@ catkin_package(
     moveit_ros_planning_interface
     pcl_conversions
     pcl_ros
+    cv_bridge
 #  DEPENDS system_lib
 )
 

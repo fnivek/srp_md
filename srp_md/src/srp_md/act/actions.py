@@ -25,8 +25,8 @@ from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 from vision_msgs.msg import BoundingBox3D
 import actionlib_msgs.msg as actionlib_msgs
 from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
-
 from scipy.spatial.transform import Rotation as R
+import srp_md
 
 import fetch_manipulation_pipeline.msg
 from behavior_manager.conditions.arm_tucked_condition import ArmTuckedCondition
@@ -182,7 +182,8 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
-            obj_bboxes = {}
+            obj_bboxes_prev = py_trees.blackboard.Blackboard().get('obj_bboxes')
+            obj_bboxes_post = {}
             uuid = 0
             class_ids = rospy.get_param("/dope/class_ids")
             class_names = {class_id: name for name, class_id in class_ids.iteritems()}
@@ -199,10 +200,34 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
                     print 'Failed to transform from /head_camera_rgb_optical_frame to /base_link: {}'.format(e)
                     return None
 
-                obj_bboxes[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
+                obj_bboxes_post[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
                 uuid += 1
 
+            # print 'obj_bboxes_post: {}'.format(obj_bboxes_post)
+
+            if obj_bboxes_prev is None:
+                obj_bboxes = obj_bboxes_post
+            else:
+                obj_bboxes = obj_bboxes_prev
+                for obj_prev_key in obj_bboxes_prev.keys():
+                    closest_obj_name = None
+                    closest_dist = 10000
+                    for obj_post_key in obj_bboxes_post.keys():
+                        dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
+                        if dist < closest_dist:
+                            closest_dist = dist
+                            closest_obj_name = obj_post_key
+
+                    # print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
+                    if closest_dist <= 0.01:
+                        obj_bboxes[obj_prev_key] = obj_bboxes_post[closest_obj_name]
+                        del obj_bboxes_post[closest_obj_name]
+                    else:
+                        print 'No closest object found. Defaulting with previously seen object bbox value for {}'.format(obj_prev_key)
+
             py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
+            print "obj bboxes: ", obj_bboxes
+
             return py_trees.Status.SUCCESS
         else:
             self.feedback_message = self.override_feedback_message_on_running
@@ -614,7 +639,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
 
-def PickAct(name, key_str):
+def PickWithPoseAct(name, key_str):
     """
     Picks up object given the key to blackboard
     """
@@ -650,7 +675,7 @@ def PickAct(name, key_str):
     ])
     return root
 
-def PlaceAct(name, key_str):
+def PlaceWithPoseAct(name, key_str):
     """
     Places the object in hand to desired position
     """
@@ -997,3 +1022,87 @@ class SetAllowGripperCollisionAct(py_trees.behaviour.Behaviour):
         planning_scene = PlanningScene(is_diff=True, allowed_collision_matrix=allowed_collision_matrix)
         self._pub.publish(planning_scene);
         return py_trees.Status.SUCCESS
+
+def AddAllCollisionBoxesAct(name):
+    """
+    Add all collision boxes
+    """
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='{}_add_all_collision_boxes'.format(name),
+        children=None)
+
+    # Specify the wall sizes and table size
+    left_wall_pose = Pose()
+    left_wall_pose.position.y = 0.5
+    left_wall_pose.orientation.w = 1.0
+
+    right_wall_pose = Pose()
+    right_wall_pose.position.y = -0.5
+    right_wall_pose.orientation.w = 1.0
+
+    bot_wall_pose = Pose()
+    bot_wall_pose.position.z = 0.45
+    bot_wall_pose.orientation.w = 1.0
+
+    table_pose = Pose()
+    table_pose.position.x = 1.0
+    table_pose.position.y = 0.0
+    table_pose.position.z = 0.38
+    table_pose.orientation.w = 1.0
+
+    # Add each collision boxes to the root node
+    root.add_children([
+        AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
+        AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
+        AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
+        AddCollisionBoxAct('act_add_table', box_name='table', box_pose=table_pose, box_size=[0.8, 4, table_pose.position.z * 2]),
+    ])
+
+    return root
+
+def MoveToStartAct(name):
+    """
+    Bring the robot to initial position for experiment
+    """
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='{}_move_to_start'.format(name),
+        children=None)
+    root.add_children([
+        FullyExtendTorso('act_{}_extend_torso'.format(name)),
+        TuckWithCondBehavior('act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
+        # HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight'),
+        OpenGripperAct('act_{}_open_gripper'.format(name))
+    ])
+    return root
+
+def PickAct(name, obj):
+    """
+    Composite pick action for an object
+    """
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='{}_pick_{}'.format(name, obj),
+        children=None)
+
+    # Add steps to execute pick action
+    root.add_children([
+        GetDopeSnapshotAct('act_get_dope_snapshot_{}'.format(obj)),
+    ])
+    return root
+
+def PlaceAct(name, obj, surface):
+    """
+    Composite place action for an object
+    """
+
+    # Initialize the root as sequence node
+    root = py_trees.composites.Sequence(
+        name='{}_place_{}_from_{}'.format(name, obj, surface),
+        children=None)
+
+    # Add steps to execute pick action
+    # root.add_children([
+    # ])
+    return root

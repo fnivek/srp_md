@@ -23,6 +23,17 @@ PoseToSceneGraph::PoseToSceneGraph()
 {
     // Start ros service
     ros::NodeHandle nh;
+
+    // Load dimensions from dope
+    std::map<std::string, std::vector<double>> dimensions;
+    XmlRpc::XmlRpcValue dimensions_params;
+    nh.getParam("/dope/dimensions", dimensions_params);
+    for (auto&& pair : dimensions_params)
+    {
+        dimensions_.emplace(std::piecewise_construct, std::forward_as_tuple(pair.first),
+            std::forward_as_tuple((double)pair.second[0], (double)pair.second[1], (double)pair.second[2]));
+    }
+
     server_ = nh.advertiseService("pose_to_scene_graph", &PoseToSceneGraph::CalcSceneGraph, this);
 }
 
@@ -47,6 +58,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     scene_graph_ = scene_graph::SceneGraph();
 
     // Grab objects from request
+    scene_graph::Object* table;
     int object_id = 0;
     scene_graph::ObjectList object_list;
     for (int i = 0; i < req.objects.size(); ++i)
@@ -55,6 +67,13 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         scene_graph::Object obj;
         obj.name = req.names[i];
         obj.id = object_id++;
+        // If its the table it has no dimensions
+        if(obj.name.find("table") != std::string::npos)
+        {
+            table = &obj;
+            object_list.push_back(obj);
+            continue;
+        }
         // Convert Ros Pose to scene_graph pose
         tf::Pose tf_pose;
         Eigen::Affine3d eigen_tf;
@@ -68,27 +87,57 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         obj.dim[2] = req.objects[i].size.z;
         // Add to vectors
         object_list.push_back(obj);
-        clear_objects_.push_back(obj);
+        // clear_objects_.push_back(obj);
         // Debug
         // std::cout << obj.name << ": " << obj.pose;
         // printf("\tdim: %f %f %f\n", obj.dim[0], obj.dim[1], obj.dim[2]);
     }
 
     // Determine support and on relations
+    std::map<scene_graph::Object, scene_graph::ObjectList> on_map;
     std::sort(object_list.begin(), object_list.end(), ObjectCompByHeight);
     for (int i = 0; i < object_list.size(); ++i)
     {
         scene_graph::Object& top_obj = object_list[i];
+        if(top_obj.name.find("table") != std::string::npos)
+            continue;
+        bool on_anything = false;
         for (int j = i + 1; j < object_list.size(); ++j)
         {
             scene_graph::Object& bot_obj = object_list[j];
+            on_map[bot_obj].push_back(top_obj);
+            if(bot_obj.name.find("table") != std::string::npos)
+                continue;
             if (CheckOverlap(top_obj, bot_obj))
             {
+                on_anything = true;
                 scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, bot_obj.id, top_obj.name,
                                          bot_obj.name);
                 scene_graph_.rel_list.push_back(on);
                 // Debug
                 printf("On(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
+            }
+        }
+        if(!on_anything)
+        {
+            // Then must be on table
+            scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, table->id, top_obj.name, table->name);
+            scene_graph_.rel_list.push_back(on);
+            printf("On(%s, %s)\n", top_obj.name.c_str(), table->name.c_str());
+        }
+    }
+
+    // Determine proximity
+    for (auto&& pair : on_map)
+    {
+        for (auto&& obj_it = pair.second.begin(); obj_it < pair.second.end(); ++obj_it)
+        {
+            for (auto&& obj_it_2 = obj_it + 1; obj_it_2 < pair.second.end(); ++obj_it_2)
+            {
+                printf("%s and %s both on %s\n", obj_it->name.c_str(), obj_it_2->name.c_str(), pair.first.name.c_str());
+                // TODO(Kevin) Check the distance between the objects and add Proximity if less than threshold
+                scene_graph_.rel_list.emplace_back(
+                    scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
             }
         }
     }

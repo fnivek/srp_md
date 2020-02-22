@@ -12,7 +12,7 @@ from sensor_msgs.msg import PointCloud2
 from vision_msgs.msg import BoundingBox3D
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
-                        GetDopeSnapshotAct, PickAct, PlaceAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
+                        GetDopeSnapshotAct, PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
                         FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses,
                         SetAllowGripperCollisionAct, GetDesiredPoseAct, RelativeCartesianMoveAct, GraspPoseGeneration)
@@ -166,7 +166,7 @@ def build_tree():
         # PickAct('pick_1', 'grasp_pose'),
         OpenGripperAct('act_open_gripper'),
         TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
-        # # # PlaceAct('place_1', 'grasp_pose'),
+        # # # PlaceWithPoseAct('place_1', 'grasp_pose'),
         # # MoveToPoseAct('move_to_test_pose', pose=test_pose),
         # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
         # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),

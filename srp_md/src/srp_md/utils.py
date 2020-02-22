@@ -4,6 +4,7 @@ import logging
 import operator
 from functools import reduce
 from itertools import chain, combinations
+import numpy as np
 
 # Utils logger
 logger = logging.getLogger(__name__)
@@ -102,3 +103,12 @@ class ConfigMixin(object):
             if key not in self._allowed_config_keys:
                 raise KeyError('{} is not an allowed to be changed'.format(key))
             setattr(self, key, value)
+
+def pose_difference(pose_1, pose_2):
+    position_diff = np.sqrt((pose_1.position.x - pose_2.position.x) ** 2 + (pose_1.position.y - pose_2.position.y) ** 2 +
+                            (pose_1.position.z - pose_2.position.z) ** 2)
+    orientation_diff = 1 - (pose_1.orientation.x * pose_2.orientation.x + pose_1.orientation.y * pose_2.orientation.y +
+                            pose_1.orientation.z * pose_2.orientation.z + pose_1.orientation.w * pose_2.orientation.w)
+    # print "position_diff", position_diff
+    # print "orientation_diff", orientation_diff
+    return np.sqrt(position_diff ** 2 + orientation_diff ** 2)

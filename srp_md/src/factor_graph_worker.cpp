@@ -69,6 +69,7 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
     // Choose which priors to use
     bool use_consistency = false;
     bool use_commensense = false;
+    bool use_no_float = false;
     for (auto& prior : req.prior_knowledge)
     {
         switch (prior)
@@ -79,9 +80,12 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
             case srp_md_msgs::GetGoalRequest::COMMON_SENSE_PRIOR:
                 use_commensense = true;
                 break;
+            case srp_md_msgs::GetGoalRequest::NO_FLOAT_PRIOR:
+                use_no_float = true;
+                break;
         }
     }
-    scene_graph.usePriors(use_consistency, use_commensense);
+    scene_graph.usePriors(use_consistency, use_commensense, use_no_float);
 
     // Perform inference
     scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 100, 1e-10);

@@ -12,12 +12,22 @@ from . import sense
 from . import goal
 from . import evaluate
 from . import plan
+from . import act
+from .pcd_io import write_pcd
 
 # Python imports
 import logging as log
 import pickle
 import networkx as nx
 import matplotlib.pyplot as plt
+import rospy
+import message_filters
+import tf
+import cv_bridge as bridge
+import cv2
+import numpy as np
+from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
+from geometry_msgs.msg import PoseStamped
 
 
 class SrpMd(object):
@@ -35,20 +45,27 @@ class SrpMd(object):
         self._logger = log.getLogger(__name__)
 
         # Vars
-        self._obs = []
+        self._raw_images = []
+        self._current_image = None
+        self._demo_graphs = []
+        self._initial_scenes = []
+        self._current_scene = None
+        self._initial_graphs = []
         self._goal = None
-        self._goal_instance = None
-        self._raw_data = None
+        self._goal_instances = []
+        self._new_image = None
+        self._new_pcd = None
+
         self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
                          4: 'Redo demo', 5: 'Clear demos'}
         self._undoed = []
         self._factors = None
         self.demo_types = ["only_goal", "only_not_goal", "random"]
-        self._current_graph = None
         self._sense_category = {'fake': ['fake_sensor'],
                                 'version': ['example_sensor', 'can_tower_sensor'],
                                 'factor': ['posecnn_sensor', 'block_world_sensor', 'pen_world_sensor',
                                            'book_world_sensor', 'abstract_world_sensor']}
+        self._solution_filename = None
 
         # Set the default srp_md strategies
         self.set_learner(learner)
@@ -56,9 +73,22 @@ class SrpMd(object):
         self.set_goal_generator(goal_generator)
         self.set_goal_evaluator(goal_evaluator)
         self._planner = plan.Planner()
+        self._actor = act.Actor()
+
+        # Make subscribers for image
+        self._image_sub = message_filters.Subscriber('/head_camera/rgb/image_raw', ImageSensor_msg)
+        self._info_sub = message_filters.Subscriber('/head_camera/rgb/camera_info', CameraInfo)
+        self._points_sub = message_filters.Subscriber('/head_camera/depth/points', PointCloud2)
+        self._ts = message_filters.TimeSynchronizer([self._image_sub, self._info_sub], 100)
+        self._ts.registerCallback(self.image_callback)
+        self._points_sub.registerCallback(self.points_callback)
+        self._tf_sub = tf.TransformListener()
 
     def get_num_demos(self):
-        return len(self._obs)
+        return len(self._raw_images)
+
+    def get_num_inits(self):
+        return len(self._initial_scenes)
 
     """ Learner.
 
@@ -85,13 +115,13 @@ class SrpMd(object):
             self._logger.error('Please select learner!')
         else:
             self._logger.debug('Learning...')
-            if len(self._obs) == 0:
-                self._logger.warning('No demo to be learned from!')
+            if None in self._demo_graphs or len(self._demo_graphs) == 0:
+                self._logger.warning('No processed data to be learned from!')
             elif self.get_learner() == 'factor_graph_learner':
-                self._factors = self._learner.learn(self._obs, self._sensor.properties)
+                self._factors = self._learner.learn(self._demo_graphs, self._sensor.properties)
                 self._logger.debug('Factors learned: %s', self._factors.keys())
             else:
-                self._goal = self._learner.learn(self._obs)
+                self._goal = self._learner.learn(self._demo_graphs)
                 self._logger.debug('Learned: %s', self._goal)
 
     """ Sensor.
@@ -112,27 +142,79 @@ class SrpMd(object):
     def update_sensor_config(self, **kwargs):
         self._sensor.update_config(**kwargs)
 
-    def accept_data(self, data):
-        """ Accept Raw Data.
-
-        Accept and save new raw data. Processing should be done in process_data
-        function so that accept_data can be used in callbacks that should exit
-        quickly.
-
+    def accept_data(self, tag):
         """
-        self._logger.debug('Accept data: ' + str(data))
-        self._raw_data = data
+        Accepts images and saves them with tagged types
+        """
+        # State the tag type
+        self._logger.debug('Accepted {}'.format(tag))
+
+        # Initialize new image and point cloud
+        self._new_image = None
+        self._new_pcd = None
+
+        # Wait for message with timeout
+        start = rospy.get_rostime()
+        timeout = rospy.Duration(15) # Wait for x seconds?
+        rate = rospy.Rate(100)
+        while ((self._new_image is None or self._new_pcd is None) and
+                (not rospy.is_shutdown()) and (rospy.get_rostime() - start < timeout)):
+            rate.sleep()
+
+        # If no image was got from listener, then log error
+        if self._new_image is None or len(self._new_image.keys()) == 0:
+            self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
+        elif self._new_pcd is None:
+            self._logger.error('Failed to get the pcd within {}s'.format(timeout.to_sec()))
+        else:
+            self._new_image["points"] = self._new_pcd
+            # If this image was a demonstration, add to list of demonstrations
+            if tag == "demonstration":
+                self._raw_images.append(self._new_image)
+                self._current_image = self._new_image
+            # If this image was an initial scene, add to list of initial scenes
+            elif tag == "initial scene":
+                self._initial_scenes.append(self._new_image)
+                self._current_scene = self._new_image
+            # If the tag was wrong, log error
+            else:
+                self._logger.error('Wrong tag: {}'.format(tag))
+
+    def image_callback(self, image, info):
+        # Save the image and info got into new image dictionary
+        self._new_image = {}
+        self._new_image["image"] = image
+        self._new_image["info"] = info
+
+        try:
+            trans, rot = self._tf_sub.lookupTransform('/base_link', '/head_tilt_link', rospy.Time(0))
+            mat1 = np.dot(tf.transformations.translation_matrix(trans), tf.transformations.quaternion_matrix(rot))
+            mat2 = np.dot(tf.transformations.translation_matrix([0.043, 0.021, 0.018]),
+                             tf.transformations.quaternion_matrix([-0.503, 0.503, -0.497, 0.497]))
+            self._new_image["tf"] = np.dot(mat1, mat2)
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
+            self._logger.error('Failed to transform from /head_tilt_link to /base_link: {}'.format(e))
+
+    def points_callback(self, points):
+        # Save the image and info got into new image dictionary
+        self._new_pcd = points
 
     def process_data(self):
+        # If sensor is not set, log error
         if self._sensor is None:
             self._logger.error('Please select sensor!')
-        else:
-            self._logger.debug('Processing: ' + str(self._raw_data))
-            new_obs = self._sensor.process_data(self._raw_data)
-            self._obs.append(new_obs)
-            self._current_graph = new_obs
-            # Debug
-            self._logger.debug('Observation is: {}'.format(new_obs))
+        # If the initial scene was not given, process data for all currently saved demonstrations
+        self._logger.debug('Processing demonstrations...')
+        for i in range(len(self._raw_images)):
+            new_graph = self._sensor.process_data(self._raw_images[i])
+            self._demo_graphs.append(new_graph)
+        self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
+        # If the initial scene was given, process data for that scene
+        self._logger.debug('Processing initial scene...')
+        for i in range(len(self._initial_scenes)):
+            new_graph = self._sensor.process_data(self._initial_scenes[i])
+            self._initial_graphs.append(new_graph)
+        self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
 
     """ Goal Generator.
 
@@ -150,17 +232,26 @@ class SrpMd(object):
             self._goal_generator = goal.goal_generators[goal_generator]()
 
     def generate_goal(self):
+        # If goal generator is not set, log error
         if self._goal_generator is None:
             self._logger.error('Please select goal generator!')
         else:
+            # If using factor graph learner, do:
             if self.get_learner() == 'factor_graph_learner':
-                self._goal_instance = self._goal_generator.generate_goal(
-                    self._factors, self._sensor.process_data(self._raw_data))
-                self._current_graph = self._goal_instance
+                # If initial scene was not set, log error
+                if len(self._initial_scenes) == 0:
+                    self._logger.error('No scene detected!\n')
+                    self._goal_instances = []
+                # If initial scene was seen, get goal instance
+                else:
+                    self._logger.info('Generating goal scenes from initial scenes...\n')
+                    for i in range(len(self._initial_graphs)):
+                        goal_instance = self._goal_generator.generate_goal(self._factors, self._initial_graphs[i])
+                        self._goal_instances.append(goal_instance)
+                    self._logger.debug('The goal scenes are: {}'.format(self._goal_instances))
+            # If not using factor graph generator, just generate goal without inputs
             else:
-                self._goal_instance = self._goal_generator.generate_goal()
-
-            self._logger.debug('New goal is: {}'.format(self._goal_instance))
+                self._goal_instances = self._goal_generator.generate_goal()
 
     def update_goal_generator_config(self, **kwargs):
         self._goal_generator.update_config(**kwargs)
@@ -178,68 +269,118 @@ class SrpMd(object):
             self._goal_evaluator = evaluate.goal_evaluators[goal_evaluator]()
 
     def evaluate_goal(self):
-        evaluation = None
+        evaluations = []
         if self._goal_evaluator is None:
             self._logger.error('Please select goal evaluator!')
         elif self._sensor is None:
             self._logger.error('Please select sensor!')
-        elif self._goal_instance is None:
+        elif self._goal_instances is None:
             self._logger.error('Please generate goal instance to evaluate!')
         else:
-            evaluation = self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instance)
-        return evaluation
+            for i in range(len(self._goal_instances)):
+                evaluation = self._goal_evaluator.evaluate_goal(self._sensor, self.get_sensor(), self._goal_instances[i])
+                evaluations.append(evaluation)
+        return evaluations
 
     """ Actions.
 
     Functions to execute actions.
 
     """
-    def write_demos(self, filename="./demos/test.txt"):
-        pickle.dump(self._obs, open(filename, 'wb'))
-        self._logger.info('Success writing demos to file {}\n'.format(filename))
+    def save_for_user(self, filename):
+        ind = filename.rfind(".")
+        filename = filename[:ind] + "_" + filename[ind + 1:]
+        for i, image in enumerate(self._raw_images):
+            br = bridge.CvBridge()
+            cv_image = br.imgmsg_to_cv2(image["image"],)
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(filename + "_{}.png".format(i + 1), cv_image)
+            write_pcd(filename + "_{}.pcd".format(i + 1), image["points"], overwrite=True)
+            with open(filename + "_{}.txt".format(i + 1), "w") as f:
+                for i in range(image["tf"].shape[0]):
+                    for j in range(image["tf"].shape[1]):
+                        f.write("{} ".format(image["tf"][i, j]))
+                    f.write("\n")
 
-    def load_demos(self, filename="./demos/test.txt"):
-        self._obs = pickle.load(open(filename, 'rb'))
-        self._logger.info('Success loading demos from file {}\n'.format(filename))
-        if len(self._obs) != 0:
-                self._current_graph = self._obs[-1]
+    def write_demos(self, filename="./demos/raw_images.txt"):
+        pickle.dump(self._raw_images, open(filename, 'wb'))
+        self._logger.info('Success writing demo data to file {}\n'.format(filename))
+        self.save_for_user(filename)
+        self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
+
+    def load_demos(self, filename="./demos/raw_images.txt"):
+        self._raw_images = pickle.load(open(filename, 'rb'))
+        self._logger.info('Success loading demo images from file {}\n'.format(filename))
+        if len(self._raw_images) != 0:
+            self._current_image = self._raw_images[-1]
         else:
-            self._current_graph = None
+            self._current_image = None
+
+    def write_inits(self, filename="./inits/initial_scenes.txt"):
+        pickle.dump(self._initial_scenes, open(filename, 'wb'))
+        self._logger.info('Success writing initial scene images to file {}\n'.format(filename))
+        self.save_for_user(filename)
+        self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
+
+    def load_inits(self, filename="./inits/initial_scenes.txt"):
+        self._initial_scenes = pickle.load(open(filename, 'rb'))
+        self._logger.info('Success loading initial scene images from file {}\n'.format(filename))
+        if len(self._initial_scenes) != 0:
+            self._current_scene = self._initial_scenes[-1]
+        else:
+            self._current_scene = None
+
+    def write_goals(self, filename="./goals/goal_instances_paired.txt"):
+        paired = zip(self._initial_graphs, self._goal_instances)
+        pickle.dump(paired, open(filename, 'wb'))
+        self._logger.info('Success writing paired goal instances with initial scene graphs to file {}\n'.format(filename))
 
     def undo_demo(self):
-        if len(self._obs) == 0:
+        if len(self._raw_images) == 0:
             self._logger.info('No demos to undo!\n')
         else:
-            last_demo = self._obs.pop()
+            last_demo = self._raw_images.pop()
             self._undoed.append(last_demo)
             self._logger.info('Success undoing last demo\n')
         if self._sensor_name in self._sense_category['factor']:
-            if len(self._obs) != 0:
-                self._current_graph = self._obs[-1]
+            if len(self._raw_images) != 0:
+                self._current_image = self._raw_images[-1]
             else:
-                self._current_graph = None
+                self._current_image = None
 
     def redo_demo(self):
         if len(self._undoed) == 0:
             self._logger.info('No undoed demos to redo!\n')
         else:
             last_demo = self._undoed.pop()
-            self._obs.append(last_demo)
+            self._raw_images.append(last_demo)
             self._logger.info('Success redoing last demo\n')
         if self._sensor_name in self._sense_category['factor']:
-            self._current_graph = self._obs[-1]
+            self._current_image = self._raw_images[-1]
 
     def clear_demos(self):
-        self._obs = []
+        self._raw_images = []
+        self._demo_graphs = []
         self._logger.info('Success clearing demos\n')
-        self._current_graph = None
+        self._current_image = None
 
-    def show_graph(self, scene_graph):
+    def clear_inits(self):
+        self._initial_scenes = []
+        self._initial_graphs = []
+        self._logger.info('Success clearing initial scenes\n')
+        self._current_scene = None
+
+    def clear_goals(self):
+        self._goal_instances = []
+        self._logger.info('Success clearing goals\n')
+
+    def show_graph(self):
         # If the scene graph is None, print warning
-        if scene_graph is None:
+        if len(self._demo_graphs) is None:
             self._logger.warning('No scene graph to show!\n')
         # If scene graph exists, do:
         else:
+            scene_graph = self._demo_graphs[-1]
             # Initialize graph object
             G = nx.DiGraph()
 
@@ -300,4 +441,16 @@ class SrpMd(object):
             # plt.show()
 
     def plan(self):
-        self._planner.plan()
+        if len(self._initial_graphs) == 0 and len(self._goal_instances) == 0:
+            self._logger.warning('No initial graphs or no goal instances, using example files to plan instead')
+            self._planner.plan()
+        else:
+            # For this to work properly, generate goal must be run before hands!
+            self._planner.plan(self._initial_graphs[-1], self._goal_instances[-1])
+
+    def act(self):
+        if self._solution_filename is None:
+            self._actor.act()
+        else:
+            # For this to work properly, generate goal must be run before hands!
+            self._actor.act(self._solution_filename)

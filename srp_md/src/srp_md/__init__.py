@@ -13,3 +13,4 @@ from .utils import iterate_recursively
 from .utils import count_dicts
 from .utils import powerset
 from .utils import ConfigMixin
+from .utils import pose_difference
