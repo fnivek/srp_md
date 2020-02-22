@@ -3,6 +3,8 @@ from . import sense
 import logging
 import rospy
 import tf
+import numpy as np
+from scipy.spatial.transform import Rotation as R
 import actionlib
 import message_filters
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg
@@ -13,6 +15,7 @@ import srp_md
 from srp_md_msgs.msg import GetTableAction, GetTableGoal
 from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
 import py_trees
+from copy import deepcopy
 
 
 class DopeSensor(sense.BaseSensor):
@@ -24,9 +27,6 @@ class DopeSensor(sense.BaseSensor):
 
         # Set timeout
         self._timeout = 5
-
-        # Transforms
-        self._listener = tf.TransformListener()
 
         # Initilize properties
         # TODO(Henry): Add properties?
@@ -44,6 +44,7 @@ class DopeSensor(sense.BaseSensor):
         self._dope_goal.image = data["image"]
         self._dope_goal.cam_info = data["info"]
         self._dope_goal.pc = data['points']
+        self._tf = data["tf"]
         if self._dope_goal is None:
             return None
         self._dope_client.send_goal(self._dope_goal)
@@ -60,18 +61,25 @@ class DopeSensor(sense.BaseSensor):
 
         # Transform dope msgs
         for detection in dope_result.detections:
-            # Make a stamped pose
-            pose_stamped = PoseStamped()
-            pose_stamped.header.frame_id = '/head_camera_rgb_optical_frame'
-            pose_stamped.header.stamp = rospy.Time(0)
-            pose_stamped.pose = detection.bbox.center
-            try:
-                tfed_pose_stamped = self._listener.transformPose('/base_link', pose_stamped)
-                detection.bbox.center = tfed_pose_stamped.pose
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
-                self._logger.error('Failed to transform from /head_camera_rgb_optical_frame to /base_link: {}'.format(e)
-                                   )
-                return None
+            # Transform pose to base_link
+            # Convert pose to numpy
+            rot = R.from_quat([detection.bbox.center.orientation.x, detection.bbox.center.orientation.y,
+                detection.bbox.center.orientation.z, detection.bbox.center.orientation.w]).as_dcm()
+            pose = np.eye(4)
+            pose[0:3, 0:3] = rot
+            pose[0:3, 3] = [detection.bbox.center.position.x, detection.bbox.center.position.y,
+                detection.bbox.center.position.z]
+            # Transform
+            pose = np.dot(self._tf, pose)
+            # Convert back to ros msg
+            q = R.from_dcm(pose[0:3, 0:3]).as_quat()
+            detection.bbox.center.position.x = pose[0, 3]
+            detection.bbox.center.position.y = pose[1, 3]
+            detection.bbox.center.position.z = pose[2, 3]
+            detection.bbox.center.orientation.x = q[0]
+            detection.bbox.center.orientation.y = q[1]
+            detection.bbox.center.orientation.z = q[2]
+            detection.bbox.center.orientation.w = q[3]
 
         # Build scene graph
         obj_bboxes = {}

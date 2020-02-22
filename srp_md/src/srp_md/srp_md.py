@@ -187,11 +187,10 @@ class SrpMd(object):
         self._new_image["info"] = info
 
         try:
-            trans, rot = self._tf_sub.lookupTransform('/base_link', '/head_tilt_link', rospy.Time(0))
-            mat1 = np.dot(tf.transformations.translation_matrix(trans), tf.transformations.quaternion_matrix(rot))
-            mat2 = np.dot(tf.transformations.translation_matrix([0.043, 0.021, 0.018]),
-                             tf.transformations.quaternion_matrix([-0.503, 0.503, -0.497, 0.497]))
-            self._new_image["tf"] = np.dot(mat1, mat2)
+            trans, rot = self._tf_sub.lookupTransform('/base_link', '/head_camera_rgb_optical_frame', rospy.Time(0))
+            to_base_link = tf.transformations.quaternion_matrix(rot)
+            to_base_link[0:3, 3] = tf.transformations.translation_matrix(trans)[0:3, 3]
+            self._new_image["tf"] = to_base_link
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
             self._logger.error('Failed to transform from /head_tilt_link to /base_link: {}'.format(e))
 
