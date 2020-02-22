@@ -26,7 +26,7 @@ class DopeSensor(sense.BaseSensor):
         self._logger = logging.getLogger(__name__)
 
         # Set timeout
-        self._timeout = 5
+        self._timeout = 15
 
         # Initilize properties
         # TODO(Henry): Add properties?

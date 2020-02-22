@@ -70,8 +70,8 @@ class FactorGraphLearner(learn.BaseLearner):
         # Loop through all examples
         for graph in obs:
             # Loop through individual factors for one observation
-            configs = [(num_objs, srp_md.ncr(num_objs, 2)) for num_objs in self._factors_to_learn]
-            for factor in graph.gen_ordered_factors(configs=configs):
+            # configs = [(num_objs, srp_md.ncr(num_objs, 2)) for num_objs in self._factors_to_learn]
+            for factor in graph.gen_ordered_factor():
                 # Find the appropriate FactorHandler to udpate
                 index = (len(factor.objs), len(factor.relations))
                 if index not in factors:
