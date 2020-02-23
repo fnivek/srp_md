@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 # SRP MD imports
 from . import learn
-from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS, SklearnFactorLearner
+from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS, SklearnFactorLearner, JointFreqFactorLearner
 import srp_md
 
 
@@ -156,7 +156,7 @@ class FactorHandler(object):
 
 class CardinalityFactorHandler(FactorHandler):
     def __init__(self, obj, class_name, rel_value):
-        super(CardinalityFactorHandler, self).__init__()
+        super(CardinalityFactorHandler, self).__init__(learner=JointFreqFactorLearner())
         self._obj = obj
         self._class_name = class_name
         self._rel_value = rel_value
