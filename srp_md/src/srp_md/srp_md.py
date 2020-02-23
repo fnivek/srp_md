@@ -26,6 +26,7 @@ import tf
 import cv_bridge as bridge
 import cv2
 import numpy as np
+import py_trees, py_trees_ros
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 from geometry_msgs.msg import PoseStamped
 
@@ -458,3 +459,7 @@ class SrpMd(object):
         else:
             # For this to work properly, generate goal must be run before hands!
             self._actor.act(self._solution_filename)
+
+    def grocery_experiment(self):
+        # Run dope action node
+        pass

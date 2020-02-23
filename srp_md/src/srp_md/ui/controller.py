@@ -93,3 +93,6 @@ class Controller(object):
 
     def act(self):
         self._model.act()
+
+    def grocery_experiment(self):
+        self._model.grocery_experiment()

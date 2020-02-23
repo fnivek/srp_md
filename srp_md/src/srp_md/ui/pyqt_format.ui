@@ -252,9 +252,9 @@ color: rgb(150, 150, 150)
         </widget>
        </item>
        <item row="5" column="1">
-        <widget class="QPushButton" name="experiment">
+        <widget class="QPushButton" name="grocery_experiment">
          <property name="text">
-          <string>Experiment!</string>
+          <string>Grocery Experiment!</string>
          </property>
         </widget>
        </item>

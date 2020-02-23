@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from . import view
 from srp_md import learn
 from srp_md import sense
+from srp_md import act
 import srp_md.goal
 
 # Python imports
@@ -17,6 +18,11 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.uic import *
 from StringIO import StringIO
+import rospy
+from sensor_msgs.msg import Image
+import cv_bridge as bridge
+import cv2
+import py_trees, py_trees_ros
 
 
 class PyQtView(view.BaseView):
@@ -95,6 +101,7 @@ class PyQtView(view.BaseView):
         self._gui.plan.pressed.connect(self._ctrl.plan)
         self._gui.act.pressed.connect(self._ctrl.act)
         self._gui.show_graph.pressed.connect(self._ctrl.show_graph)
+        self._gui.grocery_experiment.pressed.connect(self.grocery_experiment)
 
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_sensor)
         self._gui.sensorComboBox.currentIndexChanged.connect(self.update_goal_type_list)
@@ -295,6 +302,14 @@ class PyQtView(view.BaseView):
             self._logger.debug('Setting demo type to {}'.format(actions[action]))
             self._ctrl.update_sensor_config(demo_type=actions[action])
 
+    def grocery_experiment(self):
+        # Use the video widget
+        self._gui.vid = VidWidget()
+        self._gui.vid.run()
+
+        # Run the functionalities
+        self._ctrl.grocery_experiment()
+
     def run_once(self):
         self.update_from_model()
 
@@ -303,6 +318,83 @@ class PyQtView(view.BaseView):
         self.timer.timeout.connect(self.run_once)
         self.timer.start(100)
 
+class VidWidget(QDialog):
+    def __init__(self):
+        super(VidWidget, self).__init__()
+
+    @pyqtSlot(QImage)
+    def setImage(self, image):
+        self.video.setPixmap(QPixmap.fromImage(image))
+
+    def run(self):
+        # Import the video gui
+        ui_path = os.path.dirname(os.path.abspath(__file__))
+        loadUi(os.path.join(ui_path, "pyqt_format_vid.ui"), self)
+        self.setWindowTitle("Video Capture")
+
+        # create a label
+        self.video.resize(900, 740)
+
+        # Initialize video thread and connect the video
+        self.vid_thread = VidThread()
+        self.vid_thread.changePixmap.connect(self.setImage)
+        self.vid_thread.start()
+
+        # Initialize dope thread and run
+        self.dope_thread = DopeThread()
+        self.dope_thread.start()
+
+        self.show()
+
+    def closeEvent(self, event):
+        self.vid_thread.exit()
+        self.dope_thread.exit()
+        event.accept()
+
+class VidThread(QThread):
+    changePixmap = pyqtSignal(QImage)
+
+    def __init__(self):
+        super(VidThread, self).__init__()
+        self.vid_sub = rospy.Subscriber("dope/rgb_points", Image, self.image_callback)
+        self.image = None
+        self.rate = rospy.Rate(10)
+
+    def image_callback(self, data):
+        self.image = data
+
+    def run(self):
+        while True:
+            if self.image is not None:
+                # Change the image to cv2 image
+                br = bridge.CvBridge()
+                cv_image = br.imgmsg_to_cv2(self.image)
+                cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+
+                # Convert to QtFormat
+                h, w, ch = cv_image.shape
+                bytesPerLine = ch * w
+                convertToQtFormat = QImage(cv_image.data, w, h, bytesPerLine, QImage.Format_RGB888)
+                p = convertToQtFormat.scaled(900, 740, Qt.KeepAspectRatio)
+                self.changePixmap.emit(p)
+                self.rate.sleep()
+
+class DopeThread(QThread):
+    def __init__(self):
+        super(DopeThread, self).__init__()
+        self.root = py_trees.composites.Sequence(name='srp_md_dope')
+        self.root.add_children([act.InfiniteDopeAct(name='act_infinite_dope')])
+        self.tree = py_trees_ros.trees.BehaviourTree(self.root)
+        self.tick_period = 2
+
+    def run(self):
+        self.tree.setup(timeout=5)
+        self.tree.tick_tock(self.tick_period)
+
+    def exit(self):
+        self.tree.interrupt()
+        self.tree.blackboard_exchange.unregister_services()
+        super(DopeThread, self).exit()
 
 class HtmlFormat(logging.Formatter):
     def __init__(self, fmt='[%(module)s:%(lineno)d] [%(levelname)s] %(message)s'):
