@@ -183,7 +183,7 @@ class CardinalityFactorHandler(FactorHandler):
             if var.obj2 == self._obj:
                 relation = srp_md.Relation.REV_RELATION_DICT[relation]
             self._assignment[var] = {'value': relation}
-            self._recurse_generate_factor(var_index + 1)
+            self._recurse_generate_factor(var_index + 1, cached_predictions)
 
 
 # Register the learner
