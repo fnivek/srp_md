@@ -102,21 +102,18 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('/get_goal response:\n{}'.format(resp))
 
         # Turn the response into scene graph
-        goal = copy.deepcopy(obs)
-        for i in range(len(resp.relation)):
-            id_list = [resp.object1[i][resp.object1[i].find('_') + 1:], resp.object2[i][resp.object2[i].find('_') + 1:]]
-            id_list.sort()
-            rel_name = 'R_' + id_list[0] + '_' + id_list[1]
-            for relation in goal.relations:
-                if relation.name == rel_name:
-                    relation.value = resp.relation[i]
-        self._logger.debug('What is resp? %s', resp)
-        self._logger.debug('What are object names? %s', goal.get_obj_names())
-        self._logger.debug('What are relation names? %s', goal.get_rel_names())
-        self._logger.debug('What are relation values? %s', goal.get_rel_values())
-        # self._logger.debug('What are property values? %s', goal.get_prop_values('color'))
-        # self._logger.debug('Is this scene graph consistent? %s', goal.check_consistency("block"))
-        return goal
+        goal_graph = copy.deepcopy(obs)
+        for rel_value, obj1_name, obj2_name in zip(resp.relation, resp.object1, resp.object2):
+            obj1 = goal_graph.get_obj_by_name(obj1_name)
+            obj2 = goal_graph.get_obj_by_name(obj2_name)
+            relation = goal_graph.get_ordered_rel_by_objs(obj1, obj2)
+            relation.value = rel_value
+        self._logger.debug('What are object names? %s', goal_graph.get_obj_names())
+        self._logger.debug('What are relation names? %s', goal_graph.get_rel_names())
+        self._logger.debug('What are relation values? %s', goal_graph.get_rel_values())
+        # self._logger.debug('What are property values? %s', goal_graph.get_prop_values('color'))
+        # self._logger.debug('Is this scene graph consistent? %s', goal_graph.check_consistency("block"))
+        return goal_graph
 
     def make_factor(self, obs, factor_type, factor):
         if len(obs.objs) < factor_type[0] or len(obs.relations) < factor_type[1]:

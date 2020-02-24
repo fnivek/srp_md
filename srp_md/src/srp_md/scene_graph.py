@@ -62,6 +62,12 @@ class SceneGraph(srp_md.FactorGraph):
                 return relation
         return None
 
+    def get_ordered_rel_by_objs(self, obj1, obj2):
+        for relation in self.relations:
+            if (relation.obj1 == obj1) and (relation.obj2 == obj2):
+                return relation
+        return None
+
     def get_prop_values(self, prop=None):
         if prop is None:
             raise ValueError("Property needs to be specified")
