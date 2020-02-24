@@ -30,3 +30,6 @@ from .actions import MoveToStartAct
 from .actions import PickAct
 from .actions import PlaceAct
 from .actions import GetStackPoseAct
+from .actions import MoveToStartAct
+from .actions import GetDopeAndPoseAct
+from .actions import AttachObjectAct

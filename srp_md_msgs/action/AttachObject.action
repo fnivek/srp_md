@@ -1,9 +1,10 @@
 #goal definition
-geometry_msgs/Pose[] poses
+bool toAttach
+string object_name
 ---
 #result definition
 bool success
-int32 pose_index
 ---
 #feedback
 string feedback
+

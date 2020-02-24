@@ -7,6 +7,7 @@
 #include "srp_md/action_servers/free_space_finder_as.h"
 #include "srp_md/action_servers/relative_cartesian_move_as.h"
 #include "srp_md/action_servers/get_stack_pose_as.h"
+#include "srp_md/action_servers/AttachObjectAS.h"
 // ROS
 #include <ros/ros.h>
 
@@ -37,7 +38,8 @@ int main(int argc, char** argv)
     ROS_INFO("Created RelativeCartesianMoveAS.");
     GetStackPoseAS GetStackPoseAS(nh, act, "GetStackPose");
     ROS_INFO("Created GetStackPoseAS.");
-
+    AttachObjectAS attachObjectAS(nh, act, "attach_object");
+    ROS_INFO("Created AttachObjectAS.");
     // Loop forever
     ros::Rate sleep_rate(100);
     while (ros::ok())

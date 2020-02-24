@@ -204,6 +204,11 @@ public:
                            const vision_msgs::BoundingBox3D& relative_obj_bbox, std::vector<geometry_msgs::Pose>& pose, 
                            const float distance);
     geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim);
+    void attach_object_to_gripper(const std::string &object_name);
+
+    // detach object (not physically detach something, but just for moveit to plan)
+    // It's a wrapper function for move_group.detachObject() and Util::print_attached_objects()
+    void detach_object(const std::string &object_name);
 };
 
 

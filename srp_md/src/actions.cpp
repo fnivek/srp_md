@@ -931,6 +931,27 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     return success;
 }
 
+void Act::attach_object_to_gripper(const std::string &object_name)
+{
+    std::vector<std::string> touch_links = { "r_gripper_finger_link", "l_gripper_finger_link", "gripper_link" };
+    move_group_.attachObject(object_name, "gripper_link", touch_links);
+    ROS_INFO("Attach %s", object_name.c_str());
+}
+
+/*  function: detached_object
+    description:
+        detach an object from given the object name
+    args:
+        object_name (string)
+    return:
+        void
+*/
+void Act::detach_object(const std::string &object_name)
+{
+    move_group_.detachObject(object_name);
+    ROS_INFO("Detach %s", object_name.c_str());
+}
+
 /*  function: free_space_finder()
     description:
         finds a free space of the table
@@ -1010,10 +1031,10 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     // std::cout<<relative_obj_bbox.center.orientation.z<<std::endl;
     // std::cout<<relative_obj_bbox.center.orientation.w<<std::endl;
     // std::cout<<obj_bbox.size<<std::endl;
-    Eigen::Quaterniond obj_quat = Eigen::Quaterniond(relative_obj_bbox.center.orientation.w,
-                                                    relative_obj_bbox.center.orientation.x,
-                                                    relative_obj_bbox.center.orientation.y,
-                                                    relative_obj_bbox.center.orientation.z
+    Eigen::Quaterniond obj_quat = Eigen::Quaterniond(obj_bbox.center.orientation.w,
+                                                    obj_bbox.center.orientation.x,
+                                                    obj_bbox.center.orientation.y,
+                                                    obj_bbox.center.orientation.z
                                                     );
     Eigen::Vector3d z_axix = Eigen::Vector3d(0,0,1);
     // std::cout<<"obj_quat * z_axix: "<<obj_quat * z_axix<<std::endl;
