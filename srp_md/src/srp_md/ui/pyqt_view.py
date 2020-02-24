@@ -121,6 +121,7 @@ class PyQtView(view.BaseView):
         self._gui.fileLogFormatComboBox.currentIndexChanged.connect(self.update_file_log_format)
 
         # Display the GUI
+        dir(self._gui)
         self._gui.show()
         # self._gui.resize(self._gui.minimumSizeHint())
 
@@ -304,11 +305,11 @@ class PyQtView(view.BaseView):
 
     def grocery_experiment(self):
         # Use the video widget
-        self._gui.vid = VidWidget()
+        self._gui.vid = VidWidget(self._model, self._ctrl)
         self._gui.vid.run()
 
-        # Run the functionalities
-        self._ctrl.grocery_experiment()
+        # # Run the functionalities
+        # self._ctrl.grocery_experiment()
 
     def run_once(self):
         self.update_from_model()
@@ -318,9 +319,13 @@ class PyQtView(view.BaseView):
         self.timer.timeout.connect(self.run_once)
         self.timer.start(100)
 
-class VidWidget(QDialog):
-    def __init__(self):
+class VidWidget(QWidget):
+    def __init__(self, model, ctrl):
         super(VidWidget, self).__init__()
+        self._model = model
+        self._ctrl = ctrl
+        self._demo_num = 0
+        self._keyframe_num = 0
 
     @pyqtSlot(QImage)
     def setImage(self, image):
@@ -344,7 +349,52 @@ class VidWidget(QDialog):
         self.dope_thread = DopeThread()
         self.dope_thread.start()
 
+        # Connect the buttons
+        self.set_keyframe.pressed.connect(self.set_keyframe_func)
+        self.clear_keyframes.pressed.connect(self.clear_keyframes_func)
+        self.next_demo.pressed.connect(self.next_demo_func)
+        self.save_demos.pressed.connect(self.write_demos)
+        self.get_init.pressed.connect(self._ctrl.get_init_scene)
+        self.process_data.pressed.connect(self.process_keyframes)
+        self.cancel.pressed.connect(self.clear_demos)
+
         self.show()
+
+    def set_keyframe_func(self):
+        # Adds current scene to keyframe
+        self._ctrl.set_keyframe(self._demo_num, self._keyframe_num)
+        self._keyframe_num += 1
+
+    def clear_keyframes_func(self):
+        # Clears keyframes for current demo
+        self._ctrl.clear_keyframes(self._demo_num)
+        self._keyframe_num = 0
+
+    def next_demo_func(self):
+        # Go to next demo
+        self._demo_num += 1
+        self._keyframe_num = 0
+
+    def write_demos(self):
+        # Saves all demos with keyframes
+        script_path = os.path.dirname(os.path.realpath(__file__))
+        self._data_folder = os.path.realpath(script_path + '/../../../../data')
+        demo_file = QFileDialog.getSaveFileName(self, caption='Input Directory Name', directory=self._data_folder,
+                                                filter='All files (*.*)')
+        if demo_file[0] == '':
+            pass
+        else:
+            self._ctrl.write_keyframes_demos(demo_file[0])
+
+    def process_keyframes(self):
+        # Go to next demo
+        self._ctrl.process_keyframes()
+        self.close()
+
+    def clear_demos(self):
+        # Clears the demos and closes the window
+        self._ctrl.clear_demos()
+        self.close()
 
     def closeEvent(self, event):
         self.vid_thread.exit()
