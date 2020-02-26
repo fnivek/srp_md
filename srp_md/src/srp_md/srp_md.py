@@ -562,7 +562,9 @@ class SrpMd(object):
         # If the initial scene was given, process data for that scene
         self._logger.debug('Processing initial scene...')
         for i in range(len(self._initial_scenes)):
-            new_graph = self._sensor.process_data(self._initial_scenes[i])
+            init_scene = self._initial_scenes[i]
+            init_scene["indices"] = []
+            new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
         self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
 
@@ -590,14 +592,12 @@ class SrpMd(object):
                 # Convert to cv2 image
                 br = bridge.CvBridge()
                 cv_image = br.imgmsg_to_cv2(image)
-                # cv_image = br.imgmsg_to_cv2(image, "rgb8")
-                # cv2.imshow("demo: {}, frame: {}".format(i, j), cv_image)
-                # cv2.waitKey()
 
                 # If first image, just store to past data
                 if j==0:
                     cv_image_init = cv_image
                     prev_depth = depth
+                    frame['indices'] = []
 
                 # For following images, do:
                 else:
