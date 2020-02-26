@@ -13,6 +13,7 @@ import rospy
 from . import goal_generator
 from srp_md_msgs.srv import GetGoal, GetGoalRequest
 from srp_md_msgs.msg import Factor
+from srp_md import learn
 import srp_md
 
 
@@ -24,7 +25,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._goal_client = None
         self._goal_client_name = '/get_goal'
         self._goal_client_changed = True
-        self.use_consistency = True
+        self.use_consistency = False
         self.use_commonsense = False
         self.use_no_float = True
 
@@ -80,23 +81,11 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         #   For each type of factor generate all possible combinations
         #   If there are not enough vars for the factor the factor is skipped
         for factor_type, handler in factors.iteritems():
-            ros_factor = None
-            if len(obs.objs) < factor_type[0] or len(obs.relations) < factor_type[1]:
-                self._logger.debug(
-                    'Can not make a factor of type {} because there are {} objects and {} relations'.format(
-                        factor_type, len(obs.objs), len(obs.relations)))
-                continue
-            # Generate all combinations of objects
-            for objects in itertools.combinations(obs.objs, factor_type[0]):
-                # Generate all possible relationship vars and assign a uuid
-                pairs = []
-                new_uuid = obs.get_new_uuid()
-                for pair in itertools.combinations(objects, 2):
-                    relation = srp_md.Relation(list(pair), uuid=new_uuid + len(pairs))
-                    pairs.append(relation)
-                # Use the LearnedFactor to generate a ros_factor for each combination
-                ros_factor = handler.generate_factor(objects + tuple(pairs)).to_ros_factor()
-                req.factors.append(ros_factor)
+            if isinstance(handler, learn.CardinalityFactorHandler):
+                req.factors.extend(self.make_cardinality_factor(obs, factor_type, handler))
+                pass
+            else:
+                req.factors.extend(self.make_factor(obs, factor_type, handler))
 
         self._logger.debug('Get goal request is:\n{}'.format(req))
 
@@ -113,21 +102,49 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('/get_goal response:\n{}'.format(resp))
 
         # Turn the response into scene graph
-        goal = copy.deepcopy(obs)
-        for i in range(len(resp.relation)):
-            id_list = [resp.object1[i][resp.object1[i].find('_') + 1:], resp.object2[i][resp.object2[i].find('_') + 1:]]
-            id_list.sort()
-            rel_name = 'R_' + id_list[0] + '_' + id_list[1]
-            for relation in goal.relations:
-                if relation.name == rel_name:
-                    relation.value = resp.relation[i]
-        self._logger.debug('What is resp? %s', resp)
-        self._logger.debug('What are object names? %s', goal.get_obj_names())
-        self._logger.debug('What are relation names? %s', goal.get_rel_names())
-        self._logger.debug('What are relation values? %s', goal.get_rel_values())
-        # self._logger.debug('What are property values? %s', goal.get_prop_values('color'))
-        # self._logger.debug('Is this scene graph consistent? %s', goal.check_consistency("block"))
-        return goal
+        goal_graph = copy.deepcopy(obs)
+        for rel_value, obj1_name, obj2_name in zip(resp.relation, resp.object1, resp.object2):
+            obj1 = goal_graph.get_obj_by_name(obj1_name)
+            obj2 = goal_graph.get_obj_by_name(obj2_name)
+            relation = goal_graph.get_ordered_rel_by_objs(obj1, obj2)
+            relation.value = rel_value
+        self._logger.debug('What are object names? %s', goal_graph.get_obj_names())
+        self._logger.debug('What are relation names? %s', goal_graph.get_rel_names())
+        self._logger.debug('What are relation values? %s', goal_graph.get_rel_values())
+        # self._logger.debug('What are property values? %s', goal_graph.get_prop_values('color'))
+        # self._logger.debug('Is this scene graph consistent? %s', goal_graph.check_consistency("block"))
+        return goal_graph
+
+    def make_factor(self, obs, factor_type, factor):
+        if len(obs.objs) < factor_type[0] or len(obs.relations) < factor_type[1]:
+            error_msg = 'Can not make a factor of type {} because there are {} objects and {} relations'.format(
+                    factor_type, len(obs.objs), len(obs.relations))
+            self._logger.error(error_msg)
+            raise Exception(error_msg)
+        # Generate all combinations of objects
+        ros_factors = []
+        for objects in itertools.combinations(obs.objs, factor_type[0]):
+            # Generate all possible relationship vars and assign a uuid
+            pairs = []
+            new_uuid = obs.get_new_uuid()
+            for pair in itertools.combinations(objects, 2):
+                relation = srp_md.Relation(list(pair), uuid=new_uuid + len(pairs))
+                pairs.append(relation)
+            # Use the LearnedFactor to generate a ros_factor for each combination
+            ros_factors.append(factor.generate_factor(objects + tuple(pairs)).to_ros_factor())
+        return ros_factors
+
+    def make_cardinality_factor(self, obs, factor_type, factor):
+        ros_factors = []
+        for obj in obs.objs:
+            # Only do factors for the correct class
+            if obj.assignment['class'] != factor._class_name:
+                continue
+            # Iterate over all relations
+            ros_factors.append(factor.generate_factor(
+                [rel for rel in obs.relations if rel.obj1 == obj or rel.obj2 == obj]).to_ros_factor())
+
+        return ros_factors
 
 
 # Register the goal generator

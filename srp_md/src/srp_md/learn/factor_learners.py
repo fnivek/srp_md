@@ -79,21 +79,23 @@ class JointFreqFactorLearner:
     def __init__(self):
         # List of dictionaries of dictionaries [{{}}]
         self._joint_assignments = {}
+        self._total = 0
 
     def observe(self, obs, markov_blanket):
         # Add joint assignment
+        self._total += 1
         joint_assignment = tuple(assign_to_vals(obs))
-        if joint_assignment in self._joint_assignments:
+        try:
             self._joint_assignments[joint_assignment] += 1
-        else:
+        except KeyError:
             self._joint_assignments[joint_assignment] = 1
 
     def predict(self, assignment):
         key = tuple(assign_to_vals(assignment))
-        if key in self._joint_assignments:
-            return self._joint_assignments[key]
-
-        return 0
+        try:
+            return self._joint_assignments[key] / self._total
+        except KeyError:
+            return 0
 
 
 FACTOR_LEARNERS['joint_frequency'] = JointFreqFactorLearner

@@ -220,14 +220,14 @@ class SrpMd(object):
             self._logger.error('Please select sensor!')
         # If the initial scene was not given, process data for all currently saved demonstrations
         self._logger.debug('Processing demonstrations...')
-        for i in range(len(self._raw_images)):
-            new_graph = self._sensor.process_data(self._raw_images[i])
+        for raw_image in self._raw_images:
+            new_graph = self._sensor.process_data(raw_image)
             self._demo_graphs.append(new_graph)
         self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
         # If the initial scene was given, process data for that scene
         self._logger.debug('Processing initial scene...')
-        for i in range(len(self._initial_scenes)):
-            new_graph = self._sensor.process_data(self._initial_scenes[i])
+        for init_scene in self._initial_scenes:
+            new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
         self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
 
@@ -262,8 +262,8 @@ class SrpMd(object):
                 # If initial scene was seen, get goal instance
                 else:
                     self._logger.info('Generating goal scenes from initial scenes...\n')
-                    for i in range(len(self._initial_graphs)):
-                        goal_instance = self._goal_generator.generate_goal(self._factors, self._initial_graphs[i])
+                    for init_graph in self._initial_graphs:
+                        goal_instance = self._goal_generator.generate_goal(self._factors, init_graph)
                         self._goal_instances.append(goal_instance)
                     self._logger.debug('The goal scenes are: {}'.format(self._goal_instances))
             # If not using factor graph generator, just generate goal without inputs
