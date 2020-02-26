@@ -13,7 +13,7 @@ from . import goal
 from . import evaluate
 from . import plan
 from . import act
-from .pcd_io import write_pcd
+from .pcd_io import write_pcd, pointcloud2_to_array, array_to_pointcloud2
 from .utils import pose_difference
 from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
 import srp_md
@@ -30,12 +30,16 @@ import tf
 import cv_bridge as bridge
 import cv2
 import numpy as np
+import math
 import py_trees, py_trees_ros
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
+import sensor_msgs.point_cloud2 as pc2
 from geometry_msgs.msg import PoseStamped, Pose, Vector3
 from collections import defaultdict
 from vision_msgs.msg import BoundingBox3D
 from jsk_recognition_msgs.msg import BoundingBox, BoundingBoxArray
+from copy import deepcopy
+import random
 
 
 class SrpMd(object):
@@ -514,13 +518,11 @@ class SrpMd(object):
 
         for i, demo in enumerate(self._raw_images):
             demo_dirname = os.path.join(dirname, str(i + 1))
-            frame_dirname = os.path.join(demo_dirname, "keyframes")
             os.mkdir(demo_dirname)
-            os.mkdir(frame_dirname)
 
-            keyframe_filename = os.path.join(frame_dirname, "frame")
+            keyframe_filename = os.path.join(demo_dirname, "frame")
 
-            for j in range(len(demo) - 1):
+            for j in range(len(demo)):
                 image = demo[j]
                 br = bridge.CvBridge()
                 cv_image = br.imgmsg_to_cv2(image["image"],)
@@ -533,25 +535,15 @@ class SrpMd(object):
                             f.write("{} ".format(image["tf"][k, l]))
                         f.write("\n")
 
-            final_scene_filename = os.path.join(demo_dirname, "goal_scene")
-            image = demo[-1]
-            br = bridge.CvBridge()
-            cv_image = br.imgmsg_to_cv2(image["image"],)
-            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(final_scene_filename + ".png", cv_image)
-            write_pcd(final_scene_filename + ".pcd", image["points"], overwrite=True)
-            with open(final_scene_filename + ".txt", "w") as f:
-                for k in range(image["tf"].shape[0]):
-                    for l in range(image["tf"].shape[1]):
-                        f.write("{} ".format(image["tf"][k, l]))
-                    f.write("\n")
-
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def clear_keyframes(self, demo_num):
         self._raw_images[demo_num] = []
 
     def process_keyframes(self):
+        # Process the images for cropping
+        self.filter_keyframes()
+
         # Reset all graphs
         self._demo_graphs = []
         self._initial_graphs = []
@@ -574,7 +566,97 @@ class SrpMd(object):
             self._initial_graphs.append(new_graph)
         self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
 
-        self.demo_publisher(len(self._raw_images))
+        self.demo_publisher(self._raw_images)
+
+    def filter_keyframes(self, depth_diff_threshold=0.02, depth_filter_threshold=1.7):
+        # For each demos, do:
+        for i, demo in enumerate(self._raw_images):
+            # For each keyframe, do:
+            for j, frame in enumerate(demo):
+                # Get the stored image and pointcloud
+                image = frame["image"]
+                pcd = frame["points"]
+
+                # Get the depth value from pointcloud
+                depth = np.zeros((pcd.height, pcd.width), dtype='float32')
+                ind = 0
+                for p in pc2.read_points(pcd, skip_nans=False, field_names=("x", "y", "z")):
+                    if p[2] > depth_filter_threshold:
+                        pass
+                    else:
+                        depth[int(math.floor(ind / pcd.width)), int(ind % pcd.width)] = p[2]
+                    ind += 1
+
+                # Convert to cv2 image
+                br = bridge.CvBridge()
+                cv_image = br.imgmsg_to_cv2(image)
+                # cv_image = br.imgmsg_to_cv2(image, "rgb8")
+                # cv2.imshow("demo: {}, frame: {}".format(i, j), cv_image)
+                # cv2.waitKey()
+
+                # If first image, just store to past data
+                if j==0:
+                    cv_image_init = cv_image
+                    prev_depth = depth
+
+                # For following images, do:
+                else:
+                    # Compare prev_depth and depth for background subtraction
+                    filter_array = np.nan_to_num(np.abs(prev_depth-depth)) > depth_diff_threshold
+
+                    # Morphology
+                    filter_array = filter_array.astype('uint8') * 255
+                    kernel = np.ones((5, 5), np.uint8)
+                    filter_array = cv2.morphologyEx(filter_array, cv2.MORPH_OPEN, kernel, iterations=1)
+
+                    # Filter the images and give white background
+                    filter_array = filter_array > 0
+                    negative = filter_array == 0
+                    cv_image_filtered = np.zeros(cv_image.shape, dtype='uint8')
+                    cv_image_filtered[:, :, 0] = (cv_image[:, :, 0] * filter_array).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 0].astype('float32')
+                    cv_image_filtered[:, :, 1] = (cv_image[:, :, 1] * filter_array).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 1].astype('float32')
+                    cv_image_filtered[:, :, 2] = (cv_image[:, :, 2] * filter_array).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 2].astype('float32')
+                    frame["image"] = br.cv2_to_imgmsg(cv_image_filtered, "rgb8")
+                    # cv2.imshow("demo: {}, frame: {}".format(i, j), cv_image_filtered)
+                    # cv2.waitKey()
+
+                    # Find the largest connected component (Our new object!)
+                    nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(filter_array.astype('uint8'), connectivity=4)
+                    sizes = stats[:, -1]
+                    max_label = 1
+                    max_size = sizes[1]
+                    for k in range(2, nb_components):
+                        if sizes[k] > max_size:
+                            max_label = k
+                            max_size = sizes[k]
+
+                    largest_comp_mask = np.zeros(output.shape)
+                    largest_comp_mask[output == max_label] = 255
+                    # cv2.imshow("demo: {}, frame: {}".format(i, j), largest_comp_mask)
+                    # cv2.waitKey()
+
+                    # Use convex hull to get the full compact points
+                    contours, _ = cv2.findContours(largest_comp_mask.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    largest_sum = 0
+                    largest_convex_mask = np.zeros_like(largest_comp_mask, dtype='uint8')
+                    for k in range(len(contours)):
+                        hull_indices = cv2.convexHull(contours[k], returnPoints=False)
+                        hull_indices = [ind for row in hull_indices.tolist() for ind in row]
+                        convex_mask = np.zeros_like(largest_comp_mask, dtype='uint8')
+                        cv2.fillConvexPoly(convex_mask, np.array([contours[k][l, :] for l in hull_indices], np.int32), 255)
+                        if convex_mask.sum() > largest_sum:
+                            largest_sum = convex_mask.sum()
+                            largest_convex_mask = convex_mask
+                    cv2.imshow("demo: {}, frame: {}".format(i, j), largest_convex_mask)
+                    cv2.waitKey()
+
+                    # Get all non-zero indices
+                    pc_indices = largest_convex_mask.nonzero()
+                    frame["indices"] = [row * pcd.width + col for row, col in
+                                        zip(pc_indices[0].tolist(), pc_indices[1].tolist())]
+                    # print(frame["indices"])
+
+                    prev_depth = depth
 
     def generate_obj_ass_sg(self, demo_num, demo):
         # Initialize variables
@@ -595,7 +677,7 @@ class SrpMd(object):
                     # Add with new uuid
                     ind = obj_key.rfind("_")
                     new_id = obj_key[:ind] + '_' + str(object_counts[obj_key[:ind]])
-                    print(type(new_id))
+                    # print(type(new_id))
                     all_obj_bboxes[new_id] = obj_bboxes[obj_key]
                     req.names.append(new_id)
                     req.objects.append(obj_bboxes[obj_key])
@@ -622,7 +704,7 @@ class SrpMd(object):
                     if closest_dist > 0.01:
                         ind = obj_post_key.rfind("_")
                         new_id = obj_post_key[:ind] + '_' + str(object_counts[obj_post_key[:ind]])
-                        print(type(new_id))
+                        # print(type(new_id))
                         all_obj_bboxes[new_id] = obj_bboxes[obj_post_key]
                         req.names.append(new_id)
                         req.objects.append(obj_bboxes[obj_post_key])
@@ -668,25 +750,32 @@ class SrpMd(object):
 
         return scene_graph
 
-    def demo_publisher(self, demo_num):
-        publisher_list = []
+    def demo_publisher(self, demo):
+        bbox_pub_list = []
+        pc_pub_list = []
         rate = rospy.Rate(10)
-        for i in range(demo_num):
-            pub_name = 'demo_{}'.format(str(i))
-            publisher_list.append(rospy.Publisher(pub_name, BoundingBoxArray, queue_size=2))
+        for i in range(len(demo)):
+            bbox_pub_name = 'demo_{}_bboxes'.format(str(i))
+            pc_pub_name = 'demo_{}_pc'.format(str(i))
+            bbox_pub_list.append(rospy.Publisher(bbox_pub_name, BoundingBoxArray, queue_size=2))
+            pc_pub_list.append(rospy.Publisher(pc_pub_name, PointCloud2, queue_size=1))
 
-        while True:
-            for i in range(demo_num):
+        for i in range(20):
+            for i in range(len(demo)):
                 bbox_array = BoundingBoxArray()
-                bbox_array.header.frame_id = "base_link"
+                bbox_array.header.frame_id = "head_camera_rgb_optical_frame"#"base_link"
                 obj_bboxes = py_trees.blackboard.Blackboard().get('demo_{}'.format(str(i)))
                 for obj_key in obj_bboxes.keys():
                     bbox = BoundingBox()
-                    bbox.header.frame_id = "base_link"
+                    bbox.header.frame_id = "head_camera_rgb_optical_frame"#"base_link"
                     bbox.pose = obj_bboxes[obj_key].center
                     bbox.dimensions = obj_bboxes[obj_key].size
                     bbox_array.boxes.append(bbox)
-                publisher_list[i].publish(bbox_array)
+                bbox_pub_list[i].publish(bbox_array)
+                pc = demo[i][-1]["points"]
+                pc.header.stamp = rospy.Time.now()
+                pc_pub_list[i].publish(pc)
+
             rate.sleep()
 
 

@@ -1,0 +1,137 @@
+#!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+import rospy
+import os
+import srp_md
+import pickle
+import numpy as np
+import cv2
+import cv_bridge as bridge
+import actionlib
+from dope_msgs.msg import DopeAction, DopeGoal
+from scipy.spatial.transform import Rotation as R
+
+def load_data(dirname):
+    pickle_name = os.path.join(dirname, "data.pickle")
+    demos = pickle.load(open(pickle_name, 'rb'))
+    print("Successfully loaded pickle data!")
+
+    for i, demo in enumerate(demos):
+        demo_dirname = os.path.join(dirname, str(i + 1))
+        keyframe_filename = os.path.join(demo_dirname, "frame")
+
+        for j, image in enumerate(demo):
+            br = bridge.CvBridge()
+            cv_image = cv2.imread(keyframe_filename + "_{}.png".format(j + 1))
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            image["image"] = br.cv2_to_imgmsg(cv_image, "rgb8")
+
+    return demos
+
+class Dope():
+    def __init__(self):
+
+        # Set timeout
+        self._timeout = 15
+
+        # Initilize properties
+        self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach', 'table']}
+
+        # Action clients
+        self._dope_goal = None
+        self._dope_client = actionlib.SimpleActionClient('dope', DopeAction)
+
+    def process_data(self, demo_num, keyframe, data):
+        # Get Dope detections
+        self._dope_goal = DopeGoal()
+        self._dope_goal.image = data["image"]
+        self._dope_goal.cam_info = data["info"]
+        self._dope_goal.pc = data['points']
+        self._tf = data["tf"]
+        if self._dope_goal is None:
+            return None
+        self._dope_client.send_goal(self._dope_goal)
+
+        # Wait for action servers to return
+        self._dope_client.wait_for_result(rospy.Duration(self._timeout))
+
+        # Get Dope result
+        dope_result = self._dope_client.get_result()
+        if dope_result is None:
+            print('Failed to get result from Dope within {}s'.format(self._timeout))
+            return None
+        print('Dope result is {}'.format(dope_result))
+
+        for detection in dope_result.detections:
+            rot = R.from_quat([detection.bbox.center.orientation.x, detection.bbox.center.orientation.y,
+                detection.bbox.center.orientation.z, detection.bbox.center.orientation.w]).as_dcm()
+            pose = np.eye(4)
+            pose[0:3, 0:3] = rot
+            pose[0:3, 3] = [detection.bbox.center.position.x, detection.bbox.center.position.y,
+                detection.bbox.center.position.z]
+            # Transform
+            pose = np.dot(self._tf, pose)
+            # Convert back to ros msg
+            q = R.from_dcm(pose[0:3, 0:3]).as_quat()
+            detection.bbox.center.position.x = pose[0, 3]
+            detection.bbox.center.position.y = pose[1, 3]
+            detection.bbox.center.position.z = pose[2, 3]
+            detection.bbox.center.orientation.x = q[0]
+            detection.bbox.center.orientation.y = q[1]
+            detection.bbox.center.orientation.z = q[2]
+            detection.bbox.center.orientation.w = q[3]
+
+        # Build scene graph
+        obj_bboxes = {}
+        class_ids = rospy.get_param("/dope/class_ids")
+        class_names = {class_id: name for name, class_id in class_ids.iteritems()}
+        uuid = 0
+        for detection in dope_result.detections:
+            obj_bboxes[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
+            uuid += 1
+
+        print('The object bboxes for demo {}, frame {}: {}'.format(demo_num, keyframe, obj_bboxes))
+
+        return
+
+def main():
+    # Init ros
+    rospy.init_node('srp_md_dope_test')
+
+    # Load the demos
+    cur_path = os.path.dirname(os.path.realpath(__file__))
+    data_folder = os.path.realpath(cur_path + '/../../../data')
+    demos = load_data(os.path.join(data_folder, 'human_filtered'))
+
+    # Initialize Dope
+    dope = Dope()
+
+    # Send the data to dope
+    for i, demo in enumerate(demos):
+        for j, image in enumerate(demo):
+            dope.process_data(i, j, image)
+
+    # Run the node
+    # rate = rospy.Rate(10)
+    # for i in range(demo_num):
+        # pub_name = 'demo_{}'.format(str(i))
+        # publisher_list.append(rospy.Publisher(pub_name, BoundingBoxArray, queue_size=2))
+
+    # while True:
+    #     for i in range(demo_num):
+    #         bbox_array = BoundingBoxArray()
+    #         bbox_array.header.frame_id = "base_link"
+    #         obj_bboxes = py_trees.blackboard.Blackboard().get('demo_{}'.format(str(i)))
+    #         for obj_key in obj_bboxes.keys():
+    #             bbox = BoundingBox()
+    #             bbox.header.frame_id = "base_link"
+    #             bbox.pose = obj_bboxes[obj_key].center
+    #             bbox.dimensions = obj_bboxes[obj_key].size
+    #             bbox_array.boxes.append(bbox)
+    #         publisher_list[i].publish(bbox_array)
+    #     rate.sleep()
+
+
+if __name__ == '__main__':
+    main()
