@@ -611,14 +611,6 @@ class SrpMd(object):
 
                     # Filter the images and give white background
                     filter_array = filter_array > 0
-                    negative = filter_array == 0
-                    cv_image_filtered = np.zeros(cv_image.shape, dtype='uint8')
-                    cv_image_filtered[:, :, 0] = (cv_image[:, :, 0] * filter_array).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 0].astype('float32')
-                    cv_image_filtered[:, :, 1] = (cv_image[:, :, 1] * filter_array).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 1].astype('float32')
-                    cv_image_filtered[:, :, 2] = (cv_image[:, :, 2] * filter_array).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 2].astype('float32')
-                    frame["image"] = br.cv2_to_imgmsg(cv_image_filtered, "rgb8")
-                    # cv2.imshow("demo: {}, frame: {}".format(i, j), cv_image_filtered)
-                    # cv2.waitKey()
 
                     # Find the largest connected component (Our new object!)
                     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(filter_array.astype('uint8'), connectivity=4)
@@ -632,8 +624,6 @@ class SrpMd(object):
 
                     largest_comp_mask = np.zeros(output.shape)
                     largest_comp_mask[output == max_label] = 255
-                    # cv2.imshow("demo: {}, frame: {}".format(i, j), largest_comp_mask)
-                    # cv2.waitKey()
 
                     # Use convex hull to get the full compact points
                     contours, _ = cv2.findContours(largest_comp_mask.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -643,18 +633,23 @@ class SrpMd(object):
                         hull_indices = cv2.convexHull(contours[k], returnPoints=False)
                         hull_indices = [ind for row in hull_indices.tolist() for ind in row]
                         convex_mask = np.zeros_like(largest_comp_mask, dtype='uint8')
-                        cv2.fillConvexPoly(convex_mask, np.array([contours[k][l, :] for l in hull_indices], np.int32), 255)
+                        cv2.fillConvexPoly(convex_mask, np.array([contours[k][l, :] for l in hull_indices], np.int32), 1)
                         if convex_mask.sum() > largest_sum:
                             largest_sum = convex_mask.sum()
                             largest_convex_mask = convex_mask
-                    cv2.imshow("demo: {}, frame: {}".format(i, j), largest_convex_mask)
-                    cv2.waitKey()
 
                     # Get all non-zero indices
                     pc_indices = largest_convex_mask.nonzero()
                     frame["indices"] = [row * pcd.width + col for row, col in
                                         zip(pc_indices[0].tolist(), pc_indices[1].tolist())]
-                    # print(frame["indices"])
+
+                    negative = largest_convex_mask == 0
+                    cv_image_filtered = np.zeros(cv_image.shape, dtype='uint8')
+                    cv_image_filtered[:, :, 0] = (cv_image[:, :, 0] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 0].astype('float32')
+                    cv_image_filtered[:, :, 1] = (cv_image[:, :, 1] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 1].astype('float32')
+                    cv_image_filtered[:, :, 2] = (cv_image[:, :, 2] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 2].astype('float32')
+                    cv_image_filtered = br.cv2_to_imgmsg(cv_image_filtered, "rgb8")
+                    frame['image'] = cv_image_filtered
 
                     prev_depth = depth
 
