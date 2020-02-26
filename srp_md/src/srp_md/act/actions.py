@@ -1004,15 +1004,16 @@ class InfiniteDopeAct(py_trees_ros.actions.ActionClient):
             self.feedback_message = "no action client, did you call setup() on your tree?"
             return py_trees.Status.INVALID
 
+        if not self.sent_goal:
+            if self.action_goal.cam_info != CameraInfo() and self.action_goal.image != ImageSensor_msg():
+                self.action_client.send_goal(self.action_goal)
+                self.sent_goal = True
+                self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+
         if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
                                               actionlib_msgs.GoalStatus.PREEMPTED]:
             return py_trees.Status.FAILURE
-
-        if self.action_goal.cam_info != CameraInfo() and self.action_goal.image != ImageSensor_msg() and not self.sent_goal:
-            self.action_client.send_goal(self.action_goal)
-            self.sent_goal = True
-            self.feedback_message = "sent goal to the action server"
-            return py_trees.Status.RUNNING
 
         result = self.action_client.get_result()
         if result:
