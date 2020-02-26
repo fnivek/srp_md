@@ -554,8 +554,8 @@ class SrpMd(object):
 
         # If the initial scene was not given, process data for all currently saved demonstrations
         self._logger.debug('Processing demonstrations...')
-        for i, demo in enumerate(self._raw_images):
-            new_graph = self.generate_obj_ass_sg(i, demo)
+        for demo_num, demo in enumerate(self._raw_images):
+            new_graph = self.generate_obj_ass_sg(demo_num, demo[1:])
             self._demo_graphs.append(new_graph)
         self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
 
