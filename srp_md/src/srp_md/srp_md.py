@@ -658,7 +658,8 @@ class SrpMd(object):
     def generate_obj_ass_sg(self, demo_num, demo):
         # Initialize variables
         all_obj_bboxes = {}
-        object_counts = defaultdict(int)
+        # object_counts = defaultdict(int)
+        uuid = 0
         req = PoseToSceneGraphRequest()
         req.names = []
         req.objects = []
@@ -673,12 +674,14 @@ class SrpMd(object):
                 for obj_key in obj_bboxes.keys():
                     # Add with new uuid
                     ind = obj_key.rfind("_")
-                    new_id = obj_key[:ind] + '_' + str(object_counts[obj_key[:ind]])
+                    # new_id = obj_key[:ind] + '_' + str(object_counts[obj_key[:ind]])
+                    new_id = obj_key[:ind] + '_' + str(uuid)
                     # print(type(new_id))
                     all_obj_bboxes[new_id] = obj_bboxes[obj_key]
                     req.names.append(new_id)
                     req.objects.append(obj_bboxes[obj_key])
-                    object_counts[obj_key[:ind]] += 1
+                    # object_counts[obj_key[:ind]] += 1
+                    uuid += 1
 
             # For later keyframes, compare with existing bath of objects
             else:
@@ -700,17 +703,20 @@ class SrpMd(object):
                     # If the object is far away from previous objects, add to the dictionary
                     if closest_dist > 0.01:
                         ind = obj_post_key.rfind("_")
-                        new_id = obj_post_key[:ind] + '_' + str(object_counts[obj_post_key[:ind]])
+                        # new_id = obj_post_key[:ind] + '_' + str(object_counts[obj_post_key[:ind]])
+                        new_id = obj_post_key[:ind] + '_' + str(uuid)
                         # print(type(new_id))
                         all_obj_bboxes[new_id] = obj_bboxes[obj_post_key]
                         req.names.append(new_id)
                         req.objects.append(obj_bboxes[obj_post_key])
-                        object_counts[obj_post_key[:ind]] += 1
+                        # object_counts[obj_post_key[:ind]] += 1
+                        uuid += 1
 
         # self._logger.debug('Collected objects: {}'.format(all_obj_bboxes))
         py_trees.blackboard.Blackboard().set('demo_{}'.format(str(demo_num)), all_obj_bboxes)
 
-        table_uuid = sum(object_counts.values())
+        # table_uuid = sum(object_counts.values())
+        table_uuid = uuid
         req.names.append('table')
         req.objects.append(BoundingBox3D())
 
