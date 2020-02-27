@@ -83,11 +83,10 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         for factor_type, handler in factors.iteritems():
             if isinstance(handler, learn.CardinalityFactorHandler):
                 req.factors.extend(self.make_cardinality_factor(obs, factor_type, handler))
-                pass
             else:
                 req.factors.extend(self.make_factor(obs, factor_type, handler))
 
-        self._logger.debug('Get goal request is:\n{}'.format(req))
+        # self._logger.debug('Get goal request is:\n{}'.format(req))
 
         # Get the response
         resp = None
@@ -99,7 +98,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             self._logger.error('Failed when calling /get_goal service: {}'.format(e))
             raise
 
-        self._logger.debug('/get_goal response:\n{}'.format(resp))
+        # self._logger.debug('/get_goal response:\n{}'.format(resp))
 
         # Turn the response into scene graph
         goal_graph = copy.deepcopy(obs)

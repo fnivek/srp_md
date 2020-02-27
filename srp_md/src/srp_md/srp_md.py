@@ -267,7 +267,7 @@ class SrpMd(object):
                     for init_graph in self._initial_graphs:
                         goal_instance = self._goal_generator.generate_goal(self._factors, init_graph)
                         self._goal_instances.append(goal_instance)
-                    self._logger.debug('The goal scenes are: {}'.format(self._goal_instances))
+                    self._logger.debug('The goal scenes are:\n{}'.format(''.join([str(goal) + '\n' for goal in self._goal_instances])))
             # If not using factor graph generator, just generate goal without inputs
             else:
                 self._goal_instances = self._goal_generator.generate_goal()
@@ -559,7 +559,7 @@ class SrpMd(object):
         for demo_num, demo in enumerate(self._raw_images):
             new_graph = self.generate_obj_ass_sg(demo_num, demo[1:])
             self._demo_graphs.append(new_graph)
-        self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
+        self._logger.debug('The demonstrations are:\n{}'.format(''.join([str(demo) + '\n' for demo in self._demo_graphs])))
 
         # If the initial scene was given, process data for that scene
         self._logger.debug('Processing initial scene...')
@@ -568,7 +568,7 @@ class SrpMd(object):
             init_scene["indices"] = []
             new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
-        self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
+        self._logger.debug('The initial scenes are:\n{}'.format(''.join([str(init_graph) + '\n' for init_graph in self._initial_graphs])))
 
         self.demo_publisher(self._raw_images)
 
@@ -707,7 +707,7 @@ class SrpMd(object):
                         req.objects.append(obj_bboxes[obj_post_key])
                         object_counts[obj_post_key[:ind]] += 1
 
-        self._logger.debug('Collected objects: {}'.format(all_obj_bboxes))
+        # self._logger.debug('Collected objects: {}'.format(all_obj_bboxes))
         py_trees.blackboard.Blackboard().set('demo_{}'.format(str(demo_num)), all_obj_bboxes)
 
         table_uuid = sum(object_counts.values())
@@ -720,7 +720,7 @@ class SrpMd(object):
             self._logger.error('Failed to get scene graph from pose: {}'.format(e))
             return None
         # Convert ros msg to scene graph
-        self._logger.debug('Pose to scene graph result: {}'.format(resp))
+        # self._logger.debug('Pose to scene graph result: {}'.format(resp))
         # Make srp_md objects
         objs = []
         for name in req.names:
@@ -745,6 +745,7 @@ class SrpMd(object):
             if rel.obj1 != obj1:
                 rel.rev_relation()
 
+        print("Scenegraph for demo {}:\n{}".format(demo_num, str(scene_graph)))
         return scene_graph
 
     def demo_publisher(self, demo):

@@ -58,7 +58,7 @@ class DopeSensor(sense.BaseSensor):
         if dope_result is None:
             self._logger.error('Failed to get result from Dope within {}s'.format(self._timeout))
             return None
-        self._logger.debug('Dope result is {}'.format(dope_result))
+        # self._logger.debug('Dope result is {}'.format(dope_result))
 
         # Transform dope msgs
         for detection in dope_result.detections:
@@ -101,7 +101,7 @@ class DopeSensor(sense.BaseSensor):
         req.objects.append(BoundingBox3D())
 
         py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
-        self._logger.debug('The object bboxes: {}'.format(obj_bboxes))
+        # self._logger.debug('The object bboxes: {}'.format(obj_bboxes))
 
         try:
             resp = self._pose_to_scene_graph_client(req)
@@ -109,7 +109,7 @@ class DopeSensor(sense.BaseSensor):
             self._logger.error('Failed to get scene graph from pose: {}'.format(e))
             return None
         # Convert ros msg to scene graph
-        self._logger.debug('Pose to scene graph result: {}'.format(resp))
+        # self._logger.debug('Pose to scene graph result: {}'.format(resp))
         # Make srp_md objects
         objs = []
         for name in req.names:
