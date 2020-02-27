@@ -221,12 +221,14 @@ class SrpMd(object):
         # If the initial scene was not given, process data for all currently saved demonstrations
         self._logger.debug('Processing demonstrations...')
         for raw_image in self._raw_images:
+            raw_image['indices'] = []
             new_graph = self._sensor.process_data(raw_image)
             self._demo_graphs.append(new_graph)
         self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
         # If the initial scene was given, process data for that scene
         self._logger.debug('Processing initial scene...')
         for init_scene in self._initial_scenes:
+            init_scene['indices'] = []
             new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
         self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
