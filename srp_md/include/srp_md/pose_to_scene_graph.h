@@ -16,7 +16,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <ros/ros.h>
-#include <XmlRpcValue.h>
 #include <tf/tf.h>
 #include <tf_conversions/tf_eigen.h>
 
@@ -42,9 +41,6 @@ class PoseToSceneGraph
     ros::ServiceServer server_;
     scene_graph::SceneGraph scene_graph_;
     std::vector<scene_graph::Object> clear_objects_;
-    std::map<std::string, Eigen::Vector3f> dimensions_;
-
-  private:
 
     bool CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req, srp_md_msgs::PoseToSceneGraph::Response& resp);
 
