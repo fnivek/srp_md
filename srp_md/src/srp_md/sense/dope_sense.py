@@ -60,27 +60,27 @@ class DopeSensor(sense.BaseSensor):
             return None
         self._logger.debug('Dope result is {}'.format(dope_result))
 
-        # # Transform dope msgs
-        # for detection in dope_result.detections:
-        #     # Transform pose to base_link
-        #     # Convert pose to numpy
-        #     rot = R.from_quat([detection.bbox.center.orientation.x, detection.bbox.center.orientation.y,
-        #         detection.bbox.center.orientation.z, detection.bbox.center.orientation.w]).as_dcm()
-        #     pose = np.eye(4)
-        #     pose[0:3, 0:3] = rot
-        #     pose[0:3, 3] = [detection.bbox.center.position.x, detection.bbox.center.position.y,
-        #         detection.bbox.center.position.z]
-        #     # Transform
-        #     pose = np.dot(self._tf, pose)
-        #     # Convert back to ros msg
-        #     q = R.from_dcm(pose[0:3, 0:3]).as_quat()
-        #     detection.bbox.center.position.x = pose[0, 3]
-        #     detection.bbox.center.position.y = pose[1, 3]
-        #     detection.bbox.center.position.z = pose[2, 3]
-        #     detection.bbox.center.orientation.x = q[0]
-        #     detection.bbox.center.orientation.y = q[1]
-        #     detection.bbox.center.orientation.z = q[2]
-        #     detection.bbox.center.orientation.w = q[3]
+        # Transform dope msgs
+        for detection in dope_result.detections:
+            # Transform pose to base_link
+            # Convert pose to numpy
+            rot = R.from_quat([detection.bbox.center.orientation.x, detection.bbox.center.orientation.y,
+                detection.bbox.center.orientation.z, detection.bbox.center.orientation.w]).as_dcm()
+            pose = np.eye(4)
+            pose[0:3, 0:3] = rot
+            pose[0:3, 3] = [detection.bbox.center.position.x, detection.bbox.center.position.y,
+                detection.bbox.center.position.z]
+            # Transform
+            pose = np.dot(self._tf, pose)
+            # Convert back to ros msg
+            q = R.from_dcm(pose[0:3, 0:3]).as_quat()
+            detection.bbox.center.position.x = pose[0, 3]
+            detection.bbox.center.position.y = pose[1, 3]
+            detection.bbox.center.position.z = pose[2, 3]
+            detection.bbox.center.orientation.x = q[0]
+            detection.bbox.center.orientation.y = q[1]
+            detection.bbox.center.orientation.z = q[2]
+            detection.bbox.center.orientation.w = q[3]
 
         # Build scene graph
         obj_bboxes = {}
