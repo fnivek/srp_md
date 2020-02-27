@@ -106,5 +106,7 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
         resp.relation.push_back(dai::kRelationStrings.at((dai::Relation)map.at(i)));
     }
 
+    scene_graph.visualizeMAP("generated_goal.png");
+
     return true;
 }

@@ -68,6 +68,9 @@ class SrpMd(object):
         self._new_image = None
         self._new_pcd = None
 
+        script_path = os.path.dirname(os.path.realpath(__file__))
+        self._data_folder = os.path.realpath(script_path + '/../../../data')
+
         self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
                          4: 'Redo demo', 5: 'Clear demos'}
         self._undoed = []
@@ -220,17 +223,19 @@ class SrpMd(object):
             self._logger.error('Please select sensor!')
         # If the initial scene was not given, process data for all currently saved demonstrations
         self._logger.debug('Processing demonstrations...')
-        for raw_image in self._raw_images:
+        for i, raw_image in enumerate(self._raw_images):
             raw_image['indices'] = []
             new_graph = self._sensor.process_data(raw_image)
             self._demo_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/demonstration_graph_{}.png'.format(i), draw_disjoint=False)
         self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
         # If the initial scene was given, process data for that scene
         self._logger.debug('Processing initial scene...')
-        for init_scene in self._initial_scenes:
+        for i, init_scene in enumerate(self._initial_scenes):
             init_scene['indices'] = []
             new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/test_graph_{}.png'.format(i), draw_disjoint=False)
         self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
 
     """ Goal Generator.
@@ -264,9 +269,10 @@ class SrpMd(object):
                 # If initial scene was seen, get goal instance
                 else:
                     self._logger.info('Generating goal scenes from initial scenes...\n')
-                    for init_graph in self._initial_graphs:
+                    for i, init_graph in enumerate(self._initial_graphs):
                         goal_instance = self._goal_generator.generate_goal(self._factors, init_graph)
                         self._goal_instances.append(goal_instance)
+                        goal_instance.to_png(self._data_folder + '/graphs/generated_goal_{}.png'.format(i), draw_disjoint=False)
                     self._logger.debug('The goal scenes are:\n{}'.format(''.join([str(goal) + '\n' for goal in self._goal_instances])))
             # If not using factor graph generator, just generate goal without inputs
             else:
@@ -559,6 +565,7 @@ class SrpMd(object):
         for demo_num, demo in enumerate(self._raw_images):
             new_graph = self.generate_obj_ass_sg(demo_num, demo[1:])
             self._demo_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/demonstration_graph_{}.png'.format(demo_num), draw_disjoint=False)
         self._logger.debug('The demonstrations are:\n{}'.format(''.join([str(demo) + '\n' for demo in self._demo_graphs])))
 
         # If the initial scene was given, process data for that scene
@@ -568,6 +575,7 @@ class SrpMd(object):
             init_scene["indices"] = []
             new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/test_graph_{}.png'.format(i), draw_disjoint=False)
         self._logger.debug('The initial scenes are:\n{}'.format(''.join([str(init_graph) + '\n' for init_graph in self._initial_graphs])))
 
         self.demo_publisher(self._raw_images)

@@ -5,6 +5,7 @@ import itertools
 import logging
 import copy
 from collections import OrderedDict
+import os
 
 # Project
 import srp_md
@@ -168,6 +169,25 @@ class SceneGraph(srp_md.FactorGraph):
 
         # logger.debug('Markov blanket of {} is {}'.format([var.name for var in vars], [var.name for var in mb]))
         return mb
+
+    def to_png(self, file_name, flip_relations=False, viz_opencv=False, draw_disjoint=True):
+        root_name = os.path.splitext(file_name)[0]
+        image_name = root_name + '.png'
+        dot_file_name = root_name + '.dot'
+        with open(dot_file_name, 'w') as dot_file:
+            dot_file.write("digraph G {\n")
+            for relation in self.relations:
+                if not draw_disjoint and relation.value == 'disjoint':
+                    continue
+                dot_file.write('  ')
+                dot_file.write('{}->{}[label=\"{}\",{}];\n'.format(
+                    relation.obj1.name,
+                    relation.obj2.name,
+                    relation.value,
+                    "style=dashed" if relation.value == 'disjoint' else ''))
+            dot_file.write('}\n')
+
+        os.system('/usr/bin/dot -Tpng {} -o {}'.format(dot_file_name, image_name))
 
     def check_consistency(self, world=None):
         # If no world specified, just return True
