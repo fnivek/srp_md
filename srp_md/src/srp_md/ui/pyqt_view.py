@@ -388,8 +388,8 @@ class VidWidget(QWidget):
 
     def process_keyframes(self):
         # Go to next demo
-        self._ctrl.process_keyframes()
         self.close()
+        self._ctrl.process_keyframes()
 
     def clear_demos(self):
         # Clears the demos and closes the window
