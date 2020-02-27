@@ -27,3 +27,4 @@ from .actions import AddAllCollisionBoxesAct
 from .actions import MoveToStartAct
 from .actions import PickAct
 from .actions import PlaceAct
+from .actions import InfiniteDopeAct

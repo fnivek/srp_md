@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 # SRP MD imports
 from . import learn
-from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS, SklearnFactorLearner
+from .factor_learners import FreqFactorLearner, FACTOR_LEARNERS, SklearnFactorLearner, JointFreqFactorLearner
 import srp_md
 
 
@@ -15,7 +15,7 @@ class FactorGraphLearner(learn.BaseLearner):
         super(FactorGraphLearner, self).__init__()
         self._logger = logging.getLogger(__name__)
         self._factors_to_learn = [2]
-        self._factor_learner = FACTOR_LEARNERS.keys()[0]
+        self.factor_learner = 'decision_tree'
         self._allowed_config_keys.extend(['factor_learner', 'factors_to_learn'])
 
     @property
@@ -70,8 +70,8 @@ class FactorGraphLearner(learn.BaseLearner):
         # Loop through all examples
         for graph in obs:
             # Loop through individual factors for one observation
-            configs = [(num_objs, srp_md.ncr(num_objs, 2)) for num_objs in self._factors_to_learn]
-            for factor in graph.gen_ordered_factors(configs=configs):
+            # configs = [(num_objs, srp_md.ncr(num_objs, 2)) for num_objs in self._factors_to_learn]
+            for factor in graph.gen_ordered_factor():
                 # Find the appropriate FactorHandler to udpate
                 index = (len(factor.objs), len(factor.relations))
                 if index not in factors:
@@ -87,19 +87,32 @@ class FactorGraphLearner(learn.BaseLearner):
                 # Actually order this because mb is a set which has no order
                 factors[index].update_factor(self.generate_ord_dict(factor.vars), self.generate_ord_dict(mb))
 
+            # Generate the relation counting factors
+            for obj in graph.objs:
+                for rel_value in ['on', 'support', 'in', 'contain', 'proximity']:
+                    # Count all relations with obj as the first object
+                    count = sum(1 for rel in graph.relations if ((rel.obj1 is obj) and (rel.value == rel_value)) or
+                        ((rel.obj2 is obj) and (rel.value == srp_md.Relation.REV_RELATION_DICT[rel_value])))
+                    key = (obj.assignment['class'], rel_value)
+                    try:
+                        factors[key].update_factor({key: {'count': count}})
+                    except KeyError:
+                        factors[key] = CardinalityFactorHandler(obj, *key)
+                        factors[key].update_factor({key: {'count': count}})
+
         return factors
 
     def generate_ord_dict(self, vars):
         return OrderedDict((var, var.assignment) for var in vars)
 
 
-class FactorHandler():
+class FactorHandler(object):
     def __init__(self, learner=None):
         self._learner = learner
         if learner is None:
             self._learner = FreqFactorLearner()
 
-    def update_factor(self, obs, markov_blanket):
+    def update_factor(self, obs, markov_blanket=None):
         self._learner.observe(obs, markov_blanket)
 
     def generate_factor(self, vars):
@@ -125,7 +138,7 @@ class FactorHandler():
     def _recurse_generate_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
-            self._probs[self._probs_index] = self._learner.predict(self._assignment)
+            self._probs[self._probs_index] = self._learner.predict(self._assignment) + 1e-6  # Add uniform bias to the score output
             self._probs_index += 1
             return
 
@@ -139,6 +152,39 @@ class FactorHandler():
             # Only has one state
             self._assignment[var] = var.assignment
             self._recurse_generate_factor(var_index + 1)
+
+
+class CardinalityFactorHandler(FactorHandler):
+    def __init__(self, obj, class_name, rel_value):
+        super(CardinalityFactorHandler, self).__init__(learner=JointFreqFactorLearner())
+        self._obj = obj
+        self._class_name = class_name
+        self._rel_value = rel_value
+
+    def _recurse_generate_factor(self, var_index=0, cached_predictions=None):
+        if cached_predictions is None:
+            cached_predictions = {}
+        # Assign prob
+        if var_index >= len(self._vars):
+            count = sum(1 for assignment in self._assignment.values() if assignment['value'] == self._rel_value)
+            try:
+                self._probs[self._probs_index] = cached_predictions[count]
+            except KeyError:
+                score = self._learner.predict({None: {'count': count}}) + 1e-3  # Add uniform bias to the score output
+                self._probs[self._probs_index] = score
+                cached_predictions[count] = score
+
+            self._probs_index += 1
+            return
+
+        var = self._vars[var_index]
+        # Iterate over all relations
+        for relation in srp_md.Relation.RELATION_STRS:
+            # Flip the relationship if the object is the second part of the relation
+            if var.obj2 == self._obj:
+                relation = srp_md.Relation.REV_RELATION_DICT[relation]
+            self._assignment[var] = {'value': relation}
+            self._recurse_generate_factor(var_index + 1, cached_predictions)
 
 
 # Register the learner

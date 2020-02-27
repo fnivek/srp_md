@@ -1,8 +1,31 @@
-from sensor_msgs.msg import PointCloud2, PointField
+import rospy
+# import pcl
+import numpy as np
+import ctypes
+import struct
 import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2, PointField
+from std_msgs.msg import Header
+from random import randint
 from geometry_msgs.msg import Transform
 
 import os
+
+# prefix to the names of dummy fields we add to get byte alignment correct. this needs to not
+# clash with any actual field names
+DUMMY_FIELD_PREFIX = '__'
+
+# mappings between PointField types and numpy types
+type_mappings = [(PointField.INT8, np.dtype('int8')), (PointField.UINT8, np.dtype('uint8')), (PointField.INT16, np.dtype('int16')),
+                 (PointField.UINT16, np.dtype('uint16')), (PointField.INT32, np.dtype('int32')), (PointField.UINT32, np.dtype('uint32')),
+                 (PointField.FLOAT32, np.dtype('float32')), (PointField.FLOAT64, np.dtype('float64'))]
+pftype_to_nptype = dict(type_mappings)
+nptype_to_pftype = dict((nptype, pftype) for pftype, nptype in type_mappings)
+
+# sizes (in bytes) of PointField types
+pftype_sizes = {PointField.INT8: 1, PointField.UINT8: 1, PointField.INT16: 2, PointField.UINT16: 2,
+                PointField.INT32: 4, PointField.UINT32: 4, PointField.FLOAT32: 4, PointField.FLOAT64: 8}
+
 
 def datatype_to_size_type(datatype):
     """
@@ -261,3 +284,91 @@ def read_pcd(filename, cloud_header=None, get_tf=True):
         return cloud, tf
 
     return cloud
+
+def pointcloud2_to_array(cloud_msg, squeeze=True):
+    ''' Converts a rospy PointCloud2 message to a numpy recordarray
+    Reshapes the returned array to have shape (height, width), even if the height is 1.
+    The reason for using np.fromstring rather than struct.unpack is speed... especially
+    for large point clouds, this will be <much> faster.
+    '''
+    # construct a numpy record type equivalent to the point type of this cloud
+    dtype_list = fields_to_dtype(cloud_msg.fields, cloud_msg.point_step)
+
+    # parse the cloud into an array
+    cloud_arr = np.fromstring(cloud_msg.data, dtype_list)
+
+    # remove the dummy fields that were added
+    cloud_arr = cloud_arr[
+        [fname for fname, _type in dtype_list if not (fname[:len(DUMMY_FIELD_PREFIX)] == DUMMY_FIELD_PREFIX)]]
+
+    if squeeze and cloud_msg.height == 1:
+        return np.reshape(cloud_arr, (cloud_msg.width,))
+    else:
+        return np.reshape(cloud_arr, (cloud_msg.height, cloud_msg.width))
+
+def array_to_pointcloud2(cloud_arr, stamp=None, frame_id=None):
+    '''Converts a numpy record array to a sensor_msgs.msg.PointCloud2.
+    '''
+    # make it 2d (even if height will be 1)
+    cloud_arr = np.atleast_2d(cloud_arr)
+
+    cloud_msg = PointCloud2()
+
+    if stamp is not None:
+        cloud_msg.header.stamp = stamp
+    if frame_id is not None:
+        cloud_msg.header.frame_id = frame_id
+    cloud_msg.height = cloud_arr.shape[0]
+    cloud_msg.width = cloud_arr.shape[1]
+    cloud_msg.fields = dtype_to_fields(cloud_arr.dtype)
+    cloud_msg.is_bigendian = False # assumption
+    cloud_msg.point_step = cloud_arr.dtype.itemsize
+    cloud_msg.row_step = cloud_msg.point_step*cloud_arr.shape[1]
+    cloud_msg.is_dense = all([np.isfinite(cloud_arr[fname]).all() for fname in cloud_arr.dtype.names])
+    cloud_msg.data = cloud_arr.tostring()
+    return cloud_msg
+
+def fields_to_dtype(fields, point_step):
+    '''Convert a list of PointFields to a numpy record datatype.
+    '''
+    offset = 0
+    np_dtype_list = []
+    for f in fields:
+        while offset < f.offset:
+            # might be extra padding between fields
+            np_dtype_list.append(('%s%d' % (DUMMY_FIELD_PREFIX, offset), np.uint8))
+            offset += 1
+
+        dtype = pftype_to_nptype[f.datatype]
+        if f.count != 1:
+            dtype = np.dtype((dtype, f.count))
+
+        np_dtype_list.append((f.name, dtype))
+        offset += pftype_sizes[f.datatype] * f.count
+
+    # might be extra padding between points
+    while offset < point_step:
+        np_dtype_list.append(('%s%d' % (DUMMY_FIELD_PREFIX, offset), np.uint8))
+        offset += 1
+
+    return np_dtype_list
+
+def dtype_to_fields(dtype):
+    '''Convert a numpy record datatype into a list of PointFields.
+    '''
+    fields = []
+    for field_name in dtype.names:
+        np_field_type, field_offset = dtype.fields[field_name]
+        pf = PointField()
+        pf.name = field_name
+        if np_field_type.subdtype:
+            item_dtype, shape = np_field_type.subdtype
+            pf.count = np.prod(shape)
+            np_field_type = item_dtype
+        else:
+            pf.count = 1
+
+        pf.datatype = nptype_to_pftype[np_field_type]
+        pf.offset = field_offset
+        fields.append(pf)
+    return fields
