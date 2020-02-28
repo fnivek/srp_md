@@ -33,3 +33,4 @@ from .actions import GetStackPoseAct
 from .actions import MoveToStartAct
 from .actions import GetDopeAndPoseAct
 from .actions import AttachObjectAct
+from .actions import InfiniteDopeAct

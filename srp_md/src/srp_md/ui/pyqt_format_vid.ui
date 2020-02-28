@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>931</width>
+    <height>783</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QLabel" name="video">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>911</width>
+     <height>721</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="set_keyframe">
+   <property name="geometry">
+    <rect>
+     <x>100</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Set Keyframe</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="save_demos">
+   <property name="geometry">
+    <rect>
+     <x>460</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Save Demos</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="clear_keyframes">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Clear Frames</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="cancel">
+   <property name="geometry">
+    <rect>
+     <x>820</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Cancel</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="next_demo">
+   <property name="geometry">
+    <rect>
+     <x>340</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Next Demo</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="process_data">
+   <property name="geometry">
+    <rect>
+     <x>700</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Process!</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="get_init">
+   <property name="geometry">
+    <rect>
+     <x>580</x>
+     <y>750</y>
+     <width>101</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Get Init</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

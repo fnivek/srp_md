@@ -93,3 +93,18 @@ class Controller(object):
 
     def act(self):
         self._model.act()
+
+    def set_keyframe(self, demo_num, keyframe_num):
+        self._model.accept_keyframe(demo_num, keyframe_num)
+
+    def clear_keyframes(self, demo_num):
+        self._model.clear_keyframes(demo_num)
+
+    def write_keyframes_demos(self, dirname):
+        self._model.write_keyframes_demos(dirname)
+
+    def process_keyframes(self):
+        self._model.process_keyframes()
+
+    def grocery_experiment(self):
+        self._model.grocery_experiment()

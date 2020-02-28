@@ -1590,3 +1590,48 @@ def PlaceAct(name, obj, surface):
     # root.add_children([
     # ])
     return root
+
+class InfiniteDopeAct(py_trees_ros.actions.ActionClient):
+    def __init__(self, name, *argv, **kwargs):
+        super(InfiniteDopeAct, self).__init__(
+            name=name,
+            action_spec=DopeAction,
+            action_goal=DopeGoal(),
+            action_namespace='dope',
+            *argv,
+            **kwargs
+        )
+        self.image_sub = rospy.Subscriber('/head_camera/rgb/image_raw', ImageSensor_msg, self.image_callback)
+        self.info_sub = rospy.Subscriber('/head_camera/rgb/camera_info', CameraInfo, self.initial_callback)
+
+    def initial_callback(self, camera_info):
+        self.action_goal = DopeGoal()
+        self.action_goal.cam_info = camera_info
+        self.info_sub.unregister()
+
+    def image_callback(self, image):
+        self.action_goal.image = image
+
+    def update(self):
+        self.logger.debug("{0}.update()".format(self.__class__.__name__))
+        if not self.action_client:
+            self.feedback_message = "no action client, did you call setup() on your tree?"
+            return py_trees.Status.INVALID
+
+        if not self.sent_goal:
+            if self.action_goal.cam_info != CameraInfo() and self.action_goal.image != ImageSensor_msg():
+                self.action_client.send_goal(self.action_goal)
+                self.sent_goal = True
+                self.feedback_message = "sent goal to the action server"
+            return py_trees.Status.RUNNING
+
+        if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
+                                              actionlib_msgs.GoalStatus.PREEMPTED]:
+            return py_trees.Status.FAILURE
+
+        result = self.action_client.get_result()
+        if result:
+            return py_trees.Status.SUCCESS
+        else:
+            self.feedback_message = self.override_feedback_message_on_running
+            return py_trees.Status.RUNNING

@@ -5,7 +5,7 @@ Defines a class that encapsulates all functionality.
 """
 from __future__ import absolute_import
 from __future__ import print_function
-from builtins import str
+# from builtins import str
 from builtins import object
 from . import learn
 from . import sense
@@ -13,9 +13,13 @@ from . import goal
 from . import evaluate
 from . import plan
 from . import act
-from .pcd_io import write_pcd
+from .pcd_io import write_pcd, pointcloud2_to_array, array_to_pointcloud2
+from .utils import pose_difference
+from srp_md_msgs.srv import PoseToSceneGraph, PoseToSceneGraphRequest
+import srp_md
 
 # Python imports
+import os
 import logging as log
 import pickle
 import networkx as nx
@@ -26,8 +30,16 @@ import tf
 import cv_bridge as bridge
 import cv2
 import numpy as np
+import math
+import py_trees, py_trees_ros
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
-from geometry_msgs.msg import PoseStamped
+import sensor_msgs.point_cloud2 as pc2
+from geometry_msgs.msg import PoseStamped, Pose, Vector3
+from collections import defaultdict
+from vision_msgs.msg import BoundingBox3D
+from jsk_recognition_msgs.msg import BoundingBox, BoundingBoxArray
+from copy import deepcopy
+import random
 
 
 class SrpMd(object):
@@ -39,8 +51,8 @@ class SrpMd(object):
 
     """
     # TODO(Kevin): Set defaults when they exist
-    def __init__(self, learner=None, sensor=None, goal_generator=None,
-                 goal_evaluator='adapt_goal_evaluator'):
+    def __init__(self, learner='factor_graph_learner', sensor='dope_sensor',
+        goal_generator='factor_graph_goal_generator', goal_evaluator='adapt_goal_evaluator'):
         # Logging
         self._logger = log.getLogger(__name__)
 
@@ -55,6 +67,9 @@ class SrpMd(object):
         self._goal_instances = []
         self._new_image = None
         self._new_pcd = None
+
+        script_path = os.path.dirname(os.path.realpath(__file__))
+        self._data_folder = os.path.realpath(script_path + '/../../../data')
 
         self._actions = {1: 'Write demos', 2: 'Load demos', 3: 'Undo demo',
                          4: 'Redo demo', 5: 'Clear demos'}
@@ -83,6 +98,7 @@ class SrpMd(object):
         self._ts.registerCallback(self.image_callback)
         self._points_sub.registerCallback(self.points_callback)
         self._tf_sub = tf.TransformListener()
+        self._pose_to_scene_graph_client = rospy.ServiceProxy('pose_to_scene_graph', PoseToSceneGraph)
 
     def get_num_demos(self):
         return len(self._raw_images)
@@ -187,11 +203,10 @@ class SrpMd(object):
         self._new_image["info"] = info
 
         try:
-            trans, rot = self._tf_sub.lookupTransform('/base_link', '/head_tilt_link', rospy.Time(0))
-            mat1 = np.dot(tf.transformations.translation_matrix(trans), tf.transformations.quaternion_matrix(rot))
-            mat2 = np.dot(tf.transformations.translation_matrix([0.043, 0.021, 0.018]),
-                             tf.transformations.quaternion_matrix([-0.503, 0.503, -0.497, 0.497]))
-            self._new_image["tf"] = np.dot(mat1, mat2)
+            trans, rot = self._tf_sub.lookupTransform('/base_link', '/head_camera_rgb_optical_frame', rospy.Time(0))
+            to_base_link = tf.transformations.quaternion_matrix(rot)
+            to_base_link[0:3, 3] = tf.transformations.translation_matrix(trans)[0:3, 3]
+            self._new_image["tf"] = to_base_link
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
             self._logger.error('Failed to transform from /head_tilt_link to /base_link: {}'.format(e))
 
@@ -200,20 +215,27 @@ class SrpMd(object):
         self._new_pcd = points
 
     def process_data(self):
+        # Reset all graphs
+        self._demo_graphs = []
+        self._initial_graphs = []
         # If sensor is not set, log error
         if self._sensor is None:
             self._logger.error('Please select sensor!')
         # If the initial scene was not given, process data for all currently saved demonstrations
         self._logger.debug('Processing demonstrations...')
-        for i in range(len(self._raw_images)):
-            new_graph = self._sensor.process_data(self._raw_images[i])
+        for i, raw_image in enumerate(self._raw_images):
+            raw_image['indices'] = []
+            new_graph = self._sensor.process_data(raw_image)
             self._demo_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/demonstration_graph_{}.png'.format(i), draw_disjoint=False)
         self._logger.debug('The demonstrations are: {}'.format(self._demo_graphs))
         # If the initial scene was given, process data for that scene
         self._logger.debug('Processing initial scene...')
-        for i in range(len(self._initial_scenes)):
-            new_graph = self._sensor.process_data(self._initial_scenes[i])
+        for i, init_scene in enumerate(self._initial_scenes):
+            init_scene['indices'] = []
+            new_graph = self._sensor.process_data(init_scene)
             self._initial_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/test_graph_{}.png'.format(i), draw_disjoint=False)
         self._logger.debug('The initial scenes are: {}'.format(self._initial_graphs))
 
     """ Goal Generator.
@@ -232,6 +254,8 @@ class SrpMd(object):
             self._goal_generator = goal.goal_generators[goal_generator]()
 
     def generate_goal(self):
+        # Clear old goal instances
+        self._goal_instances = []
         # If goal generator is not set, log error
         if self._goal_generator is None:
             self._logger.error('Please select goal generator!')
@@ -245,10 +269,11 @@ class SrpMd(object):
                 # If initial scene was seen, get goal instance
                 else:
                     self._logger.info('Generating goal scenes from initial scenes...\n')
-                    for i in range(len(self._initial_graphs)):
-                        goal_instance = self._goal_generator.generate_goal(self._factors, self._initial_graphs[i])
+                    for i, init_graph in enumerate(self._initial_graphs):
+                        goal_instance = self._goal_generator.generate_goal(self._factors, init_graph)
                         self._goal_instances.append(goal_instance)
-                    self._logger.debug('The goal scenes are: {}'.format(self._goal_instances))
+                        goal_instance.to_png(self._data_folder + '/graphs/generated_goal_{}.png'.format(i), draw_disjoint=False)
+                    self._logger.debug('The goal scenes are:\n{}'.format(''.join([str(goal) + '\n' for goal in self._goal_instances])))
             # If not using factor graph generator, just generate goal without inputs
             else:
                 self._goal_instances = self._goal_generator.generate_goal()
@@ -287,10 +312,10 @@ class SrpMd(object):
     Functions to execute actions.
 
     """
-    def save_for_user(self, filename):
+    def save_for_user(self, filename, image_set):
         ind = filename.rfind(".")
         filename = filename[:ind] + "_" + filename[ind + 1:]
-        for i, image in enumerate(self._raw_images):
+        for i, image in enumerate(image_set):
             br = bridge.CvBridge()
             cv_image = br.imgmsg_to_cv2(image["image"],)
             cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
@@ -305,7 +330,7 @@ class SrpMd(object):
     def write_demos(self, filename="./demos/raw_images.txt"):
         pickle.dump(self._raw_images, open(filename, 'wb'))
         self._logger.info('Success writing demo data to file {}\n'.format(filename))
-        self.save_for_user(filename)
+        self.save_for_user(filename, self._raw_images)
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def load_demos(self, filename="./demos/raw_images.txt"):
@@ -319,7 +344,7 @@ class SrpMd(object):
     def write_inits(self, filename="./inits/initial_scenes.txt"):
         pickle.dump(self._initial_scenes, open(filename, 'wb'))
         self._logger.info('Success writing initial scene images to file {}\n'.format(filename))
-        self.save_for_user(filename)
+        self.save_for_user(filename, self._initial_scenes)
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
     def load_inits(self, filename="./inits/initial_scenes.txt"):
@@ -454,3 +479,318 @@ class SrpMd(object):
         else:
             # For this to work properly, generate goal must be run before hands!
             self._actor.act(self._solution_filename)
+
+    def accept_keyframe(self, demo_num, keyframe_num):
+        """
+        Accepts images and saves them as keyframes
+        """
+        # State the tag type
+        self._logger.debug('Accepted keyframe number {} for demo number {}'.format(keyframe_num + 1, demo_num + 1))
+
+        # Initialize new image and point cloud
+        self._new_image = None
+        self._new_pcd = None
+
+        # Wait for message with timeout
+        self._logger.debug('Getting current scene info. Please wait...')
+        start = rospy.get_rostime()
+        timeout = rospy.Duration(15) # Wait for x seconds?
+        rate = rospy.Rate(100)
+        while ((self._new_image is None or self._new_pcd is None) and
+                (not rospy.is_shutdown()) and (rospy.get_rostime() - start < timeout)):
+            rate.sleep()
+
+        # If no image was got from listener, then log error
+        if self._new_image is None or len(self._new_image.keys()) == 0:
+            self._logger.error('Failed to get an image within {}s'.format(timeout.to_sec()))
+        elif self._new_pcd is None:
+            self._logger.error('Failed to get the pcd within {}s'.format(timeout.to_sec()))
+        else:
+            self._logger.debug('Received all the data!')
+            self._new_image["points"] = self._new_pcd
+
+            if len(self._raw_images) < demo_num:
+                self._logger.error('The images and demos are not stored correctly')
+
+            elif len(self._raw_images) == demo_num:
+                self._raw_images.append([self._new_image])
+            else:
+                self._raw_images[demo_num].append(self._new_image)
+            self._current_image = self._new_image
+
+    def write_keyframes_demos(self, dirname):
+        os.mkdir(dirname)
+        pickle_name = os.path.join(dirname, "data.pickle")
+        pickle.dump(self._raw_images, open(pickle_name, 'wb'))
+        self._logger.info('Success writing demo data to file {}\n'.format(pickle_name))
+
+        for i, demo in enumerate(self._raw_images):
+            demo_dirname = os.path.join(dirname, str(i + 1))
+            os.mkdir(demo_dirname)
+
+            keyframe_filename = os.path.join(demo_dirname, "frame")
+
+            for j in range(len(demo)):
+                image = demo[j]
+                br = bridge.CvBridge()
+                cv_image = br.imgmsg_to_cv2(image["image"],)
+                cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(keyframe_filename + "_{}.png".format(j + 1), cv_image)
+                write_pcd(keyframe_filename + "_{}.pcd".format(j + 1), image["points"], overwrite=True)
+                with open(keyframe_filename + "_{}.txt".format(j + 1), "w") as f:
+                    for k in range(image["tf"].shape[0]):
+                        for l in range(image["tf"].shape[1]):
+                            f.write("{} ".format(image["tf"][k, l]))
+                        f.write("\n")
+
+        self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
+
+    def clear_keyframes(self, demo_num):
+        self._raw_images[demo_num] = []
+
+    def process_keyframes(self):
+        # Process the images for cropping
+        self.filter_keyframes()
+
+        # Reset all graphs
+        self._demo_graphs = []
+        self._initial_graphs = []
+
+        # If sensor is not set, log error
+        if self.get_sensor() is not "dope_sensor":
+            self._logger.error('Please use DOPE!')
+
+        # If the initial scene was not given, process data for all currently saved demonstrations
+        self._logger.debug('Processing demonstrations...')
+        for demo_num, demo in enumerate(self._raw_images):
+            new_graph = self.generate_obj_ass_sg(demo_num, demo[1:])
+            self._demo_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/demonstration_graph_{}.png'.format(demo_num), draw_disjoint=False)
+        self._logger.debug('The demonstrations are:\n{}'.format(''.join([str(demo) + '\n' for demo in self._demo_graphs])))
+
+        # If the initial scene was given, process data for that scene
+        self._logger.debug('Processing initial scene...')
+        for i in range(len(self._initial_scenes)):
+            init_scene = self._initial_scenes[i]
+            init_scene["indices"] = []
+            new_graph = self._sensor.process_data(init_scene)
+            self._initial_graphs.append(new_graph)
+            new_graph.to_png(self._data_folder + '/graphs/test_graph_{}.png'.format(i), draw_disjoint=False)
+        self._logger.debug('The initial scenes are:\n{}'.format(''.join([str(init_graph) + '\n' for init_graph in self._initial_graphs])))
+
+        self.demo_publisher(self._raw_images)
+
+    def filter_keyframes(self, depth_diff_threshold=0.02, depth_filter_threshold=1.7):
+        # For each demos, do:
+        for i, demo in enumerate(self._raw_images):
+            # For each keyframe, do:
+            for j, frame in enumerate(demo):
+                # Get the stored image and pointcloud
+                image = frame["image"]
+                pcd = frame["points"]
+
+                # Get the depth value from pointcloud
+                depth = np.zeros((pcd.height, pcd.width), dtype='float32')
+                ind = 0
+                for p in pc2.read_points(pcd, skip_nans=False, field_names=("x", "y", "z")):
+                    if p[2] > depth_filter_threshold:
+                        pass
+                    else:
+                        depth[int(math.floor(ind / pcd.width)), int(ind % pcd.width)] = p[2]
+                    ind += 1
+
+                # Convert to cv2 image
+                br = bridge.CvBridge()
+                cv_image = br.imgmsg_to_cv2(image)
+
+                # If first image, just store to past data
+                if j==0:
+                    cv_image_init = cv_image
+                    prev_depth = depth
+                    frame['indices'] = []
+
+                # For following images, do:
+                else:
+                    # Compare prev_depth and depth for background subtraction
+                    filter_array = np.nan_to_num(np.abs(prev_depth-depth)) > depth_diff_threshold
+
+                    # Morphology
+                    filter_array = filter_array.astype('uint8') * 255
+                    kernel = np.ones((5, 5), np.uint8)
+                    filter_array = cv2.morphologyEx(filter_array, cv2.MORPH_OPEN, kernel, iterations=1)
+
+                    # Filter the images and give white background
+                    filter_array = filter_array > 0
+
+                    # Find the largest connected component (Our new object!)
+                    nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(filter_array.astype('uint8'), connectivity=4)
+                    sizes = stats[:, -1]
+                    max_label = 1
+                    max_size = sizes[1]
+                    for k in range(2, nb_components):
+                        if sizes[k] > max_size:
+                            max_label = k
+                            max_size = sizes[k]
+
+                    largest_comp_mask = np.zeros(output.shape)
+                    largest_comp_mask[output == max_label] = 255
+
+                    # Use convex hull to get the full compact points
+                    contours, _ = cv2.findContours(largest_comp_mask.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    largest_sum = 0
+                    largest_convex_mask = np.zeros_like(largest_comp_mask, dtype='uint8')
+                    for k in range(len(contours)):
+                        hull_indices = cv2.convexHull(contours[k], returnPoints=False)
+                        hull_indices = [ind for row in hull_indices.tolist() for ind in row]
+                        convex_mask = np.zeros_like(largest_comp_mask, dtype='uint8')
+                        cv2.fillConvexPoly(convex_mask, np.array([contours[k][l, :] for l in hull_indices], np.int32), 1)
+                        if convex_mask.sum() > largest_sum:
+                            largest_sum = convex_mask.sum()
+                            largest_convex_mask = convex_mask
+
+                    # Get all non-zero indices
+                    pc_indices = largest_convex_mask.nonzero()
+                    frame["indices"] = [row * pcd.width + col for row, col in
+                                        zip(pc_indices[0].tolist(), pc_indices[1].tolist())]
+
+                    negative = largest_convex_mask == 0
+                    cv_image_filtered = np.zeros(cv_image.shape, dtype='uint8')
+                    cv_image_filtered[:, :, 0] = (cv_image[:, :, 0] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 0].astype('float32')
+                    cv_image_filtered[:, :, 1] = (cv_image[:, :, 1] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 1].astype('float32')
+                    cv_image_filtered[:, :, 2] = (cv_image[:, :, 2] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 2].astype('float32')
+                    cv_image_filtered = br.cv2_to_imgmsg(cv_image_filtered, "rgb8")
+                    frame['image'] = cv_image_filtered
+
+                    prev_depth = depth
+
+    def generate_obj_ass_sg(self, demo_num, demo):
+        # Initialize variables
+        all_obj_bboxes = {}
+        # object_counts = defaultdict(int)
+        uuid = 0
+        req = PoseToSceneGraphRequest()
+        req.names = []
+        req.objects = []
+
+        # For each, image, process with dope and add to all_obj_bboxes set, depending on the object's pose
+        for i, image in enumerate(demo):
+            self._sensor.process_data(image)
+            obj_bboxes = py_trees.blackboard.Blackboard().get('obj_bboxes')
+
+            # For the first keyframe, just add all objects
+            if i == 0:
+                for obj_key in obj_bboxes.keys():
+                    # Add with new uuid
+                    ind = obj_key.rfind("_")
+                    # new_id = obj_key[:ind] + '_' + str(object_counts[obj_key[:ind]])
+                    new_id = obj_key[:ind] + '_' + str(uuid)
+                    # print(type(new_id))
+                    all_obj_bboxes[new_id] = obj_bboxes[obj_key]
+                    req.names.append(new_id)
+                    req.objects.append(obj_bboxes[obj_key])
+                    # object_counts[obj_key[:ind]] += 1
+                    uuid += 1
+
+            # For later keyframes, compare with existing bath of objects
+            else:
+                # For each new object, do:
+                for obj_post_key in obj_bboxes.keys():
+                    """
+                    Add something here to filter out false positives?
+                    """
+
+                    closest_obj_name = None
+                    closest_dist = 10000
+                    # For each old objects, do:
+                    for obj_prev_key in all_obj_bboxes.keys():
+                        dist = pose_difference(all_obj_bboxes[obj_prev_key].center, obj_bboxes[obj_post_key].center)
+                        if dist < closest_dist:
+                            closest_dist = dist
+                            closest_obj_name = obj_post_key
+
+                    # If the object is far away from previous objects, add to the dictionary
+                    if closest_dist > 0.01:
+                        ind = obj_post_key.rfind("_")
+                        # new_id = obj_post_key[:ind] + '_' + str(object_counts[obj_post_key[:ind]])
+                        new_id = obj_post_key[:ind] + '_' + str(uuid)
+                        # print(type(new_id))
+                        all_obj_bboxes[new_id] = obj_bboxes[obj_post_key]
+                        req.names.append(new_id)
+                        req.objects.append(obj_bboxes[obj_post_key])
+                        # object_counts[obj_post_key[:ind]] += 1
+                        uuid += 1
+
+        # self._logger.debug('Collected objects: {}'.format(all_obj_bboxes))
+        py_trees.blackboard.Blackboard().set('demo_{}'.format(str(demo_num)), all_obj_bboxes)
+
+        # table_uuid = sum(object_counts.values())
+        table_uuid = uuid
+        req.names.append('table')
+        req.objects.append(BoundingBox3D())
+
+        try:
+            resp = self._pose_to_scene_graph_client(req)
+        except rospy.ServiceException, e:
+            self._logger.error('Failed to get scene graph from pose: {}'.format(e))
+            return None
+        # Convert ros msg to scene graph
+        # self._logger.debug('Pose to scene graph result: {}'.format(resp))
+        # Make srp_md objects
+        objs = []
+        for name in req.names:
+            label = name
+            uuid = table_uuid
+            if name.find('table') == -1:
+                label = name[:name.rfind('_')]
+                uuid = int(name[name.rfind('_') + 1:])
+            objs.append(srp_md.Object(name=name, id_num=uuid, uuid=uuid, assignment={'class': label}))
+
+        # Build the scene graph
+        scene_graph = srp_md.SceneGraph(objs)
+
+        # Update all relations from response
+        for name1, name2, rel_value in zip(resp.object1, resp.object2, resp.relation):
+            obj1 = scene_graph.get_obj_by_name(name1)
+            obj2 = scene_graph.get_obj_by_name(name2)
+            rel = scene_graph.get_rel_by_objs(obj1, obj2)
+            rel.value = rel_value
+
+            # Check if obj1 and obj2 are fliped
+            if rel.obj1 != obj1:
+                rel.rev_relation()
+
+        print("Scenegraph for demo {}:\n{}".format(demo_num, str(scene_graph)))
+        return scene_graph
+
+    def demo_publisher(self, demo):
+        bbox_pub_list = []
+        pc_pub_list = []
+        rate = rospy.Rate(10)
+        for i in range(len(demo)):
+            bbox_pub_name = 'demo_{}_bboxes'.format(str(i))
+            pc_pub_name = 'demo_{}_pc'.format(str(i))
+            bbox_pub_list.append(rospy.Publisher(bbox_pub_name, BoundingBoxArray, queue_size=2))
+            pc_pub_list.append(rospy.Publisher(pc_pub_name, PointCloud2, queue_size=1))
+
+        for i in range(20):
+            for i in range(len(demo)):
+                bbox_array = BoundingBoxArray()
+                bbox_array.header.frame_id = "head_camera_rgb_optical_frame"#"base_link"
+                obj_bboxes = py_trees.blackboard.Blackboard().get('demo_{}'.format(str(i)))
+                for obj_key in obj_bboxes.keys():
+                    bbox = BoundingBox()
+                    bbox.header.frame_id = "head_camera_rgb_optical_frame"#"base_link"
+                    bbox.pose = obj_bboxes[obj_key].center
+                    bbox.dimensions = obj_bboxes[obj_key].size
+                    bbox_array.boxes.append(bbox)
+                bbox_pub_list[i].publish(bbox_array)
+                pc = demo[i][-1]["points"]
+                pc.header.stamp = rospy.Time.now()
+                pc_pub_list[i].publish(pc)
+
+            rate.sleep()
+
+
+    def grocery_experiment(self):
+        # Run dope action node
+        pass

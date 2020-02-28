@@ -23,17 +23,6 @@ PoseToSceneGraph::PoseToSceneGraph()
 {
     // Start ros service
     ros::NodeHandle nh;
-
-    // Load dimensions from dope
-    std::map<std::string, std::vector<double>> dimensions;
-    XmlRpc::XmlRpcValue dimensions_params;
-    nh.getParam("/dope/dimensions", dimensions_params);
-    for (auto&& pair : dimensions_params)
-    {
-        dimensions_.emplace(std::piecewise_construct, std::forward_as_tuple(pair.first),
-            std::forward_as_tuple((double)pair.second[0], (double)pair.second[1], (double)pair.second[2]));
-    }
-
     server_ = nh.advertiseService("pose_to_scene_graph", &PoseToSceneGraph::CalcSceneGraph, this);
 }
 
@@ -94,7 +83,6 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     }
 
     // Determine support and on relations
-    std::map<scene_graph::Object, scene_graph::ObjectList> on_map;
     std::sort(object_list.begin(), object_list.end(), ObjectCompByHeight);
     for (int i = 0; i < object_list.size(); ++i)
     {
@@ -105,7 +93,6 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         for (int j = i + 1; j < object_list.size(); ++j)
         {
             scene_graph::Object& bot_obj = object_list[j];
-            on_map[bot_obj].push_back(top_obj);
             if(bot_obj.name.find("table") != std::string::npos)
                 continue;
             if (CheckOverlap(top_obj, bot_obj))
@@ -124,21 +111,6 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
             scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, table->id, top_obj.name, table->name);
             scene_graph_.rel_list.push_back(on);
             printf("On(%s, %s)\n", top_obj.name.c_str(), table->name.c_str());
-        }
-    }
-
-    // Determine proximity
-    for (auto&& pair : on_map)
-    {
-        for (auto&& obj_it = pair.second.begin(); obj_it < pair.second.end(); ++obj_it)
-        {
-            for (auto&& obj_it_2 = obj_it + 1; obj_it_2 < pair.second.end(); ++obj_it_2)
-            {
-                printf("%s and %s both on %s\n", obj_it->name.c_str(), obj_it_2->name.c_str(), pair.first.name.c_str());
-                // TODO(Kevin) Check the distance between the objects and add Proximity if less than threshold
-                scene_graph_.rel_list.emplace_back(
-                    scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
-            }
         }
     }
 

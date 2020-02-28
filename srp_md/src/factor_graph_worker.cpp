@@ -54,7 +54,10 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
         // Get the Vars for pairs of objects
         for (const auto& pair : ros_factor.pairs)
         {
-            dai::Var v = scene_graph.getRelationVarByNames(pair.object1, pair.object2);
+            dai::ObjectPair v;
+            if (!scene_graph.getRelationVarByNames(pair.object1, pair.object2, &v))
+                printf("ERROR: pair {%s, %s} is in a different order than the scene graph\n", pair.object1.c_str(),
+                       pair.object2.c_str());
             vars.push_back(v);
             sorted_vars.insert(v);
         }
@@ -88,7 +91,7 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
     scene_graph.usePriors(use_consistency, use_commensense, use_no_float);
 
     // Perform inference
-    scene_graph.doInference("BP[updates=SEQMAX,maxiter=10000,tol=1e-10,logdomain=0,inference=SUMPROD]", 100, 1e-10);
+    scene_graph.doInference("BP[updates=SEQMAX,maxiter=1000,tol=1e-10,logdomain=0,inference=SUMPROD]", 100, 1e-10);
 
     // Fill in response
     const std::vector<size_t>& map = scene_graph.getMAP();
@@ -100,8 +103,10 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
             continue;
         resp.object1.push_back(pair.object1.name);
         resp.object2.push_back(pair.object2.name);
-        resp.relation.push_back(dai::sceneGraph::kRelationStrings.at(map.at(i)));
+        resp.relation.push_back(dai::kRelationStrings.at((dai::Relation)map.at(i)));
     }
+
+    scene_graph.visualizeMAP("generated_goal.png");
 
     return true;
 }

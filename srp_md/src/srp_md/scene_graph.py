@@ -5,6 +5,7 @@ import itertools
 import logging
 import copy
 from collections import OrderedDict
+import os
 
 # Project
 import srp_md
@@ -62,6 +63,12 @@ class SceneGraph(srp_md.FactorGraph):
                 return relation
         return None
 
+    def get_ordered_rel_by_objs(self, obj1, obj2):
+        for relation in self.relations:
+            if (relation.obj1 == obj1) and (relation.obj2 == obj2):
+                return relation
+        return None
+
     def get_prop_values(self, prop=None):
         if prop is None:
             raise ValueError("Property needs to be specified")
@@ -97,7 +104,7 @@ class SceneGraph(srp_md.FactorGraph):
         for relation in self.relations:
             relation.value = None
 
-    def gen_ordered_factors(self, configs):
+    def gen_ordered_factors_all_permu(self, configs):
         # For each permutation of the objects, calculate all factors:
         for obj_permu in itertools.permutations(self.objs, self.num_objs()):
             # For each (obj, rel) type of factor
@@ -118,6 +125,20 @@ class SceneGraph(srp_md.FactorGraph):
                         rels.append(relation)
                     # Finally yield the factor of these variables list
                     yield srp_md.SgFactor(variables=list(objs) + rels)
+
+    def gen_ordered_factor(self):
+        # For each combination of config[0] objects get all relations between them
+        for obj_pair in itertools.combinations(self.objs, 2):
+            # Get the relation for each pairing
+            rels = []
+            # Get the relation of those objs (in order)
+            relation = copy.deepcopy(self.get_rel_by_objs(obj_pair[0], obj_pair[1]))
+            # If reversed rev value
+            if relation.obj1 != obj_pair[0]:
+                relation.rev_relation()
+            rels.append(relation)
+            # Finally yield the factor of these variables list
+            yield srp_md.SgFactor(variables=list(obj_pair) + rels)
 
     def markov_blanket(self, vars):
         """ Get all vars in the markov blanket.
@@ -148,6 +169,25 @@ class SceneGraph(srp_md.FactorGraph):
 
         # logger.debug('Markov blanket of {} is {}'.format([var.name for var in vars], [var.name for var in mb]))
         return mb
+
+    def to_png(self, file_name, flip_relations=False, viz_opencv=False, draw_disjoint=True):
+        root_name = os.path.splitext(file_name)[0]
+        image_name = root_name + '.png'
+        dot_file_name = root_name + '.dot'
+        with open(dot_file_name, 'w') as dot_file:
+            dot_file.write("digraph G {\n")
+            for relation in self.relations:
+                if not draw_disjoint and relation.value == 'disjoint':
+                    continue
+                dot_file.write('  ')
+                dot_file.write('{}->{}[label=\"{}\",{}];\n'.format(
+                    relation.obj1.name,
+                    relation.obj2.name,
+                    relation.value,
+                    "style=dashed" if relation.value == 'disjoint' else ''))
+            dot_file.write('}\n')
+
+        os.system('/usr/bin/dot -Tpng {} -o {}'.format(dot_file_name, image_name))
 
     def check_consistency(self, world=None):
         # If no world specified, just return True
