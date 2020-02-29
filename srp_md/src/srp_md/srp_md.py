@@ -106,6 +106,10 @@ class SrpMd(object):
     def get_num_inits(self):
         return len(self._initial_scenes)
 
+    def set_scenes(self, demo_graphs, init_graphs):
+        self._demo_graphs = demo_graphs
+        self._initial_graphs = init_graphs
+
     """ Learner.
 
     Functions to interact with the learner.
@@ -263,7 +267,7 @@ class SrpMd(object):
             # If using factor graph learner, do:
             if self.get_learner() == 'factor_graph_learner':
                 # If initial scene was not set, log error
-                if len(self._initial_scenes) == 0:
+                if len(self._initial_graphs) == 0:
                     self._logger.error('No scene detected!\n')
                     self._goal_instances = []
                 # If initial scene was seen, get goal instance

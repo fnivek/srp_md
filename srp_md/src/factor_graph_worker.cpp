@@ -91,7 +91,7 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
     scene_graph.usePriors(use_consistency, use_commensense, use_no_float);
 
     // Perform inference
-    scene_graph.doInference("BP[updates=SEQMAX,maxiter=1000,tol=1e-10,logdomain=0,inference=SUMPROD]", 100, 1e-10);
+    scene_graph.doInference("BP[updates=SEQMAX,maxiter=1000,tol=1e-10,logdomain=1,inference=SUMPROD]", 100, 1e-10);
 
     // Fill in response
     const std::vector<size_t>& map = scene_graph.getMAP();

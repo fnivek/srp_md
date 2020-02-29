@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# In project imports
+import srp_md
+from srp_md import srp_md_log
+
+# Ros and Python imports
+import rospy
+import logging
+import random
+import pickle
+import os
+# import argparse
+# import sys
+# import random
+# import csv
+# from datetime import datetime
+# import time
+# import multiprocessing
+# import Queue
+
+# Get a logger
+logger = logging.getLogger('srp_md')
+logger.setLevel(logging.DEBUG)
+
+# Initialize variables
+OBJECTS = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar", "bleach"]
+RELATIONS = ["disjoint", "proximity", "on", "support"]
+
+def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
+    """
+    Hardcode Examples
+    """
+    scene_graphs = []
+
+    # For number of demos needed, do:
+    for i in range(demo_num):
+
+        # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
+        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment={'class': "table"})]
+        uuid = 1
+        for j in range(random.choice(demo_objs_nums)):
+            name = random.choice(OBJECTS)
+            if obj_list is not None:
+                name = obj_list[i][j]
+            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment={'class': name}))
+            uuid += 1
+
+        scene_graph = srp_md.SceneGraph(objs)
+        # print(scene_graph.get_obj_names())
+
+        # Update all relations based on general grocery goal
+        print "\nObjects List: ", scene_graph.get_obj_names(), "\n"
+        for relation in scene_graph.relations:
+            user_input = None
+
+            # Make the user give inputs
+            print "For ", relation.obj1, " and ", relation.obj2
+            print "Relation list: ", RELATIONS
+            user_input = raw_input("Specify relation for relations in the list by their index: \n")
+            while int(user_input) not in range(len(RELATIONS)):
+                user_input = raw_input("Wrong value! Choose again... \n")
+            relation.value = RELATIONS[int(user_input)]
+            print "You chose: ", relation.value, "\n"
+
+        # Add noise to the relation
+        if i < noise_num:
+            relation = random.choice(scene_graph.relations)
+            relation.value = RELATIONS[random.randint(0, len(RELATIONS) - 1)]
+
+        scene_graphs.append(scene_graph)
+
+    return scene_graphs
+
+def generate_init_scenes(init_num, init_objs_nums, obj_list=None):
+    """
+    Hardcode Examples
+    """
+    scene_graphs = []
+
+    # For number of demos needed, do:
+    for i in range(init_num):
+
+        # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
+        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment={'class': "table"})]
+        uuid = 1
+        for j in range(random.choice(init_objs_nums)):
+            name = random.choice(OBJECTS)
+            if obj_list is not None:
+                name = obj_list[i][j]
+            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment={'class': name}))
+            uuid += 1
+
+        scene_graph = srp_md.SceneGraph(objs)
+
+        print "\nObjects List: ", scene_graph.get_obj_names(), "\n"
+
+        # Make all relations disjoint
+        for relation in scene_graph.relations:
+            relation.value = RELATIONS[0]
+
+        scene_graphs.append(scene_graph)
+
+    return scene_graphs
+
+def main():
+    # Setup ROS
+    rospy.init_node('simulate_experiment', anonymous=True)
+    logger.info('Started the simulate_experiment node...')
+
+    # Define file path
+    script_path = os.path.dirname(os.path.realpath(__file__))
+    data_folder = os.path.realpath(script_path + '/../../data')
+
+    # Ask if you want to load the graphs
+    save_bool = raw_input("Do you wish to load the demo graphs and init graphs? [y/n] \n")
+    if save_bool == "y":
+        filename = raw_input("What is the filename to pickle from? \n")
+        demo_graphs, init_graphs = pickle.load(open(os.path.join(data_folder, filename), 'rb'))
+
+    else:
+        # Simulate goal scenegraphs and initial scenegraphs
+        demo_num, demo_objs_nums, noise_num = 2, [5], 0
+        init_num, init_objs_nums = 1, [2]
+        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
+        demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num, [["cracker", "gelatin", "meat", "soup", "sugar"], ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
+        # init_graphs = generate_init_scenes(init_num, init_objs_nums)
+        init_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
+        logger.info('Generated {} demo graphs with {} noises and {} initial scenes'.format(demo_num, noise_num, init_num))
+
+    # Setup SRP_MD object
+    srp = srp_md.SrpMd(sensor="dope_sensor", learner="factor_graph_learner", goal_generator="factor_graph_goal_generator")
+    srp.update_learner_config(factor_learner="decision_tree")
+    srp.set_scenes(demo_graphs, init_graphs)
+    logger.info('Initialized SrpMd object with scenes')
+
+    # Learn from current data
+    srp.learn()
+    logger.info('Learned!')
+
+    # Generate goals from learned factors
+    srp.generate_goal()
+    logger.info('Generated goals')
+
+    # Ask if you want to save the graphs
+    save_bool = raw_input("Do you wish to save the demo graphs and init graphs? [y/n] \n")
+    if save_bool == "y":
+        filename = raw_input("What is the filename to pickle to? \n")
+        pickle.dump([demo_graphs, init_graphs], open(os.path.join(data_folder, filename), 'wb'))
+
+if __name__ == '__main__':
+    logger.info('Simulation Experiment starting up... #BOLD')
+    try:
+        main()
+    finally:
+        logger.info('Simulation Experiment stopping... #BOLD')

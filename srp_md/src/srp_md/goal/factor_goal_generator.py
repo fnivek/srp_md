@@ -83,10 +83,12 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         for factor_type, handler in factors.iteritems():
             if isinstance(handler, learn.CardinalityFactorHandler):
                 req.factors.extend(self.make_cardinality_factor(obs, factor_type, handler))
+                # pass
             else:
                 req.factors.extend(self.make_factor(obs, factor_type, handler))
+                # pass
 
-        # self._logger.debug('Get goal request is:\n{}'.format(req))
+        self._logger.debug('Get goal request is:\n{}'.format(req))
 
         # Get the response
         resp = None
