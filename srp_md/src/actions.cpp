@@ -1001,7 +1001,7 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     sensor_msgs::PointCloud2::Ptr points_plane_filtered(new sensor_msgs::PointCloud2);
     sensor_msgs::PointCloud2::Ptr points_object_filtered(new sensor_msgs::PointCloud2);
     vision_msgs::BoundingBox3D plane_bbox_mod = plane_bbox;
-    float edge_deduction_ratio = 0.1;
+    float edge_deduction_ratio = 0.15;
     float plane_expansion_ratio = 2.0;
     float object_placing_offset = 0.05;
     int points_threshold = 10;
