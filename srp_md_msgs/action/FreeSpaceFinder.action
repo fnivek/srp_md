@@ -1,10 +1,13 @@
 #goal definition
 sensor_msgs/PointCloud2 points
 vision_msgs/BoundingBox3D plane_bbox
-geometry_msgs/Vector3 obj_dim
+vision_msgs/BoundingBox3D obj_bbox
+string relation
+vision_msgs/BoundingBox3D relative_obj_bbox
+float32 distance
 ---
 #result definition
-geometry_msgs/Pose pose
+geometry_msgs/Pose[] pose
 ---
 #feedback
 string feedback

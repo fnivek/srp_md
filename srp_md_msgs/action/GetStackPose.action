@@ -1,0 +1,10 @@
+#goal definition
+geometry_msgs/Pose bot_pose
+geometry_msgs/Vector3 bot_dim
+geometry_msgs/Vector3 dim
+---
+#result definition
+geometry_msgs/Pose pose
+---
+#feedback
+string feedback

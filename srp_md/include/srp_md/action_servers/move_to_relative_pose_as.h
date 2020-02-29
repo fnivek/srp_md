@@ -27,7 +27,10 @@ public:
         ROS_INFO("MoveToRelativePoseAS goalCB");
         result_.success = act_.relative_move(goal->transform);
         feedback_.feedback = "";
-
+        if (!result_.success) {
+            as_.setAborted(result_);
+            return;
+        }
         as_.publishFeedback(feedback_);
         as_.setSucceeded(result_);
         ROS_INFO("Result sent.");

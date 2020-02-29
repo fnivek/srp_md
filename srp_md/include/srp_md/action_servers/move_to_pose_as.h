@@ -69,6 +69,7 @@ public:
             }
             else
             {
+                result_.pose_index = i;
                 as_.setSucceeded(result_);
                 ROS_INFO("Result sent.");
                 return;

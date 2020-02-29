@@ -363,10 +363,86 @@ bool Act::cartesian_grasp(const std::vector<geometry_msgs::Pose> &waypoints, int
     return:
         pair<bool (true for success), moveit::planning_interface::MoveGroupInterface::Plan>
 */
+
 std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-Act::cartesian_move(const geometry_msgs::Pose &end_pose, int max_try /* = 3 */)
+Act::relative_cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg,
+                    int max_try /* = 3 */)
 {
-    std::vector<geometry_msgs::Pose> waypoints = { end_pose };
+    Eigen::Affine3d pose_diff = tf2::transformToEigen(pose_diff_msg);
+    if(pose_diff_msg.header.frame_id != "base_link")
+    {
+        // Transform the transform to "base_link"
+        geometry_msgs::TransformStamped tf;
+        try
+        {
+            // Get transform to base_link
+            tf = tf2_buffer_.lookupTransform("base_link", pose_diff_msg.header.frame_id, ros::Time(0));
+            // Convert to Eigen
+            Eigen::Affine3d tf_eigen = tf2::transformToEigen(tf);
+            // Only apply rotation to translation
+            pose_diff.translation() = tf_eigen.linear() * pose_diff.translation();
+        }
+        catch(tf2::TransformException &ex)
+        {
+            ROS_WARN("%s", ex.what());
+            moveit::planning_interface::MoveGroupInterface::Plan plan;
+            return {false, plan};
+        }
+    }
+
+    // Get the current pose
+    geometry_msgs::Pose current_pose_msg = move_group_.getCurrentPose().pose;
+    Eigen::Affine3d current_pose;
+    tf2::fromMsg(current_pose_msg, current_pose);
+
+    // Apply relative transform to current_pose
+    pose_diff.linear() *= current_pose.linear();
+    pose_diff.translation() += current_pose.translation();
+
+    geometry_msgs::Pose computed = tf2::toMsg(pose_diff);
+
+    std::vector<geometry_msgs::Pose> waypoints = { computed };
+    return cartesian_move(waypoints, max_try);
+}
+
+std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
+Act::cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg,
+                    int max_try /* = 3 */)
+{
+    Eigen::Affine3d pose_diff = tf2::transformToEigen(pose_diff_msg);
+    if(pose_diff_msg.header.frame_id != "base_link")
+    {
+        // Transform the transform to "base_link"
+        geometry_msgs::TransformStamped tf;
+        try
+        {
+            // Get transform to base_link
+            tf = tf2_buffer_.lookupTransform("base_link", pose_diff_msg.header.frame_id, ros::Time(0));
+            // Convert to Eigen
+            Eigen::Affine3d tf_eigen = tf2::transformToEigen(tf);
+            // Only apply rotation to translation
+            pose_diff = tf_eigen * pose_diff;
+        }
+        catch(tf2::TransformException &ex)
+        {
+            ROS_WARN("%s", ex.what());
+            moveit::planning_interface::MoveGroupInterface::Plan plan;
+            return {false, plan};
+        }
+    }
+
+    // Get the current pose
+    geometry_msgs::Pose current_pose_msg = move_group_.getCurrentPose().pose;
+    Eigen::Affine3d current_pose;
+    tf2::fromMsg(current_pose_msg, current_pose);
+
+    // Apply relative transform to current_pose
+    // pose_diff.linear() *= current_pose.linear();
+    // pose_diff.translation() += current_pose.translation();
+
+    geometry_msgs::Pose computed = tf2::toMsg(pose_diff);
+
+    std::vector<geometry_msgs::Pose> waypoints = { computed };
     return cartesian_move(waypoints, max_try);
 }
 
@@ -658,7 +734,7 @@ bool Act::relative_move(const geometry_msgs::TransformStamped &pose_diff_msg, in
  * Output:
  *      upper_pose_msg - pose of upper object
  */
-geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim)
+geometry_msgs::Pose Act::GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim)
 {
     //convert input pose from geometry_msgs to tf2
     tf2::Transform bot_pose_tf;
@@ -855,6 +931,27 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
     return success;
 }
 
+void Act::attach_object_to_gripper(const std::string &object_name)
+{
+    std::vector<std::string> touch_links = { "r_gripper_finger_link", "l_gripper_finger_link", "gripper_link" };
+    move_group_.attachObject(object_name, "gripper_link", touch_links);
+    ROS_INFO("Attach %s", object_name.c_str());
+}
+
+/*  function: detached_object
+    description:
+        detach an object from given the object name
+    args:
+        object_name (string)
+    return:
+        void
+*/
+void Act::detach_object(const std::string &object_name)
+{
+    move_group_.detachObject(object_name);
+    ROS_INFO("Detach %s", object_name.c_str());
+}
+
 /*  function: free_space_finder()
     description:
         finds a free space of the table
@@ -864,14 +961,40 @@ bool Act::get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vecto
 
 */
 
-
+/*
+    string relation: None, Right, Left, Front, Back
+*/
 
 bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
-    const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose)
+                            const vision_msgs::BoundingBox3D& obj_bbox, const std::string& relation,
+                            const vision_msgs::BoundingBox3D& relative_obj_bbox, std::vector<geometry_msgs::Pose>& pose,
+                            const float distance)
+    // const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose)
 {
     std::cerr<<"pose of the table: "<<plane_bbox.center<<std::endl;
     std::cerr<<"size of the table: "<<plane_bbox.size<<std::endl;
-
+    std::cout<<"pose.size() before function: "<<pose.size()<<std::endl;
+    pose.clear();
+    // enum x_axix = {Right = -1, none = 0, Left = 1};
+    // enum y_axix = {Front = -1, none = 0, Back = 1}; //need to be fixed
+    // x_axix x_axix_offset = none;
+    // y_axix y_axix_offset = none;
+    // auto it_x = relation.find(“Right”);
+    // if (it_x != std::string::npos) {
+    //     x_axix = Right;
+    // }
+    // it_x = relation.find(“Left”);
+    // if (it_x != std::string::npos) {
+    //     x_axix = Left;
+    // }
+    // auto it_y = relation.find(“Front”);
+    // if (it_y != std::string::npos) {
+    //     y_axix = Front;
+    // }
+    // it_y = relation.find(“Back”);
+    // if (it_y != std::string::npos) {
+    //     y_axix = Back;
+    // }
     // Initialize variables
     bool success = false;
     sensor_msgs::PointCloud2::Ptr points_tf(new sensor_msgs::PointCloud2);
@@ -895,13 +1018,46 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     plane_bbox_jsk.dimensions = plane_bbox_mod.size;
     plane_bbox_jsk.header.frame_id = "base_link";
     plane_bounding_box_.publish(plane_bbox_jsk);
-    std::cout<<"plane_bbox_jsk: "<<plane_bbox_jsk<<std::endl;
+    // std::cout<<"plane_bbox_jsk: "<<plane_bbox_jsk<<std::endl;
 
     // Initialize structures for random sampling
     static std::default_random_engine e(time(0));
-    //static std::normal_distribution<double> n(MU,SIGMA);
+    // static std::normal_distribution<double> n(MU,SIGMA);
     static std::uniform_real_distribution<double> dis(0.0 + edge_deduction_ratio, 1.0 - edge_deduction_ratio);
-
+    // std::cout<<"teyseyshuehgiughytghjk"<<std::endl;
+    // std::cout<<distance<<std::endl;
+    // std::cout<<relative_obj_bbox.center.orientation.x<<std::endl;
+    // std::cout<<relative_obj_bbox.center.orientation.y<<std::endl;
+    // std::cout<<relative_obj_bbox.center.orientation.z<<std::endl;
+    // std::cout<<relative_obj_bbox.center.orientation.w<<std::endl;
+    // std::cout<<obj_bbox.size<<std::endl;
+    Eigen::Quaterniond obj_quat = Eigen::Quaterniond(obj_bbox.center.orientation.w,
+                                                    obj_bbox.center.orientation.x,
+                                                    obj_bbox.center.orientation.y,
+                                                    obj_bbox.center.orientation.z
+                                                    );
+    Eigen::Vector3d z_axix = Eigen::Vector3d(0,0,1);
+    // std::cout<<"obj_quat * z_axix: "<<obj_quat * z_axix<<std::endl;
+    std::cout<<"obj_quat.inverse()  * z_axix: "<<obj_quat.inverse() * z_axix<<std::endl;
+    Eigen::Vector3d z_axix_rotated = obj_quat.inverse() * z_axix;
+    enum axis_prolonged {yes = 1, no = 0};
+    axis_prolonged x_axis = no;
+    axis_prolonged y_axis = no;
+    axis_prolonged z_axis = no;
+    if (abs(z_axix_rotated(0,0)) > abs(z_axix_rotated(1,0)) && abs(z_axix_rotated(0,0)) > abs(z_axix_rotated(2,0))) {
+        x_axis = yes;
+    } else if (abs(z_axix_rotated(1,0)) > abs(z_axix_rotated(0,0)) && abs(z_axix_rotated(1,0)) > abs(z_axix_rotated(2,0))) {
+        y_axis = yes;
+    } else {
+        z_axis = yes;
+    }
+    // std::cout<<"abs(z_axix_rotated(0,0)): "<<abs(z_axix_rotated(0,0))<<std::endl;
+    // std::cout<<"abs(z_axix_rotated(1,0)): "<<abs(z_axix_rotated(1,0))<<std::endl;
+    // std::cout<<"abs(z_axix_rotated(2,0)): "<<abs(z_axix_rotated(2,0))<<std::endl;
+    // std::cout<<"x_axis: "<<x_axis<<std::endl;
+    // std::cout<<"y_axis: "<<y_axis<<std::endl;
+    // std::cout<<"z_axis: "<<z_axis<<std::endl;
+    std::map<double, geometry_msgs::Pose> dis_pose_map;
     // Might want to cap this at limit 1000 or sth
     for (int loop_times = 0; loop_times < 1000; loop_times++) {
 
@@ -913,12 +1069,27 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
         geometry_msgs::Pose test_object_pose;
         test_object_pose.position.x = plane_bbox.center.position.x + x_random * plane_bbox.size.x - plane_bbox.size.x / 2;
         test_object_pose.position.y = plane_bbox.center.position.y + y_random * plane_bbox.size.y - plane_bbox.size.y / 2;
-        test_object_pose.position.z = plane_bbox.center.position.z + obj_dim.z * 0.5 + object_placing_offset;
-        test_object_pose.orientation = plane_bbox.center.orientation;
-
+        test_object_pose.position.z = plane_bbox.center.position.z + obj_bbox.size.z * 0.5 + object_placing_offset;
+        test_object_pose.orientation = obj_bbox.center.orientation;
+        double distance_actual = 1000;
+        // std::cout<<1<<std::endl;
+        if (distance != 0) {
+            // std::cout<<distance<<std::endl;
+            distance_actual = sqrt(
+                                          (relative_obj_bbox.center.position.x - test_object_pose.position.x) * (relative_obj_bbox.center.position.x - test_object_pose.position.x) +
+                                          (relative_obj_bbox.center.position.y - test_object_pose.position.y) * (relative_obj_bbox.center.position.y - test_object_pose.position.y) +
+                                          (relative_obj_bbox.center.position.z - test_object_pose.position.z) * (relative_obj_bbox.center.position.z - test_object_pose.position.z));
+            if (distance_actual > distance) {
+                continue;
+            }
+            
+        }
         vision_msgs::BoundingBox3D test_bbox;
         test_bbox.center = test_object_pose;
-        test_bbox.size = obj_dim;
+        // test_bbox.size = obj_dim;
+        test_bbox.size.x = obj_bbox.size.x + x_axis * obj_bbox.size.x;
+        test_bbox.size.y = obj_bbox.size.y + y_axis * obj_bbox.size.y;
+        test_bbox.size.z = obj_bbox.size.z + z_axis * obj_bbox.size.z;
         crop_box_filt_pc(points_plane_filtered, test_bbox, *points_object_filtered, false);
         int num_points = points_object_filtered->height * points_object_filtered->width;
         // std::cout<<"point num in cropbox: "<<num_points<<std::endl;
@@ -927,14 +1098,21 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
         object_bbox_jsk.dimensions = test_bbox.size;
         object_bbox_jsk.header.frame_id = "base_link";
         object_bounding_box_.publish(object_bbox_jsk);
+        // std::cout<<"distance_actual: "<<distance_actual<<std::endl;
         // If it is not in collision with other objects, return the pose
         if (num_points > points_threshold) { // Maybe 0 is too strict
             continue; // right syntax?
         } else {
-            pose = test_object_pose;
+            // std::cout<<"push_back here"<<std::endl;
+            pose.push_back(test_object_pose);
+            // std::cout<<"distance_actual: "<<distance_actual<<std::endl;
+            dis_pose_map[distance_actual] = test_object_pose;
             bool success = true;
-            std::cout<<"pose: "<<pose<<std::endl;
-            break;
+            if (pose.size() > 10) {
+                std::cout<<dis_pose_map.size()<<std::endl;
+                std::cout<<"pose: "<<pose.size()<<std::endl;
+                break;
+            }
         }
     }
     return success;

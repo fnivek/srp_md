@@ -628,6 +628,7 @@ class SrpMd(object):
 
                     # Find the largest connected component (Our new object!)
                     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(filter_array.astype('uint8'), connectivity=4)
+                    # TODO(Henry): Ensure that stats is not an empty array as in the case of no difference between two frames
                     sizes = stats[:, -1]
                     max_label = 1
                     max_size = sizes[1]
@@ -680,6 +681,10 @@ class SrpMd(object):
         for i, image in enumerate(demo):
             self._sensor.process_data(image)
             obj_bboxes = py_trees.blackboard.Blackboard().get('obj_bboxes')
+
+            # Skip null detctions
+            if obj_bboxes is None or len(obj_bboxes.keys()) == 0:
+                continue
 
             # For the first keyframe, just add all objects
             if i == 0:

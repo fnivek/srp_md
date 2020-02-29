@@ -18,6 +18,13 @@ import srp_md
 
 
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
+    # List of all inconsistent relation triplets
+    # TODO(Kevin): Complete this list for relations other than on and support
+    INCONSISTENT_RELATIONS = [
+        ['on', 'support', 'on'],
+        ['support', 'on', 'support']
+    ]
+
     def __init__(self):
         super(FactorGraphGoalGenerator, self).__init__()
         self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense', 'use_no_float'])
@@ -25,7 +32,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._goal_client = None
         self._goal_client_name = '/get_goal'
         self._goal_client_changed = True
-        self.use_consistency = False
+        self.use_consistency = True
         self.use_commonsense = False
         self.use_no_float = True
 
@@ -46,8 +53,8 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
 
     def make_prior_knowledge_msg(self):
         prior_knowledge = []
-        if self.use_consistency:
-            prior_knowledge.append(GetGoalRequest.CONSISTENCY_PRIOR)
+        # if self.use_consistency:
+        #     prior_knowledge.append(GetGoalRequest.CONSISTENCY_PRIOR)
         if self.use_commonsense:
             prior_knowledge.append(GetGoalRequest.COMMON_SENSE_PRIOR)
         if self.use_no_float:
@@ -88,7 +95,10 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
                 req.factors.extend(self.make_factor(obs, factor_type, handler))
                 # pass
 
-        self._logger.debug('Get goal request is:\n{}'.format(req))
+        if self.use_consistency:
+            req.factors.extend(self.make_logical_consistency_factors(obs))
+
+        # self._logger.debug('Get goal request is:\n{}'.format(req))
 
         # Get the response
         resp = None
@@ -145,6 +155,14 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             ros_factors.append(factor.generate_factor(
                 [rel for rel in obs.relations if rel.obj1 == obj or rel.obj2 == obj]).to_ros_factor())
 
+        return ros_factors
+
+    def make_logical_consistency_factors(self, obs):
+        ros_factors = []
+        for relations in itertools.combinations(obs.relations, 3):
+            probs = [0 if rel_values[::-1] in self.INCONSISTENT_RELATIONS else 1 for rel_values in
+                     itertools.product(srp_md.Relation.RELATION_STRS, repeat=3)]
+            ros_factors.append(srp_md.SgFactor(relations, probs).to_ros_factor())
         return ros_factors
 
 
