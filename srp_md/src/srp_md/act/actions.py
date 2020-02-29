@@ -30,12 +30,13 @@ import srp_md
 
 import fetch_manipulation_pipeline.msg
 from behavior_manager.conditions.arm_tucked_condition import ArmTuckedCondition
-from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
+from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior, TuckBehavior, 
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
+from behavior_manager.interfaces.sleep_behavior import *
 
 
-gripper_length = 0.150
+gripper_length = 0.148
 pre_grasp_offset = 0.1
 
 to_grasp_tf = TransformStamped()
@@ -50,13 +51,38 @@ to_place_tf.transform.rotation.w = 1.0
 
 up_tf_after_place = TransformStamped()
 up_tf_after_place.header.frame_id = "base_link"
-up_tf_after_place.transform.translation.z = 0.07
+up_tf_after_place.transform.translation.z = 0.15
 up_tf_after_place.transform.rotation.w = 1
 
 up_tf = TransformStamped()
 up_tf.header.frame_id = "base_link"
-up_tf.transform.translation.z = 0.26
+up_tf.transform.translation.z = 0.25
 up_tf.transform.rotation.w = 1
+
+up_tf_little = TransformStamped()
+up_tf_little.header.frame_id = "base_link"
+up_tf_little.transform.translation.z = 0.03
+up_tf_little.transform.rotation.w = 1
+
+down_tf = TransformStamped()
+down_tf.header.frame_id = "base_link"
+down_tf.transform.translation.z = -0.03
+down_tf.transform.rotation.w = 1
+
+left_tf = TransformStamped()
+left_tf.header.frame_id = "base_link"
+left_tf.transform.translation.y = 0.03
+left_tf.transform.rotation.w = 1
+
+right_tf = TransformStamped()
+right_tf.header.frame_id = "base_link"
+right_tf.transform.translation.y = -0.03
+right_tf.transform.rotation.w = 1
+
+back_tf = TransformStamped()
+back_tf.header.frame_id = "base_link"
+back_tf.transform.translation.x = -0.03
+back_tf.transform.rotation.w = 1
 
 bb = BoundingBox3D()
 bb.center.position.x = 1.0
@@ -174,7 +200,8 @@ class MoveToFirstPoseAct(py_trees_ros.actions.ActionClient):
         # print('result', result)
         if result is not None:
             if result.success:
-                # print('pose_index',result.pose_index)
+                # print('pose_index: ',result.pose_index)
+
                 if self._place_if:
                     obj_bboxes_moved = py_trees.blackboard.Blackboard().get('obj_bboxes')
                     obj_bboxes_moved[self._object_index].center.position.x = self._poses[result.pose_index].position.x
@@ -236,12 +263,21 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
             CameraInfo
         )
         self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
+        self._blackboard = py_trees.blackboard.Blackboard()
+        self._pc = self._blackboard.get('depth_pc')
+        # print('init_ pc: ',type(self._pc))
         self.ts.registerCallback(self.image_callback)
 
+    def initialise(self):
+        super(GetDopeSnapshotAct, self).initialise()
+        self._pc = self._blackboard.get('depth_pc')
+        
     def image_callback(self, image, info):
         self.action_goal = DopeGoal()
         self.action_goal.image = image
         self.action_goal.cam_info = info
+        # print('image_callback pc: ',type(self._pc))
+        # self.action_goal.pc = self._pc
 
     def update(self):
         self.logger.debug("{0}.update()".format(self.__class__.__name__))
@@ -250,7 +286,12 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.INVALID
         # if not self.sent_goal and self.action_goal.cam_info != CameraInfo() and self.action_goal.image != ImageSensor_msg():
         if not self.sent_goal:
+            # self._pc = self._blackboard.get('depth_pc')
+            # print('send_goal pc: ',type(self.action_goal.pc))
+            # print('self._pc: ',type(self._pc))
+            self.action_goal.pc = self._pc
             self.action_client.send_goal(self.action_goal)
+            # print('send_goal pc: ',type(self.action_goal.pc))
             self.sent_goal = True
             self.feedback_message = "sent goal to the action server"
             return py_trees.Status.RUNNING
@@ -293,7 +334,11 @@ class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
                     closest_obj_name = None
                     closest_dist = 10000
                     for obj_post_key in obj_bboxes_post.keys():
-                        dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
+                        # dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
+                        pose_1 = obj_bboxes_prev[obj_prev_key].center
+                        pose_2 = obj_bboxes_post[obj_post_key].center
+                        dist = position_diff = np.sqrt((pose_1.position.x - pose_2.position.x) ** 2 + (pose_1.position.y - pose_2.position.y) ** 2 +
+                            (pose_1.position.z - pose_2.position.z) ** 2)
                         if dist < closest_dist:
                             closest_dist = dist
                             closest_obj_name = obj_post_key
@@ -415,7 +460,6 @@ class OffsetPoses(py_trees.behaviour.Behaviour):
         offset_poses = []
         for pose in pose_iter:
             # Apply offset in poses frame of reference
-            # print('pose in offser: ', pose)
             tf = R.from_quat([
                 pose.orientation.x,
                 pose.orientation.y,
@@ -502,6 +546,7 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
         self._relative_object_index = relative_object_index
         self._relation = relation
         self._inhand_collision_object_key = inhand_collision_object_key
+        self._name = name
 
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
@@ -509,54 +554,25 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
         if bboxes is None or len(bboxes) == 0:
             return py_trees.Status.FAILURE
 
-        # TODO(Kevin): Get which object to grab from the plan
-        # bottom_object_bbox = None
-        # upper_object_bbox = None
-        # if bboxes.values()[1] is not None:
-        #     if bboxes.values()[0].center.position.z > bboxes.values()[1].center.position.z:
-        #         bottom_object_bbox = bboxes.values()[1]
-        #         upper_object_bbox = bboxes.values()[0]
-        #     else:
-        #         bottom_object_bbox = bboxes.values()[0]
-        #         upper_object_bbox = bboxes.values()[1]
-        # print("bottom_object_bbox", bottom_object_bbox)
-        # print("upper_object_bbox", upper_object_bbox)
-        # self._relation = 'Stacking'
-        # self._relation = 'CloseTo'
-        if self._relative_object_index == 'table':
+        if self._relation == None or self._relation == 'Random' or self._object_index == 'table':
             self._relation = 'None'
             self._distance = 0
-        # print(type(bboxes.values()))
-        # print(type(bboxes))
-        # print(bboxes.values()[0])
-        # print('bboxes.values()[1]: ', bboxes.values()[1])
+        elif self._relation == 'Near':
+            pass
 
         blackboard.set(self._crop_box_key, bboxes[self._object_index])
         size_box = bboxes[self._object_index].size
         collision_box_list = ['inhand_collision_object', bboxes[self._object_index].center, [size_box.x, size_box.y, size_box.z]]
 
-        for i in range(len(bboxes)):
-            size_box = bboxes[bboxes.keys()[i]].size
-            collision_box_list = ['bboxes.keys()[i]', bboxes[bboxes.keys()[i]].center, [size_box.x, size_box.y, size_box.z]]
-            box_name=None, box_pose=None, box_size=None
-            AddCollisionBoxAct('add_ith_object_collision_box', box_name=bboxes.keys()[i],
-                                box_pose=bboxes[bboxes.keys()[i]].center, box_size=[size_box.x, size_box.y, size_box.z])
+        
         blackboard.set(self._inhand_collision_object_key, collision_box_list)
-        # if bboxes.values()[1] is not None:
-        #     blackboard.set(self._relative_obj_bbox_key, bboxes.values()[1])
-        # blackboard.set(self._obj_dim_key, bboxes.values()[0].size)
-        # blackboard.set(self._crop_box_key, upper_object_bbox)
-        # if bboxes.values()[1] is not None:
+
         if not self._relative_object_index == 'table':
             blackboard.set(self._relative_obj_bbox_key, bboxes[self._relative_object_index])
         blackboard.set(self._relation_key, self._relation)
-        # blackboard.set(self._obj_dim_key, upper_object_bbox.size)
         blackboard.set(self._obj_dim_key, bboxes[self._object_index].size)
-        # blackboard.set(self._obj_dim_key, bboxes.values()[0].size)
         blackboard.set(self._distance_key, self._distance)
         
-        # print(bboxes.values()[0])
-        # print(type(bboxes.size))
         return py_trees.Status.SUCCESS
 
 class GraspPoseGeneration(py_trees.behaviour.Behaviour):
@@ -567,12 +583,8 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         blackboard = py_trees.blackboard.Blackboard()
         self._test_bbox = blackboard.get(self._object_bbox_key)
         self._x_axis_key = x_axis_key
-        # self._center_axis = np.array([-1, 0, 1]) / np.sqrt(2) # 45deg from vertical towards robot
-        # self._min_cos_theta = np.cos(np.pi / 4) # cos(x) -> +- x rads
         
-        # need to be tuned
     def update(self):
-        # grasploc = blackboard.get(self._grasp_points_key)
         blackboard = py_trees.blackboard.Blackboard()
         self._test_bbox = blackboard.get(self._object_bbox_key)
         print(self._test_bbox)
@@ -583,8 +595,6 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         orientation_offset = []
         orientation_offset.append(R.from_quat([0,0.258819,0,0.9659258]))
         orientation_offset.append(R.from_quat([0,-0.258819,0,0.9659258]))
-        # 30_degree_offset = R.from_quat([0,0.258819,0,0.9659258])
-        # minus_30_degree_offset = R.from_quat([0,-0.258819,0,0.9659258])
 
         gripper_ori_relative = []
         gripper_ori_relative.append(R.from_quat([0.7071068,0,0,0.7071068]))
@@ -608,7 +618,7 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        # gripper_offset.append([0, 0, 0])
+
         crack_ori = R.from_quat([
                 object_pose.orientation.x,
                 object_pose.orientation.y,
@@ -736,8 +746,6 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
 
     def initialise(self):
         self.action_goal.points = py_trees.blackboard.Blackboard().get(self._pc_key)
-        # cropped_pc_pub = rospy.Publisher('cropped_pc', PointCloud2, queue_size=10)
-        # cropped_pc_pub.publish(self.action_goal.points)
 
     def update(self):
         if not self.action_client:
@@ -784,8 +792,6 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         self.action_goal.bot_dim = self._relative_object_bbox.size
         self.action_goal.dim = py_trees.blackboard.Blackboard().get(self._obj_dim_key)
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
-        # cropped_pc_pub = rospy.Publisher('cropped_pc', PointCloud2, queue_size=10)
-        # cropped_pc_pub.publish(self.action_goal.points)
 
     def update(self):
         if not self.action_client:
@@ -809,7 +815,6 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
             result.pose.orientation.z = 0
             result.pose.orientation.w = 0.7071068
             result.pose.position.z = result.pose.position.z + self.action_goal.dim.y / 3.5
-            # py_trees.blackboard.Blackboard().set('upper_obj_pose', result.pose)
             print("result.pose", result.pose)
             upper_poses = []
             upper_poses.append(result.pose)
@@ -900,20 +905,11 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                 pose.orientation.z = 0
                 pose.orientation.w = 0.7071068
                 pose.position.z = self._grasp_pose.position.z
+                if pose.position.z -  self._plane_bboxes[0].center.position.z > self._obj_bbox.size.y * 1.5:
+                    pose.position.z = self._plane_bboxes[0].center.position.z + self._obj_bbox.size.y * 1.1
                 poses.append(pose)
 
-        
-            # result.pose.orientation.x = 0
-            # result.pose.orientation.y = 0.7071068
-            # result.pose.orientation.z = 0
-            # result.pose.orientation.w = 0.7071068
-            # result.pose.position.z = self._grasp_pose.position.z
-            # result.pose.orientation = self._plane_bboxes[0].center.orientation
-            # print('result.pose: ', result.pose)
             print('table pose: ', self._plane_bboxes)
-            # obj_bboxes_moved = py_trees.blackboard.Blackboard().get('obj_bboxes')
-            # obj_bboxes_moved[self._object_index].center.position = pose.position
-            # py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes_moved)
             py_trees.blackboard.Blackboard().set('free_space_poses', poses)
             return py_trees.Status.SUCCESS
         else:
@@ -1258,19 +1254,75 @@ class RemoveCollisionBoxAct(py_trees.behaviour.Behaviour):
         self._pub.publish(planning_scene);
         return py_trees.Status.SUCCESS
 
-class RemoveAllCollisionBoxAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, object_bbox_key=None):
-        self._object_bbox_key = object_bbox_key
-        self._object_bbox = None
+class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, frame_id='base_link', bbox_key='obj_bboxes'):
+        super(AddAllObjectCollisionBoxAct, self).__init__(name)
+        self._pub = None
+        self._bbox_key = bbox_key
+        self._box_name = None
+        self._box_pose = None
+        self._box_size = None
+        self._frame_id = frame_id
 
-    def initialise(self):
-        if self._object_bbox_key is not None:
-            self._object_bbox = py_trees.blackboard.Blackboard().get(self._box_bb_key)
+    def setup(self, timeout):
+        self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        return True
 
     def update(self):
-        # Define the collision object
-        for i in range(len(self._object_bbox)):
-            RemoveCollisionBoxAct('remove_ith_object_collision_box', self._object_bbox=bboxes.keys()[i])
+        # Make the box
+        blackboard = py_trees.blackboard.Blackboard()
+        bboxes = blackboard.get(self._bbox_key)
+        planning_scene = PlanningScene()
+        planning_scene.is_diff = True
+        for i in  range(len(bboxes)):
+            self._box_name = bboxes.keys()[i]
+            self._box_pose = bboxes[self._box_name].center
+            box_size = bboxes[self._box_name].size
+            self._box_size = [box_size.x + 0.01, box_size.y + 0.01, box_size.z + 0.01]
+            box = SolidPrimitive()
+            box.type = SolidPrimitive.BOX
+            box.dimensions = self._box_size
+
+            # Define the collision object
+            obj = CollisionObject()
+            obj.header.frame_id = self._frame_id
+            obj.id = self._box_name
+            obj.primitives.append(box)
+            obj.primitive_poses.append(self._box_pose)
+            obj.operation = obj.ADD
+
+        # Update the planning scene
+            planning_scene.world.collision_objects.append(obj);
+        self._pub.publish(planning_scene);
+        return py_trees.Status.SUCCESS
+
+class RemoveAllCollisionBoxAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, bbox_key='obj_bboxes'):
+        super(RemoveAllCollisionBoxAct, self).__init__(name)
+        self._pub = None
+        self._bbox_key = bbox_key
+        self._box_name = None
+
+    def setup(self, timeout):
+        self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        return True
+
+    def update(self):
+        # Make the box
+        blackboard = py_trees.blackboard.Blackboard()
+        bboxes = blackboard.get(self._bbox_key)
+        planning_scene = PlanningScene()
+        planning_scene.is_diff = True
+        for i in  range(len(bboxes)):
+            self._box_name = bboxes.keys()[i]
+
+            obj = CollisionObject()
+            obj.id = self._box_name
+            obj.operation = obj.REMOVE
+
+            planning_scene.world.collision_objects.append(obj);
+
+        self._pub.publish(planning_scene);
         return py_trees.Status.SUCCESS
 
 class AttachObjectAct(py_trees_ros.actions.ActionClient):
@@ -1297,24 +1349,6 @@ class AttachObjectAct(py_trees_ros.actions.ActionClient):
         self.action_goal.toAttach = self._to_attach
         self.action_goal.object_name = self._object_name
         if self._to_attach:
-            # obj = CollisionObject()
-            # obj.id = self._object_name
-            # obj.operation = obj.ADD
-
-            # box = SolidPrimitive()
-            # box.type = SolidPrimitive.BOX
-            # box.dimensions = self._object_bbox.size
-
-            # obj.header.frame_id = 'base_link'
-            # obj.primitives.append(box)
-            # obj.primitive_poses.append(self._object_bbox.center)
-
-            # # Update the planning scene
-            # planning_scene = PlanningScene()
-            # planning_scene.is_diff = True
-            # planning_scene.world.collision_objects.append(obj);
-
-
             self.logger.debug("{0}.update()".format(self.__class__.__name__))
             if not self.action_client:
                 self.feedback_message = "no action client, did you call setup() on your tree?"
@@ -1482,7 +1516,7 @@ def MoveToStartAct(name, poses_key):
     root.add_children([
         FullyExtendTorso('act_{}_extend_torso'.format(name)),
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
-        TuckWithCondBehavior('act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
+        TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
         # HeadMoveBehavior('act_{}_look_strait'.format(name), 'MoveStraight'),
         OpenGripperAct('act_{}_open_gripper'.format(name)),
         GrasplocPickAct('act_grasploc_pick', poses_key),
@@ -1503,21 +1537,18 @@ def PickAct(name, obj, surface, relation='None'):
     object_index = obj
     relative_object_index = surface
 
-    # object_bbox = py_trees.blackboard.Blackboard().get('crop_box')
-
     grasploc_grasp_fall = py_trees.composites.Selector('grasploc_grasp_fall')
     grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     grasploc_grasp_seq.add_children([
-        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
-        # MoveToRelativePoseAct('act_move_to_grasp_pose', transform=to_grasp_tf),
-        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
-        CloseGripperAct('act_close_gripper'),
-        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name=obj),
+        # SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
+        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
+        # CloseGripperAct('act_close_gripper'),
+        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name=object_index),
         AddCollisionBoxAct('act_add_inhand_collision_object', box_bb_key='inhand_collision_object'),
+        SleepBehavior('act_sleep_a_smidge', duration=1),
         AttachObjectAct('act_attach_object', object_name='inhand_collision_object', to_attach=True),
-        # MoveToRelativePoseAct('act_move_up', transform=up_tf),
-        RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
-        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False)
+        # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
+        # SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False)
     ])
     
     grasploc_grasp_fall.add_children([
@@ -1538,6 +1569,12 @@ def PickAct(name, obj, surface, relation='None'):
             topic_type=PointCloud2,
             blackboard_variables={'depth_downsampled': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_pc',
+            topic_name='/head_camera/depth/points',
+            topic_type=PointCloud2,
+            blackboard_variables={'depth_pc': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         TFPCAct('act_tf_pc', 'in_pc', 'base_link', 'tfed_pc'),
         CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
         PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
@@ -1546,7 +1583,9 @@ def PickAct(name, obj, surface, relation='None'):
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
 
         GetDopeSnapshotAct('act_get_dope_snapshot'),
+
         ChooseGrasplocObjAct('act_choose_grasploc_obj', relation=relation, object_index=object_index, relative_object_index=relative_object_index),
+        AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         GraspPoseGeneration('generate_gripper_pose'),
         FilterGrasplocPoints('act_filt_grasploc'),
         OffsetPoses('act_offset_grasploc_poses',
@@ -1557,7 +1596,7 @@ def PickAct(name, obj, surface, relation='None'):
         FreeSpaceFinderAct('act_find_free_space', object_index = object_index),   
         GetStackPoseAct('act_get_stack_pose'),
         # MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
-        # grasploc_grasp_fall,
+        grasploc_grasp_fall,
     ])
     return root
 
@@ -1572,7 +1611,10 @@ def PlaceAct(name, obj, surface):
         children=None)
     object_index = obj
     relative_object_index = surface
-    root.add_children([
+
+    place_act_fall = py_trees.composites.Selector('place_act_fall')
+    place_act_seq = py_trees.composites.Sequence('place_act_seq')
+    place_act_seq.add_children([
         OffsetPoses('act_offset_place_poses',
                     offset=[-(gripper_length + pre_grasp_offset), 0, 0],
                     in_poses_key='free_space_poses',
@@ -1580,16 +1622,34 @@ def PlaceAct(name, obj, surface):
         # MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose', place_if=True, object_index=object_index),
         # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
         # OpenGripperAct('act_open_gripper'),
-        # AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
-        # RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
+
+        AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
+        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
+        RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox'),
+        AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
+
+        # SleepBehavior('act_sleep_a_smidge', duration=1),
         # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
-        RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox', object_bbox_key='obj_bboxes'):
-        TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
-        ])
-    # Add steps to execute pick action
-    # root.add_children([
-    # ])
-    return root
+        # place_act_fall,
+        SleepBehavior('act_sleep_a_smidge', duration=1),
+        RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox')
+    ])
+    
+    place_act_fall.add_children([
+        TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
+        py_trees.meta.success_is_failure(RelativeCartesianMoveAct)(name='ToTuckRelativeCartesianMoveAct', pose_diff_msg=up_tf_little),
+        TuckBehavior(name='act_tuck_arm_second_try', tuck_pose='tuck'),
+        py_trees.meta.success_is_failure(RelativeCartesianMoveAct)(name='ToTuckRelativeCartesianMoveAct', pose_diff_msg=back_tf),
+        TuckBehavior(name='act_tuck_arm_third_try', tuck_pose='tuck'),
+        py_trees.meta.success_is_failure(RelativeCartesianMoveAct)(name='ToTuckRelativeCartesianMoveAct', pose_diff_msg=down_tf),
+        TuckBehavior(name='act_tuck_arm_fourth_try', tuck_pose='tuck'),
+        py_trees.meta.success_is_failure(RelativeCartesianMoveAct)(name='ToTuckRelativeCartesianMoveAct', pose_diff_msg=right_tf),
+        TuckBehavior(name='act_tuck_arm_fifth_try', tuck_pose='tuck'),
+        py_trees.meta.success_is_failure(RelativeCartesianMoveAct)(name='ToTuckRelativeCartesianMoveAct', pose_diff_msg=left_tf),
+        TuckBehavior(name='act_tuck_arm_sixth_try', tuck_pose='tuck'),
+    ])
+    return place_act_seq
+
 
 class InfiniteDopeAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, *argv, **kwargs):

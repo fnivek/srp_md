@@ -8,7 +8,7 @@ import os
 import re
 import functools
 import py_trees, py_trees_ros
-from .actions import AddAllCollisionBoxesAct, MoveToStartAct, PickAct, PlaceAct
+from .actions import AddAllCollisionBoxesAct, MoveToStartAct, PickAct, PlaceAct, RemoveAllCollisionBoxAct
 
 class Actor(object):
     def __init__(self):
@@ -44,14 +44,20 @@ class Actor(object):
             print(type(solution))
             # For each line in solution, do:
             place_stack = []
-            relative_object = []
+            place_near = []
+            relative_object_stack = []
+            relative_object_near = []
             for i, line in enumerate(lines):
                 line = re.sub('[()]+', '', line)
                 action, obj_1, obj_2, _ = line.split()
                 if "place" in action:
                     if "stack" in action:
                         place_stack.append(i)
-                        relative_object.append(obj_2)
+                        relative_object_stack.append(obj_2)
+                    if "near" in action:
+                        place_near.append(i)
+                        relative_object_near.append(i)
+
             print("place_stack: ", place_stack)
 
             # for i, line in enumerate(solution):
@@ -69,9 +75,10 @@ class Actor(object):
                     # Add pick action to the root
                         print('relation=Stacking')
                         index_relative_object = place_stack.index(i+1)
-                        print(relative_object[index_relative_object])
-                        root.add_child(PickAct(i, obj_1, obj_2, relation='Stacking'))
-                        
+                        root.add_child(PickAct(i, obj_1, relative_object_stack[index_relative_object], relation='Stacking'))
+                    elif i+1 in place_near:
+                        index_relative_object = place_near.index(i+1)
+                        root.add_child(PickAct(i, obj_1, relative_object_near[index_relative_object], relation='Near'))
                     else:
                         print('relation!=Stacking')
                         root.add_child(PickAct(i, obj_1, obj_2))
