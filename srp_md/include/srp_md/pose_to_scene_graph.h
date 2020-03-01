@@ -10,6 +10,10 @@
 #include <fstream>
 #include <iterator>
 #include <cmath>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <iterator>
 
 #include <opencv/cv.h>
 #include <opencv/highgui.h>

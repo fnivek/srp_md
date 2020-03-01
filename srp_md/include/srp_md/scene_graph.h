@@ -36,9 +36,40 @@ typedef std::vector<Object> ObjectList;
 
 enum RelationType
 {
+    kDisjoint,
+    kIn,
     kOn,
+    kContain,
+    kSupport,
+    kProximity,
+    kNumRelations
+};
+
+const std::vector<RelationType> kRelations = {
+    kDisjoint,
+    kIn,
+    kOn,
+    kContain,
     kSupport,
     kProximity
+};
+
+const std::map<RelationType, std::string> kRelationStrings = {
+    {kDisjoint, "disjoint"},
+    {kIn, "in"},
+    {kOn, "on"},
+    {kContain, "contain"},
+    {kSupport, "support"},
+    {kProximity, "proximity"}
+};
+
+const std::map<RelationType, RelationType> kInvRelationMap = {
+    {kDisjoint, kDisjoint},
+    {kIn, kContain},
+    {kContain, kIn},
+    {kSupport, kOn},
+    {kOn, kSupport},
+    {kProximity, kProximity},
 };
 
 struct Relation
@@ -56,22 +87,7 @@ struct Relation
 
     std::string get_type_str()
     {
-        std::string type_str;
-        switch (type)
-        {
-            case kOn:
-                type_str = "on";
-                break;
-            case kSupport:
-                type_str = "support";
-                break;
-            case kProximity:
-                type_str = "proximity";
-                break;
-            default:
-                type_str = "disjoint";
-        }
-        return type_str;
+        return kRelationStrings.at(type);
     }
 
     // void operator=(const Relation& relation){

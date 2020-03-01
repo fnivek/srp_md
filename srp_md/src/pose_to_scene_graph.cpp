@@ -47,7 +47,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     scene_graph_ = scene_graph::SceneGraph();
 
     // Grab objects from request
-    scene_graph::Object* table;
+    scene_graph::Object table;
     int object_id = 0;
     scene_graph::ObjectList object_list;
     for (int i = 0; i < req.objects.size(); ++i)
@@ -59,7 +59,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         // If its the table it has no dimensions
         if(obj.name.find("table") != std::string::npos)
         {
-            table = &obj;
+            table = obj;
             object_list.push_back(obj);
             continue;
         }
@@ -82,7 +82,8 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     }
 
     // Determine support and on relations
-    std::map<scene_graph::Object, scene_graph::ObjectList> on_map;
+    std::map<scene_graph::Object, std::set<scene_graph::Object>> on_map;
+    std::map<scene_graph::Object, std::set<scene_graph::Object>> sup_map;
     std::sort(object_list.begin(), object_list.end(), ObjectCompByHeight);
     for (int i = 0; i < object_list.size(); ++i)
     {
@@ -93,39 +94,65 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         for (int j = i + 1; j < object_list.size(); ++j)
         {
             scene_graph::Object& bot_obj = object_list[j];
-            on_map[bot_obj].push_back(top_obj);
             if(bot_obj.name.find("table") != std::string::npos)
+            {
                 continue;
+            }
             if (CheckOverlap(top_obj, bot_obj))
             {
+                on_map[top_obj].emplace(bot_obj);
+                sup_map[bot_obj].emplace(top_obj);
                 on_anything = true;
                 scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, bot_obj.id, top_obj.name,
                                          bot_obj.name);
                 scene_graph_.rel_list.push_back(on);
-                // Debug
-                printf("On(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
             }
         }
         if(!on_anything)
         {
             // Then must be on table
-            scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, table->id, top_obj.name, table->name);
+            scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, table.id, top_obj.name, table.name);
             scene_graph_.rel_list.push_back(on);
-            printf("On(%s, %s)\n", top_obj.name.c_str(), table->name.c_str());
+            on_map[top_obj].emplace(table);
+            sup_map[table].emplace(top_obj);
+        }
+    }
+
+    // Determine direct on and support relations through checking for null set of the union of support and on sets
+    std::map<scene_graph::Object, scene_graph::ObjectList> directly_on_map;
+    for (auto&& top_obj : object_list)
+    {
+        for (auto&& bot_obj : on_map[top_obj])
+        {
+            std::vector<scene_graph::Object> intersect;
+            std::set_intersection(on_map[top_obj].begin(), on_map[top_obj].end(),
+                                  sup_map[bot_obj].begin(), sup_map[bot_obj].end(),
+                                  std::back_inserter(intersect));
+            if (intersect.size() == 0)
+            {
+                directly_on_map[bot_obj].push_back(top_obj);
+            }
         }
     }
 
     // Determine proximity
-    for (auto&& pair : on_map)
+    for (auto&& pair : directly_on_map)
     {
         for (auto&& obj_it = pair.second.begin(); obj_it < pair.second.end(); ++obj_it)
         {
+            std::string obj_name = obj_it->name.substr(0, obj_it->name.rfind("_") + 1);
+            float obj_r = obj_it->dim.norm() / 2;
             for (auto&& obj_it_2 = obj_it + 1; obj_it_2 < pair.second.end(); ++obj_it_2)
             {
-                printf("%s and %s both on %s\n", obj_it->name.c_str(), obj_it_2->name.c_str(), pair.first.name.c_str());
-                // TODO(Kevin) Check the distance between the objects and add Proximity if less than threshold
-                scene_graph_.rel_list.emplace_back(
-                    scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
+                std::string obj_2_name = obj_it_2->name.substr(0, obj_it_2->name.rfind("_") + 1);
+                float obj_2_r = obj_it_2->dim.norm() / 2;
+                float dist = (obj_it->pose.translation() - obj_it_2->pose.translation()).norm();
+                float max_dist = (obj_r + obj_2_r) * 1.2;
+                if (dist < max_dist)
+                {
+                    scene_graph_.rel_list.emplace_back(
+                        scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
+                }
             }
         }
     }
