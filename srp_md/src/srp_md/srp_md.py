@@ -103,6 +103,12 @@ class SrpMd(object):
     def get_num_demos(self):
         return len(self._raw_images)
 
+    def get_num_keyframes(self):
+        try:
+            return len(self._raw_images[-1])
+        except IndexError:
+            return 0
+
     def get_num_inits(self):
         return len(self._initial_scenes)
 
@@ -548,6 +554,12 @@ class SrpMd(object):
                         f.write("\n")
 
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
+
+    def undo_keyframe(self):
+        try:
+            self._raw_images[-1].pop()
+        except IndexError:
+            self._logger.error('No Keyframes to undo!')
 
     def clear_keyframes(self, demo_num):
         self._raw_images[demo_num] = []

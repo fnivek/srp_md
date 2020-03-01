@@ -17,9 +17,9 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>10</y>
+     <y>40</y>
      <width>911</width>
-     <height>721</height>
+     <height>671</height>
     </rect>
    </property>
    <property name="text">
@@ -29,9 +29,9 @@
   <widget class="QPushButton" name="set_keyframe">
    <property name="geometry">
     <rect>
-     <x>100</x>
-     <y>750</y>
-     <width>101</width>
+     <x>290</x>
+     <y>720</y>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
@@ -42,9 +42,9 @@
   <widget class="QPushButton" name="save_demos">
    <property name="geometry">
     <rect>
-     <x>460</x>
+     <x>420</x>
      <y>750</y>
-     <width>101</width>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
@@ -55,9 +55,9 @@
   <widget class="QPushButton" name="clear_keyframes">
    <property name="geometry">
     <rect>
-     <x>220</x>
-     <y>750</y>
-     <width>101</width>
+     <x>550</x>
+     <y>720</y>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
@@ -68,9 +68,9 @@
   <widget class="QPushButton" name="cancel">
    <property name="geometry">
     <rect>
-     <x>820</x>
+     <x>810</x>
      <y>750</y>
-     <width>101</width>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
@@ -81,9 +81,9 @@
   <widget class="QPushButton" name="next_demo">
    <property name="geometry">
     <rect>
-     <x>340</x>
-     <y>750</y>
-     <width>101</width>
+     <x>680</x>
+     <y>720</y>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
@@ -94,9 +94,9 @@
   <widget class="QPushButton" name="process_data">
    <property name="geometry">
     <rect>
-     <x>700</x>
+     <x>680</x>
      <y>750</y>
-     <width>101</width>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
@@ -107,14 +107,92 @@
   <widget class="QPushButton" name="get_init">
    <property name="geometry">
     <rect>
-     <x>580</x>
+     <x>550</x>
      <y>750</y>
-     <width>101</width>
+     <width>111</width>
      <height>25</height>
     </rect>
    </property>
    <property name="text">
     <string>Get Init</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="demo_label">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>10</y>
+     <width>131</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Demo No.:</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="keyframe_label">
+   <property name="geometry">
+    <rect>
+     <x>460</x>
+     <y>10</y>
+     <width>161</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Keyframe No.:</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="demo_num">
+   <property name="geometry">
+    <rect>
+     <x>330</x>
+     <y>10</y>
+     <width>131</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="keyframe_num">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>10</y>
+     <width>131</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="undo_demo">
+   <property name="geometry">
+    <rect>
+     <x>810</x>
+     <y>720</y>
+     <width>111</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Undo Demo</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="undo_keyframe">
+   <property name="geometry">
+    <rect>
+     <x>420</x>
+     <y>720</y>
+     <width>111</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Undo Keyframe</string>
    </property>
   </widget>
  </widget>

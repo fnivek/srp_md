@@ -97,6 +97,9 @@ class Controller(object):
     def set_keyframe(self, demo_num, keyframe_num):
         self._model.accept_keyframe(demo_num, keyframe_num)
 
+    def undo_keyframe(self):
+        self._model.undo_keyframe()
+
     def clear_keyframes(self, demo_num):
         self._model.clear_keyframes(demo_num)
 

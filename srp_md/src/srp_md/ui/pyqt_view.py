@@ -306,7 +306,7 @@ class PyQtView(view.BaseView):
     def grocery_experiment(self):
         # Use the video widget
         self._gui.vid = VidWidget(self._model, self._ctrl)
-        self._gui.vid.run()
+        self._gui.vid.run_main()
 
         # # Run the functionalities
         # self._ctrl.grocery_experiment()
@@ -331,14 +331,14 @@ class VidWidget(QWidget):
     def setImage(self, image):
         self.video.setPixmap(QPixmap.fromImage(image))
 
-    def run(self):
+    def run_main(self):
         # Import the video gui
         ui_path = os.path.dirname(os.path.abspath(__file__))
         loadUi(os.path.join(ui_path, "pyqt_format_vid.ui"), self)
         self.setWindowTitle("Video Capture")
 
         # create a label
-        self.video.resize(900, 740)
+        self.video.resize(910, 670)
 
         # Initialize video thread and connect the video
         self.vid_thread = VidThread()
@@ -351,14 +351,17 @@ class VidWidget(QWidget):
 
         # Connect the buttons
         self.set_keyframe.pressed.connect(self.set_keyframe_func)
+        self.undo_keyframe.pressed.connect(self.undo_keyframe_func)
         self.clear_keyframes.pressed.connect(self.clear_keyframes_func)
         self.next_demo.pressed.connect(self.next_demo_func)
         self.save_demos.pressed.connect(self.write_demos)
+        self.undo_demo.pressed.connect(self.undo_demo_func)
         self.get_init.pressed.connect(self._ctrl.get_init_scene)
         self.process_data.pressed.connect(self.process_keyframes)
         self.cancel.pressed.connect(self.clear_demos)
 
         self.show()
+        self.run()
 
     def set_keyframe_func(self):
         # Adds current scene to keyframe
@@ -369,6 +372,10 @@ class VidWidget(QWidget):
         # Clears keyframes for current demo
         self._ctrl.clear_keyframes(self._demo_num)
         self._keyframe_num = 0
+
+    def undo_keyframe_func(self):
+        # Clears keyframes for current demo
+        self._ctrl.undo_keyframe()
 
     def next_demo_func(self):
         # Go to next demo
@@ -386,6 +393,11 @@ class VidWidget(QWidget):
         else:
             self._ctrl.write_keyframes_demos(demo_file[0])
 
+    def undo_demo_func(self):
+        self._demo_num -= 1
+        self._keyframe_num = self._model.get_num_keyframes()
+        self._ctrl.undo_demo()
+
     def process_keyframes(self):
         # Go to next demo
         self.close()
@@ -400,6 +412,19 @@ class VidWidget(QWidget):
         self.vid_thread.exit()
         self.dope_thread.exit()
         event.accept()
+
+    def run_once(self):
+        self.update_from_model()
+
+    def run(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.run_once)
+        self.timer.start(100)
+
+    def update_from_model(self):
+        self._keyframe_num = self._model.get_num_keyframes()
+        self.demo_num.setText('{}'.format(self._model.get_num_demos()))
+        self.keyframe_num.setText('{}'.format(self._model.get_num_keyframes()))
 
 class VidThread(QThread):
     changePixmap = pyqtSignal(QImage)
@@ -425,7 +450,7 @@ class VidThread(QThread):
                 h, w, ch = cv_image.shape
                 bytesPerLine = ch * w
                 convertToQtFormat = QImage(cv_image.data, w, h, bytesPerLine, QImage.Format_RGB888)
-                p = convertToQtFormat.scaled(900, 740, Qt.KeepAspectRatio)
+                p = convertToQtFormat.scaled(910, 670, Qt.KeepAspectRatio)
                 self.changePixmap.emit(p)
                 self.rate.sleep()
 
