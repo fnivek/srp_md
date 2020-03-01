@@ -19,7 +19,7 @@ bool PointCompByHeight(const Eigen::Vector4d& p1, const Eigen::Vector4d& p2)
 }
 
 // PoseToSceneGraph
-PoseToSceneGraph::PoseToSceneGraph()
+PoseToSceneGraph::PoseToSceneGraph() : proximity_threshold_(0.03)
 {
     // Start ros service
     ros::NodeHandle nh;
@@ -136,15 +136,9 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     {
         for (auto&& obj_it = pair.second.begin(); obj_it < pair.second.end(); ++obj_it)
         {
-            std::string obj_name = obj_it->name.substr(0, obj_it->name.rfind("_") + 1);
-            float obj_r = obj_it->dim.norm() / 2;
             for (auto&& obj_it_2 = obj_it + 1; obj_it_2 < pair.second.end(); ++obj_it_2)
             {
-                std::string obj_2_name = obj_it_2->name.substr(0, obj_it_2->name.rfind("_") + 1);
-                float obj_2_r = obj_it_2->dim.norm() / 2;
-                float dist = (obj_it->pose.translation() - obj_it_2->pose.translation()).norm();
-                float max_dist = (obj_r + obj_2_r) * 1.2;
-                if (dist < max_dist)
+                if (CheckProximity(*obj_it, *obj_it_2))
                 {
                     scene_graph_.rel_list.emplace_back(
                         scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
@@ -376,18 +370,39 @@ bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Ob
 
 bool PoseToSceneGraph::CheckCenterOfMassOn(scene_graph::Object top_obj, scene_graph::Object bot_obj)
 {
-    // Project bottom object bounding box verticies to xy plane
-    std::vector<cv::Point2f> bot_points;
-    for (auto&& point : ProjectObjectBoudingBox(bot_obj, "all"))
-    {
-        bot_points.emplace_back(point.x(), point.y());
-    }
-
-    // Get the convex hull of the bot obj projection
     std::vector<cv::Point2f> bot_hull;
-    cv::convexHull(cv::Mat(bot_points), bot_hull);
+    Get2DConvexHull(bot_obj, &bot_hull);
 
     // Test if the center of mass is inside the hull
     cv::Point2f com(top_obj.pose.translation().x(), top_obj.pose.translation().y());
     return cv::pointPolygonTest(cv::Mat(bot_hull), com, false) > 0;
+}
+
+bool PoseToSceneGraph::CheckProximity(scene_graph::Object object1, scene_graph::Object object2)
+{
+    std::vector<cv::Point2f> hull1;
+    std::vector<cv::Point2f> hull2;
+
+    for (auto&& point : hull1)
+    {
+        float dist = cv::pointPolygonTest(cv::Mat(hull2), point, true);
+        if (dist >= 0)
+            return true;
+        if (fabs(dist) <= proximity_threshold_)
+            return true;
+    }
+    return false;
+}
+
+void PoseToSceneGraph::Get2DConvexHull(scene_graph::Object obj, std::vector<cv::Point2f>* hull)
+{
+    // Project bottom object bounding box verticies to xy plane
+    std::vector<cv::Point2f> points;
+    for (auto&& point : ProjectObjectBoudingBox(obj, "all"))
+    {
+        points.emplace_back(point.x(), point.y());
+    }
+
+    // Get the convex hull of the bot obj projection
+    cv::convexHull(cv::Mat(points), *hull);
 }

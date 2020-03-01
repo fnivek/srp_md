@@ -41,10 +41,13 @@ class PoseToSceneGraph
         return scene_graph_;
     }
 
+    void SetProximityThreshold(float threshold) {proximity_threshold_ = threshold;};
+
   private:
     ros::ServiceServer server_;
     scene_graph::SceneGraph scene_graph_;
     std::vector<scene_graph::Object> clear_objects_;
+    float proximity_threshold_;
 
     bool CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& req, srp_md_msgs::PoseToSceneGraph::Response& resp);
 
@@ -58,4 +61,7 @@ class PoseToSceneGraph
 
     bool CheckOverlap(scene_graph::Object object1, scene_graph::Object object2);
     bool CheckCenterOfMassOn(scene_graph::Object top_obj, scene_graph::Object bot_obj);
+    bool CheckProximity(scene_graph::Object object1, scene_graph::Object object2);
+
+    void Get2DConvexHull(scene_graph::Object obj, std::vector<cv::Point2f>* hull);
 };
