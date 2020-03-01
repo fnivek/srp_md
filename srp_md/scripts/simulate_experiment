@@ -102,6 +102,17 @@ def generate_init_scenes(init_num, init_objs_nums, obj_list=None):
 
     return scene_graphs
 
+def save_demos(demo_graphs, dirname):
+    os.mkdir(dirname)
+    pickle_name = os.path.join(dirname, "data.pickle")
+    pickle.dump(demo_graphs, open(pickle_name, 'wb'))
+    for i, demo in enumerate(demo_graphs):
+        demo.to_png(os.path.join(dirname, "demo_{}".format(i)))
+
+def load_demos(dirname):
+    demo_graphs = pickle.load(open(os.path.join(dirname, "data.pickle"), 'rb'))
+    return demo_graphs
+
 def main():
     # Setup ROS
     rospy.init_node('simulate_experiment', anonymous=True)
@@ -109,23 +120,32 @@ def main():
 
     # Define file path
     script_path = os.path.dirname(os.path.realpath(__file__))
-    data_folder = os.path.realpath(script_path + '/../../data')
+    demo_folder = os.path.realpath(script_path + '/../../data/demos')
+    # init_folder = os.path.realpath(script_path + '/../../data/inits')
 
     # Ask if you want to load the graphs
-    save_bool = raw_input("Do you wish to load the demo graphs and init graphs? [y/n] \n")
+    save_bool = raw_input("Do you wish to load the demo graphs? [y/n] \n")
     if save_bool == "y":
-        filename = raw_input("What is the filename to pickle from? \n")
-        demo_graphs, init_graphs = pickle.load(open(os.path.join(data_folder, filename), 'rb'))
-
+        dirname = raw_input("What is the directory to load from? \n")
+        demo_graphs = load_demos(os.path.join(demo_folder, dirname))
     else:
-        # Simulate goal scenegraphs and initial scenegraphs
-        demo_num, demo_objs_nums, noise_num = 2, [5], 0
-        init_num, init_objs_nums = 1, [2]
-        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
-        demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num, [["cracker", "gelatin", "meat", "soup", "sugar"], ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
-        # init_graphs = generate_init_scenes(init_num, init_objs_nums)
-        init_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
-        logger.info('Generated {} demo graphs with {} noises and {} initial scenes'.format(demo_num, noise_num, init_num))
+        # Simulate goal scenegraphs
+        demo_num, demo_objs_nums, noise_num = 20, [6], 0
+        demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
+        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num, [["cracker", "gelatin", "meat", "soup", "sugar"], ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
+        logger.info('Generated {} demo graphs with {} noises'.format(demo_num, noise_num))
+
+    # Simulate initial scenegraphs
+    init_num, init_objs_nums = 1, [2]
+    init_graphs = generate_init_scenes(init_num, init_objs_nums)
+    # init_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
+    logger.info('Generated {} initial scenes'.format(init_num))
+
+    # Ask if you want to save the graphs
+    save_bool = raw_input("Do you wish to save the demo graphs? [y/n] \n")
+    if save_bool == "y":
+        dirname = raw_input("What is the directory to save to? \n")
+        save_demos(demo_graphs, os.path.join(demo_folder, dirname))
 
     # Setup SRP_MD object
     srp = srp_md.SrpMd(sensor="dope_sensor", learner="factor_graph_learner", goal_generator="factor_graph_goal_generator")
@@ -141,11 +161,16 @@ def main():
     srp.generate_goal()
     logger.info('Generated goals')
 
-    # Ask if you want to save the graphs
-    save_bool = raw_input("Do you wish to save the demo graphs and init graphs? [y/n] \n")
-    if save_bool == "y":
-        filename = raw_input("What is the filename to pickle to? \n")
-        pickle.dump([demo_graphs, init_graphs], open(os.path.join(data_folder, filename), 'wb'))
+    # # Ask if you want to save the graphs
+    # save_bool = raw_input("Do you wish to save the demo graphs? [y/n] \n")
+    # if save_bool == "y":
+    #     filename = raw_input("What is the filename to pickle to? \n")
+    #     pickle.dump(demo_graphs, open(os.path.join(demo_folder, filename), 'wb'))
+
+    # save_bool = raw_input("Do you wish to save the init graphs? [y/n] \n")
+    # if save_bool == "y":
+    #     filename = raw_input("What is the filename to pickle to? \n")
+    #     pickle.dump(init_graphs, open(os.path.join(init_folder, filename), 'wb'))
 
 if __name__ == '__main__':
     logger.info('Simulation Experiment starting up... #BOLD')
