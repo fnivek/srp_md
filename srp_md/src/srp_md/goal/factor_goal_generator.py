@@ -171,6 +171,19 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         ]
         cls.INCONSISTENT_RELATIONS.extend(bad_stacks)
 
+        # Cant do this because this disallows cases like h bridges which happen because of the table
+        # for rel_vals in itertools.product(['on', 'support'], repeat=3):
+        #     if rel_vals in bad_stacks:
+        #         continue
+        #     cls.INCONSISTENT_RELATIONS.extend([(x, rel_vals[1], rel_vals[2])
+        #                                       for x in ['in', 'contain', 'proximity', 'disjoint']])
+        #     cls.INCONSISTENT_RELATIONS.extend([(rel_vals[0], x, rel_vals[2])
+        #                                       for x in ['in', 'contain', 'proximity', 'disjoint']])
+        #     cls.INCONSISTENT_RELATIONS.extend([(rel_vals[0], rel_vals[1], x)
+        #                                       for x in ['in', 'contain', 'proximity', 'disjoint']])
+        for r in cls.INCONSISTENT_RELATIONS:
+            print(r)
+
 
 # Register the goal generator
 goal_generator.goal_generators['factor_graph_goal_generator'] = FactorGraphGoalGenerator
