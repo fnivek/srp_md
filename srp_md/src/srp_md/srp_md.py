@@ -555,6 +555,14 @@ class SrpMd(object):
 
         self._logger.info('Success saving image, pointcloud, and tf to respective files\n')
 
+    def load_keyframes_demos(self, pickle_name):
+        self._raw_images = pickle.load(open(pickle_name, 'rb'))
+        self._logger.info('Success loading demo images from file {}\n'.format(pickle_name))
+        if len(self._raw_images) != 0:
+            self._current_image = self._raw_images[-1]
+        else:
+            self._current_image = None
+
     def undo_keyframe(self):
         try:
             self._raw_images[-1].pop()

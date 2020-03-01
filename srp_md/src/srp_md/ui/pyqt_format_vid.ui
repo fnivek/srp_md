@@ -42,7 +42,7 @@
   <widget class="QPushButton" name="save_demos">
    <property name="geometry">
     <rect>
-     <x>420</x>
+     <x>290</x>
      <y>750</y>
      <width>111</width>
      <height>25</height>
@@ -193,6 +193,19 @@
    </property>
    <property name="text">
     <string>Undo Keyframe</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="load_demos">
+   <property name="geometry">
+    <rect>
+     <x>420</x>
+     <y>750</y>
+     <width>111</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Load Demos</string>
    </property>
   </widget>
  </widget>

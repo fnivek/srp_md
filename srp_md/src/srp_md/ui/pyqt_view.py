@@ -355,6 +355,7 @@ class VidWidget(QWidget):
         self.clear_keyframes.pressed.connect(self.clear_keyframes_func)
         self.next_demo.pressed.connect(self.next_demo_func)
         self.save_demos.pressed.connect(self.write_demos)
+        self.load_demos.pressed.connect(self.load_demos_func)
         self.undo_demo.pressed.connect(self.undo_demo_func)
         self.get_init.pressed.connect(self._ctrl.get_init_scene)
         self.process_data.pressed.connect(self.process_keyframes)
@@ -392,6 +393,18 @@ class VidWidget(QWidget):
             pass
         else:
             self._ctrl.write_keyframes_demos(demo_file[0])
+
+    def load_demos_func(self):
+        # Load demos with keyframes
+        script_path = os.path.dirname(os.path.realpath(__file__))
+        self._data_folder = os.path.realpath(script_path + '/../../../../data')
+        demo_file = QFileDialog.getSaveFileName(self, caption='Input Directory Name', directory=self._data_folder,
+                                                filter='All files (*.*)')
+        if demo_file[0] == '':
+            pass
+        else:
+            self._ctrl.load_keyframes_demos(demo_file[0])
+            self._demo_num = self._model.get_num_demos()
 
     def undo_demo_func(self):
         self._demo_num -= 1
