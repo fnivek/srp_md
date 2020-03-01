@@ -124,8 +124,11 @@ class DopeSensor(sense.BaseSensor):
         scene_graph = srp_md.SceneGraph(objs)
         # Update all relations from response
         for name1, name2, rel_value in zip(resp.object1, resp.object2, resp.relation):
+            print(name1, name2)
             obj1 = scene_graph.get_obj_by_name(name1)
             obj2 = scene_graph.get_obj_by_name(name2)
+            print(obj1, obj2)
+            print(scene_graph)
             rel = scene_graph.get_rel_by_objs(obj1, obj2)
             rel.value = rel_value
             # Check if obj1 and obj2 are fliped

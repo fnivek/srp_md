@@ -88,18 +88,24 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
     for (int i = 0; i < object_list.size(); ++i)
     {
         scene_graph::Object& top_obj = object_list[i];
+        printf("top_obj %s\n", top_obj.name.c_str());
         if(top_obj.name.find("table") != std::string::npos)
             continue;
         bool on_anything = false;
         for (int j = i + 1; j < object_list.size(); ++j)
         {
             scene_graph::Object& bot_obj = object_list[j];
+            printf("bot_obj %s\n", bot_obj.name.c_str());
             if(bot_obj.name.find("table") != std::string::npos)
             {
+                printf("bot_obj is the table\n");
                 continue;
             }
+            printf("CheckOverlap(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
             if (CheckOverlap(top_obj, bot_obj))
             {
+                // Debug
+                printf("On(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
                 on_map[top_obj].emplace(bot_obj);
                 sup_map[bot_obj].emplace(top_obj);
                 on_anything = true;
@@ -115,6 +121,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
             scene_graph_.rel_list.push_back(on);
             on_map[top_obj].emplace(table);
             sup_map[table].emplace(top_obj);
+            printf("On(%s, %s)\n", top_obj.name.c_str(), table.name.c_str());
         }
     }
 
@@ -130,6 +137,8 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
                                   std::back_inserter(intersect));
             if (intersect.size() == 0)
             {
+                // Debug
+                printf("DirectlyOn(%s, %s)\n", top_obj.name.c_str(), bot_obj.name.c_str());
                 directly_on_map[bot_obj].push_back(top_obj);
             }
         }
@@ -151,6 +160,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
                 float max_dist = (obj_r + obj_2_r) * 1.2;
                 if (dist < max_dist)
                 {
+                    printf("%s and %s are in proximity\n", obj_it->name.c_str(), obj_it_2->name.c_str());
                     scene_graph_.rel_list.emplace_back(
                         scene_graph::RelationType::kProximity, obj_it->id, obj_it_2->id, obj_it->name, obj_it_2->name);
                 }
