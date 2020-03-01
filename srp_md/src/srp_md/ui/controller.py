@@ -106,8 +106,11 @@ class Controller(object):
     def write_keyframes_demos(self, dirname):
         self._model.write_keyframes_demos(dirname)
 
-    def load_keyframes_demos(self, dirname):
-        self._model.load_keyframes_demos(dirname)
+    def load_keyframes_demos(self, filename):
+        self._model.load_keyframes_demos(filename)
+
+    def append_keyframes_demos(self, filename):
+        self._model.append_keyframes_demos(filename)
 
     def process_keyframes(self):
         self._model.process_keyframes()

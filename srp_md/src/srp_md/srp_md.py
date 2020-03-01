@@ -563,6 +563,15 @@ class SrpMd(object):
         else:
             self._current_image = None
 
+    def append_keyframes_demos(self, pickle_name):
+        new_raw_images = pickle.load(open(pickle_name, 'rb'))
+        self._raw_images += new_raw_images
+        self._logger.info('Success appending demo images from file {}\n'.format(pickle_name))
+        if len(self._raw_images) != 0:
+            self._current_image = self._raw_images[-1]
+        else:
+            self._current_image = None
+
     def undo_keyframe(self):
         try:
             self._raw_images[-1].pop()

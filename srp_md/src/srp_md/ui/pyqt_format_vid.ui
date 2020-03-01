@@ -42,7 +42,7 @@
   <widget class="QPushButton" name="save_demos">
    <property name="geometry">
     <rect>
-     <x>290</x>
+     <x>160</x>
      <y>750</y>
      <width>111</width>
      <height>25</height>
@@ -198,7 +198,7 @@
   <widget class="QPushButton" name="load_demos">
    <property name="geometry">
     <rect>
-     <x>420</x>
+     <x>290</x>
      <y>750</y>
      <width>111</width>
      <height>25</height>
@@ -206,6 +206,19 @@
    </property>
    <property name="text">
     <string>Load Demos</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="append_demos">
+   <property name="geometry">
+    <rect>
+     <x>420</x>
+     <y>750</y>
+     <width>111</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Append Demos</string>
    </property>
   </widget>
  </widget>
