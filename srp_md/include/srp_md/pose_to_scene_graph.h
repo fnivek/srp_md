@@ -57,4 +57,5 @@ class PoseToSceneGraph
     void DrawPolygon(cv::Mat& image, std::vector<Eigen::Vector3d> points);
 
     bool CheckOverlap(scene_graph::Object object1, scene_graph::Object object2);
+    bool CheckCenterOfMassOn(scene_graph::Object top_obj, scene_graph::Object bot_obj);
 };

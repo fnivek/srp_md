@@ -97,7 +97,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
             {
                 continue;
             }
-            if (CheckOverlap(top_obj, bot_obj))
+            if (CheckCenterOfMassOn(top_obj, bot_obj))
             {
                 on_map[top_obj].emplace(bot_obj);
                 sup_map[bot_obj].emplace(top_obj);
@@ -268,6 +268,11 @@ std::vector<Eigen::Vector3d> PoseToSceneGraph::ProjectObjectBoudingBox(scene_gra
         for (int i = 0; i < 4; i++)
             points.push_back(Eigen::Vector3d(vertices[i][0], vertices[i][1], vertices[i][2]));
     }
+    else if (surface == "all")
+    {
+        for (auto&& point : vertices)
+            points.emplace_back(point[0], point[1], point[2]);
+    }
     else
     {
         std::cerr << "unrecognized surface option\n";
@@ -367,4 +372,22 @@ bool PoseToSceneGraph::CheckOverlap(scene_graph::Object object1, scene_graph::Ob
         return true;
     else
         return false;
+}
+
+bool PoseToSceneGraph::CheckCenterOfMassOn(scene_graph::Object top_obj, scene_graph::Object bot_obj)
+{
+    // Project bottom object bounding box verticies to xy plane
+    std::vector<cv::Point2f> bot_points;
+    for (auto&& point : ProjectObjectBoudingBox(bot_obj, "all"))
+    {
+        bot_points.emplace_back(point.x(), point.y());
+    }
+
+    // Get the convex hull of the bot obj projection
+    std::vector<cv::Point2f> bot_hull;
+    cv::convexHull(cv::Mat(bot_points), bot_hull);
+
+    // Test if the center of mass is inside the hull
+    cv::Point2f com(top_obj.pose.translation().x(), top_obj.pose.translation().y());
+    return cv::pointPolygonTest(cv::Mat(bot_hull), com, false) > 0;
 }
