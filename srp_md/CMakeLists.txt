@@ -150,18 +150,6 @@ add_dependencies(pose_to_scene_graph_node
   ${catkin_EXPORTED_TARGETS}
 )
 
-# Pose to scene graph node
-add_executable(plan_task src/plan_task.cpp)
-# Note order should be if depends on another then must go higher in list
-target_link_libraries(plan_task
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-add_dependencies(plan_task
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-)
-
 # Action node
 add_executable(action_node
   src/action_node.cpp

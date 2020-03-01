@@ -99,6 +99,7 @@ class DopeSensor(sense.BaseSensor):
         table_uuid = uuid
         req.names.append('table')
         req.objects.append(BoundingBox3D())
+        # self._logger.debug('The request is {}'.format(req))
 
         py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
         # self._logger.debug('The object bboxes: {}'.format(obj_bboxes))
