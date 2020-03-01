@@ -41,6 +41,9 @@ add_action_files(
     CropPC.action
     FreeSpaceFinder.action
     TFPC.action
+    RelativeCartesianMove.action
+    GetStackPose.action
+    AttachObject.action
 )
 
 # Generate added messages and services with any dependencies listed here

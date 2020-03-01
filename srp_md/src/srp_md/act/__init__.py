@@ -23,7 +23,14 @@ from .actions import FreeSpaceFinderAct
 from .actions import OffsetPoses
 from .actions import SetAllowGripperCollisionAct
 from .actions import GetDesiredPoseAct
+from .actions import RelativeCartesianMoveAct
+from .actions import GraspPoseGeneration
 from .actions import AddAllCollisionBoxesAct
 from .actions import MoveToStartAct
 from .actions import PickAct
 from .actions import PlaceAct
+from .actions import GetStackPoseAct
+from .actions import MoveToStartAct
+from .actions import GetDopeAndPoseAct
+from .actions import AttachObjectAct
+from .actions import InfiniteDopeAct

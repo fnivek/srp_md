@@ -1,9 +1,8 @@
 #goal definition
-geometry_msgs/Pose[] poses
+geometry_msgs/TransformStamped pose_diff_msg
 ---
 #result definition
 bool success
-int32 pose_index
 ---
 #feedback
 string feedback

@@ -14,9 +14,10 @@ from vision_msgs.msg import BoundingBox3D
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         GetDopeSnapshotAct, PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
-                        FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses,
-                        SetAllowGripperCollisionAct, GetDesiredPoseAct)
-from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior,
+                        FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct, PickAct,MoveToStartAct,
+                        SetAllowGripperCollisionAct, GetDesiredPoseAct, RelativeCartesianMoveAct, GraspPoseGeneration, PlaceAct,
+                        GetDopeAndPoseAct, AttachObjectAct)
+from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior, TuckBehavior, 
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
 
@@ -103,24 +104,31 @@ def build_tree():
     bot_wall_pose.orientation.w = 1.0
 
     table = Pose()
-    table.position.x = 1.0
+    table.position.x = 0.70
     table.position.y = 0.0
-    table.position.z = 0.38
+    table.position.z = 0.33
     table.orientation.w = 1.0
-    blackboard.set('table_collision_obj', ['table', table, [0.8, 4, table.position.z * 2]])
+    blackboard.set('table_collision_obj', ['table', table, [0.85, 4, table.position.z * 2]])
 
-    gripper_length = 0.154
+    # gripper_length = 0.154
+    # gripper_length = 0.145
+    gripper_length = 0.150
     pre_grasp_offset = 0.1
 
-    to_grasp_tf = TransformStamped()
-    to_grasp_tf.header.frame_id = "gripper_link"
-    to_grasp_tf.transform.translation.x = pre_grasp_offset * 1.0
-    to_grasp_tf.transform.rotation.w = 1.0
+    # to_grasp_tf = TransformStamped()
+    # to_grasp_tf.header.frame_id = "gripper_link"
+    # to_grasp_tf.transform.translation.x = pre_grasp_offset * 1.0
+    # to_grasp_tf.transform.rotation.w = 1.0
 
-    up_tf = TransformStamped()
-    up_tf.header.frame_id = "base_link"
-    up_tf.transform.translation.z = 0.3
-    up_tf.transform.rotation.w = 1
+    # to_place_tf = TransformStamped()
+    # to_place_tf.header.frame_id = "gripper_link"
+    # to_place_tf.transform.translation.x = pre_grasp_offset * 0.8
+    # to_place_tf.transform.rotation.w = 1.0
+
+    # up_tf = TransformStamped()
+    # up_tf.header.frame_id = "base_link"
+    # up_tf.transform.translation.z = 0.1
+    # up_tf.transform.rotation.w = 1
 
     table_crop_box = BoundingBox3D()
     table_crop_box.center.orientation.w = 1.0
@@ -129,25 +137,64 @@ def build_tree():
     table_crop_box.size.z = 4
     py_trees.blackboard.Blackboard().set('table_crop_box', table_crop_box)
 
+    # grasploc_grasp_fall = py_trees.composites.Selector('grasploc_grasp_fall')
+    # grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
+    # grasploc_grasp_seq.add_children([
+    #     SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
+    #     # MoveToRelativePoseAct('act_move_to_grasp_pose', transform=to_grasp_tf),
+    #     RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
+    #     CloseGripperAct('act_close_gripper'),
+    #     # MoveToRelativePoseAct('act_move_up', transform=up_tf),
+    #     RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
+    #     SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False)
+    # ])
+
+    # grasploc_grasp_fall.add_children([
+    #     grasploc_grasp_seq,
+    #     py_trees.meta.success_is_failure(SetAllowGripperCollisionAct)(name='act_ignore_gripper_collision', allow=False)
+    # ])
+
     root.add_children([
         AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
         AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
         AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
+        AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         # py_trees.meta.oneshot(ResetAct)('reset'),
         # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),
         FullyExtendTorso('act_please_extend_torso'),
-        # # FullyCollapseTorso('act_please_collapse_torso'),
-        # # GetDopeSnapshotAct('act_get_dope_snapshot'),
-        # # PickWithPoseAct('pick_1', 'grasp_pose'),
+        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
+        # FullyCollapseTorso('act_please_collapse_torso'),
+        # GetDopeSnapshotAct('act_get_dope_snapshot'),
+        # PickAct('pick_1', 'grasp_pose'),
         OpenGripperAct('act_open_gripper'),
-        TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
+        TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
+        # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
         # # # PlaceWithPoseAct('place_1', 'grasp_pose'),
-        # # MoveToPoseAct('move_to_test_pose', pose=test_pose),
+        # # MsurfaceoveToPoseAct('move_to_test_pose', pose=test_pose),
         # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform1),
         # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform2),
         # # MoveToRelativePoseAct('move_to_test_pose', transform=test_transform3),
-        # # GetTableAct('act_get_table'),
+        
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_pc',
+            topic_name='/head_camera/depth_registered/points',
+            topic_type=PointCloud2,
+            blackboard_variables={'in_pc': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_pc',
+            topic_name='/head_camera/depth_downsample/points',
+            topic_type=PointCloud2,
+            blackboard_variables={'depth_downsampled': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_pc',
+            topic_name='/head_camera/depth/points',
+            topic_type=PointCloud2,
+            blackboard_variables={'depth_pc': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        
         GetDopeSnapshotAct('act_get_dope_snapshot'),
         # ChooseGrasplocObjAct('act_choose_grasploc_obj'),
         # py_trees_ros.subscribers.ToBlackboard(
@@ -160,24 +207,58 @@ def build_tree():
         #     name='act_get_pc',
         #     topic_name='/head_camera/depth_downsample/points',
         #     topic_type=PointCloud2,
-        #     blackboard_variables={'depth_downsampled_premod': None},
+        #     blackboard_variables={'depth_downsampled': None},
         #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         # TFPCAct('act_tf_pc', 'in_pc', 'base_link', 'tfed_pc'),
         # # PCPubAct('act_pub_tfed_pc', 'tfed_pc', 'tfed_pc'),
         # CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
         # PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
+        # AddCollisionBoxAct('act_add_left_wall', box_name='cracker_0', box_pose=bb.center,
+        #                     box_size=[bb.size.x, bb.size.y, bb.size.z]),
+        # AttachObjectAct('act_attach_object', object_name='cracker_0', to_attach=True),
+
+        # AttachObjectAct('act_dettach_object', object_name='cracker_0', to_attach=False),
+        # RemoveCollisionBoxAct('act_remove_temp_wall', box_name='cracker_0'),
+        # GetDopeAndPoseAct('act_dope_and_pose_act'),
         # GrasplocAct('act_grasploc', 'croped_pc', 'grasploc'),
+        # GraspPoseGeneration('generate_gripper_pose'),
         # FilterGrasplocPoints('act_filt_grasploc'),
         # OffsetPoses('act_offset_grasploc_poses',
         #             offset=[-(gripper_length + pre_grasp_offset), 0, 0],
         #             in_poses_key='filtered_grasploc',
         #             out_poses_key='offset_grasploc', debug=True), # The gripper origin is in the wrist so move out along x
+        # GetTableAct('act_get_table'),
+        # FreeSpaceFinderAct('act_find_free_space'),
+        # GetStackPoseAct('act_get_stack_pose'),
+
         # GrasplocPickAct('act_grasploc_pick', 'offset_grasploc'),
-        # SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
-        # MoveToRelativePoseAct('act_move_to_grasp_pose', transform=to_grasp_tf),
-        # CloseGripperAct('act_close_gripper'),
-        # MoveToRelativePoseAct('act_move_up', transform=up_tf),
-        # SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
+        # MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
+
+
+        # PickAct('PickAct', 'cracker_0', 'cracker_1', relation='Near'),
+        # PlaceAct('placeAct', 'cracker_0', 'cracker_1'),
+        # PickAct('PickAct', 'sugar_0', 'table'),
+        # PlaceAct('placeAct', 'sugar_0', 'table'),
+        # PickAct('PickAct', 'cracker_0', 'table'),
+        # PlaceAct('placeAct', 'cracker_0', 'table'),
+        # PickAct('PickAct', 'cracker_1', 'table'),
+        # PlaceAct('placeAct', 'cracker_1', 'table'),
+        # PickAct('PickAct', 'cracker_2', 'cracker_0', relation='Stacking'),
+        # PlaceAct('placeAct', 'cracker_2', 'cracker_0'),
+
+
+        # grasploc_grasp_fall,
+        
+        # OffsetPoses('act_offset_place_poses',
+        #             offset=[-(gripper_length + pre_grasp_offset), 0, 0],
+        #             in_poses_key='free_space_poses',
+        #             out_poses_key='offset_place_pose', debug=True),
+        # MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose'),
+        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
+        # OpenGripperAct('act_open_gripper'),
+        # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
+        # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
+
         # CropPCAct('act_test_crop_pc', 'depth_downsampled_premod', 'table_crop_box', 'depth_downsampled'),
         # GetDesiredPoseAct('act_get_desired_pose', 'table', 'cracker'),
     ])

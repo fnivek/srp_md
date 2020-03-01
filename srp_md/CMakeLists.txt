@@ -24,6 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   vision_msgs
   jsk_recognition_msgs
+  visualization_msgs
   tf
   tf_conversions
   tf2
@@ -72,6 +73,7 @@ catkin_package(
     geometry_msgs
     vision_msgs
     jsk_recognition_msgs
+    visualization_msgs
     tf
     tf_conversions
     tf2
