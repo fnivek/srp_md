@@ -144,6 +144,7 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
             float obj_r = obj_it->dim.norm() / 2;
             for (auto&& obj_it_2 = obj_it + 1; obj_it_2 < pair.second.end(); ++obj_it_2)
             {
+                printf("%s and %s both on %s\n", obj_it->name.c_str(), obj_it_2->name.c_str(), pair.first.name.c_str());
                 std::string obj_2_name = obj_it_2->name.substr(0, obj_it_2->name.rfind("_") + 1);
                 float obj_2_r = obj_it_2->dim.norm() / 2;
                 float dist = (obj_it->pose.translation() - obj_it_2->pose.translation()).norm();
