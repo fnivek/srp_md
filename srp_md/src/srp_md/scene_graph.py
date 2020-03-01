@@ -177,13 +177,23 @@ class SceneGraph(srp_md.FactorGraph):
         with open(dot_file_name, 'w') as dot_file:
             dot_file.write("digraph G {\n")
             for relation in self.relations:
+                # Skip disjoint
                 if not draw_disjoint and relation.value == 'disjoint':
                     continue
+                # Flip relations
+                obj1 = relation.obj1.name
+                obj2 = relation.obj2.name
+                rel_value = relation.value
+                if flip_relations and relation.value in ['support', 'contain']:
+                    obj1 = relation.obj2.name
+                    obj2 = relation.obj1.name
+                    rel_value = srp_md.Relation.REV_RELATION_DICT[relation.value]
+                # Write to file
                 dot_file.write('  ')
                 dot_file.write('{}->{}[label=\"{}\",{}];\n'.format(
-                    relation.obj1.name,
-                    relation.obj2.name,
-                    relation.value,
+                    obj1,
+                    obj2,
+                    rel_value,
                     "style=dashed" if relation.value == 'disjoint' else ''))
             dot_file.write('}\n')
 
