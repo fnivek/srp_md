@@ -18,13 +18,6 @@ import srp_md
 
 
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
-    # List of all inconsistent relation triplets
-    # TODO(Kevin): Complete this list for relations other than on and support
-    INCONSISTENT_RELATIONS = [
-        ['on', 'support', 'on'],
-        ['support', 'on', 'support']
-    ]
-
     def __init__(self):
         super(FactorGraphGoalGenerator, self).__init__()
         self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense', 'use_no_float'])
@@ -35,6 +28,8 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self.use_consistency = True
         self.use_commonsense = False
         self.use_no_float = True
+
+        FactorGraphGoalGenerator.prepare_logical_consistency()
 
     @property
     def goal_client(self):
@@ -159,11 +154,22 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
 
     def make_logical_consistency_factors(self, obs):
         ros_factors = []
-        for relations in itertools.combinations(obs.relations, 3):
+        for objs in itertools.combinations(obs.objs, 3):
+            relations = [obs.get_rel_by_objs(objs[0], objs[1]), obs.get_rel_by_objs(objs[0], objs[2]),
+                         obs.get_rel_by_objs(objs[1], objs[2])]
             probs = [0 if rel_values[::-1] in self.INCONSISTENT_RELATIONS else 1 for rel_values in
                      itertools.product(srp_md.Relation.RELATION_STRS, repeat=3)]
             ros_factors.append(srp_md.SgFactor(relations, probs).to_ros_factor())
         return ros_factors
+
+    @classmethod
+    def prepare_logical_consistency(cls):
+        cls.INCONSISTENT_RELATIONS = []
+        bad_stacks = [
+            ('on', 'support', 'on'),
+            ('support', 'on', 'support'),
+        ]
+        cls.INCONSISTENT_RELATIONS.extend(bad_stacks)
 
 
 # Register the goal generator
