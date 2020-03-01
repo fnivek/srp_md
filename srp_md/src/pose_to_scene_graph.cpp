@@ -90,7 +90,6 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
         scene_graph::Object& top_obj = object_list[i];
         if(top_obj.name.find("table") != std::string::npos)
             continue;
-        bool on_anything = false;
         for (int j = i + 1; j < object_list.size(); ++j)
         {
             scene_graph::Object& bot_obj = object_list[j];
@@ -102,20 +101,17 @@ bool PoseToSceneGraph::CalcSceneGraph(srp_md_msgs::PoseToSceneGraph::Request& re
             {
                 on_map[top_obj].emplace(bot_obj);
                 sup_map[bot_obj].emplace(top_obj);
-                on_anything = true;
                 scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, bot_obj.id, top_obj.name,
                                          bot_obj.name);
                 scene_graph_.rel_list.push_back(on);
             }
         }
-        if(!on_anything)
-        {
-            // Then must be on table
-            scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, table.id, top_obj.name, table.name);
-            scene_graph_.rel_list.push_back(on);
-            on_map[top_obj].emplace(table);
-            sup_map[table].emplace(top_obj);
-        }
+
+        // Everything is on table
+        scene_graph::Relation on(scene_graph::RelationType::kOn, top_obj.id, table.id, top_obj.name, table.name);
+        scene_graph_.rel_list.push_back(on);
+        on_map[top_obj].emplace(table);
+        sup_map[table].emplace(top_obj);
     }
 
     // Determine direct on and support relations through checking for null set of the union of support and on sets
