@@ -18,13 +18,23 @@ import os
 # import multiprocessing
 # import Queue
 
+# Define file path
+script_path = os.path.dirname(os.path.realpath(__file__))
+demo_folder = os.path.realpath(script_path + '/../../data/demos')
+
 # Get a logger
 logger = logging.getLogger('srp_md')
 logger.setLevel(logging.DEBUG)
 
 # Initialize variables
-OBJECTS = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar", "bleach"]
+# OBJECTS = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar", "bleach"]
+OBJECTS = ["cracker", "meat", "mustard", "soup", "sugar"]
 RELATIONS = ["disjoint", "proximity", "on", "support"]
+
+# Grocery experiment list
+grocery_experiment_objs = [
+    ["cracker", "meat", "mustard", "soup", "sugar"]
+]
 
 def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
     """
@@ -71,10 +81,37 @@ def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
 
     return scene_graphs
 
-def generate_init_scenes(init_num, init_objs_nums, obj_list=None):
+def generate_demo_scenes_from_list(objs_list):
+    scene_graphs = []
+    for objs in objs_list:
+        sg_objs = [srp_md.Object(name='{}_{}'.format(obj, uuid),
+            id_num=uuid, uuid=uuid, assignment={'class': obj}) for uuid, obj in enumerate(objs)]
+        sg_objs.append(
+            srp_md.Object(name='table', id_num=len(sg_objs), uuid=len(sg_objs), assignment={'class': 'table'}))
+        scene_graph = srp_md.SceneGraph(sg_objs)
+        for rel in scene_graph.relations:
+            while True:
+                try:
+                    rel.value = RELATIONS[int(raw_input(
+                        'Choose value of X({}, {})\n  Choices: {}:\n'.format(rel.obj1, rel.obj2,
+                                                                             list(enumerate(RELATIONS)))))]
+                    break
+                except IndexError:
+                    print('Out of range')
+                except ValueError:
+                    print('Input an integer')
+            print('{}({}, {})'.format(rel.value, rel.obj1, rel.obj2))
+        scene_graphs.append(scene_graph)
+    return scene_graphs
+
+
+def generate_init_scenes(init_num, num_objs, obj_list=None):
     """
     Hardcode Examples
     """
+    if obj_list is None:
+        obj_list = OBJECTS
+
     scene_graphs = []
 
     # For number of demos needed, do:
@@ -83,69 +120,83 @@ def generate_init_scenes(init_num, init_objs_nums, obj_list=None):
         # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
         objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment={'class': "table"})]
         uuid = 1
-        for j in range(random.choice(init_objs_nums)):
-            name = random.choice(OBJECTS)
-            if obj_list is not None:
-                name = obj_list[i][j]
+        for _ in range(random.choice(num_objs)):
+            name = random.choice(obj_list)
             objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment={'class': name}))
             uuid += 1
 
         scene_graph = srp_md.SceneGraph(objs)
 
-        print "\nObjects List: ", scene_graph.get_obj_names(), "\n"
+        # print "\nObjects List: ", scene_graph.get_obj_names(), "\n"
 
         # Make all relations disjoint
         for relation in scene_graph.relations:
-            relation.value = RELATIONS[0]
+            relation.value = 'disjoint'
 
         scene_graphs.append(scene_graph)
 
     return scene_graphs
 
-def save_demos(demo_graphs, dirname):
-    os.mkdir(dirname)
-    pickle_name = os.path.join(dirname, "data.pickle")
-    pickle.dump(demo_graphs, open(pickle_name, 'wb'))
-    for i, demo in enumerate(demo_graphs):
-        demo.to_png(os.path.join(dirname, "demo_{}".format(i)))
+def save_demos(demo_graphs):
+    saved = False
+    while not saved:
+        try:
+            dirname = raw_input("What is the directory to save to (warning will overwrite)? \n")
+            dirname = os.path.join(demo_folder, dirname)
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
+            pickle_name = os.path.join(dirname, "data.pickle")
+            pickle.dump(demo_graphs, open(pickle_name, 'wb'))
+            for i, demo in enumerate(demo_graphs):
+                demo.to_all(os.path.join(dirname, "demo_{}".format(i)), draw_disjoint=False, flip_relations=True)
+                # demo.to_png(os.path.join(dirname, "demo_{}".format(i)))
+                # sg_name = os.path.join(dirname, 'demo_{}.sg'.format(i))
+                # demo.to_file(sg_name)
+            saved = True
+        except (OSError, IOError) as e:
+            print(str(e))
 
-def load_demos(dirname):
-    demo_graphs = pickle.load(open(os.path.join(dirname, "data.pickle"), 'rb'))
-    return demo_graphs
+def load_demos():
+    while True:
+        try:
+            dirname = raw_input("What is the directory to load from? \n")
+            dirname = os.path.join(demo_folder, dirname)
+            # demo_graphs = pickle.load(open(os.path.join(dirname, "data.pickle"), 'rb'))
+            demo_graphs = [srp_md.SceneGraph.from_file(os.path.join(dirname, file)) for file in os.listdir(dirname)
+                           if os.path.isfile(os.path.join(dirname, file)) and
+                              os.path.splitext(file)[-1] == '.sg']
+            return demo_graphs
+        except (OSError, IOError) as e:
+            print(str(e))
 
 def main():
     # Setup ROS
     rospy.init_node('simulate_experiment', anonymous=True)
     logger.info('Started the simulate_experiment node...')
-
-    # Define file path
-    script_path = os.path.dirname(os.path.realpath(__file__))
-    demo_folder = os.path.realpath(script_path + '/../../data/demos')
     # init_folder = os.path.realpath(script_path + '/../../data/inits')
 
     # Ask if you want to load the graphs
     save_bool = raw_input("Do you wish to load the demo graphs? [y/n] \n")
     if save_bool == "y":
-        dirname = raw_input("What is the directory to load from? \n")
-        demo_graphs = load_demos(os.path.join(demo_folder, dirname))
+        demo_graphs = load_demos()
     else:
         # Simulate goal scenegraphs
-        demo_num, demo_objs_nums, noise_num = 20, [6], 0
-        demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
+        # demo_num, demo_objs_nums, noise_num = 20, [6], 0
+        demo_graphs = generate_demo_scenes_from_list(grocery_experiment_objs)
+        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
         # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num, [["cracker", "gelatin", "meat", "soup", "sugar"], ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
-        logger.info('Generated {} demo graphs with {} noises'.format(demo_num, noise_num))
+    logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
     # Simulate initial scenegraphs
     init_num, init_objs_nums = 1, [2]
-    init_graphs = generate_init_scenes(init_num, init_objs_nums)
+    init_graphs = generate_init_scenes(1, list(range(1, 10)))
     # init_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
     logger.info('Generated {} initial scenes'.format(init_num))
 
     # Ask if you want to save the graphs
     save_bool = raw_input("Do you wish to save the demo graphs? [y/n] \n")
     if save_bool == "y":
-        dirname = raw_input("What is the directory to save to? \n")
-        save_demos(demo_graphs, os.path.join(demo_folder, dirname))
+        save_demos(demo_graphs)
 
     # Setup SRP_MD object
     srp = srp_md.SrpMd(sensor="dope_sensor", learner="factor_graph_learner", goal_generator="factor_graph_goal_generator")
