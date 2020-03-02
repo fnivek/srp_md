@@ -69,6 +69,12 @@ class SceneGraph(srp_md.FactorGraph):
                 return relation
         return None
 
+    def get_ordered_rel_by_obj_names(self, obj1, obj2):
+        for relation in self.relations:
+            if (relation.obj1.name == obj1) and (relation.obj2.name == obj2):
+                return relation
+        return None
+
     def get_prop_values(self, prop=None):
         if prop is None:
             raise ValueError("Property needs to be specified")
@@ -198,6 +204,45 @@ class SceneGraph(srp_md.FactorGraph):
             dot_file.write('}\n')
 
         os.system('/usr/bin/dot -Tpng {} -o {}'.format(dot_file_name, image_name))
+
+    def to_file(self, file_name):
+        # TODO(): Handle non string assignment values
+        with open(os.path.splitext(file_name)[0] + '.sg', 'w') as sg_file:
+            for obj in self.objs:
+                sg_file.write('{},{},{}'.format(obj.name, obj.id, obj.uuid))
+                for key, value in obj.assignment.iteritems():
+                    sg_file.write(',{},{}'.format(key, value))
+                sg_file.write('\n')
+            sg_file.write('relations\n')
+            for rel in self.relations:
+                sg_file.write('{},{},{}\n'.format(rel.obj1.name, rel.obj2.name, rel.value))
+
+    def to_all(self, file_name, flip_relations=False, viz_opencv=False, draw_disjoint=True):
+        self.to_file(file_name)
+        self.to_png(file_name, flip_relations, viz_opencv, draw_disjoint)
+
+    @classmethod
+    def from_file(cls, file_name):
+        objs = []
+        with open(file_name, 'r') as sg_file:
+            # Objects
+            for line in sg_file:
+                values = line.strip().split(',')
+                if values[0] == 'relations':
+                    break
+                name, id_num, uuid = values[:3]
+                objs.append(Object(name, int(id_num), int(uuid),
+                    assignment={key: value for key, value in zip(values[3::2], values[4::2])}))
+
+            # Make the scene grap
+            sg = SceneGraph(objs)
+
+            # Set the Relations
+            for line in sg_file:
+                obj1, obj2, value = line.strip().split(',')
+                sg.get_ordered_rel_by_obj_names(obj1, obj2).value = value
+
+        return sg
 
     def check_consistency(self, world=None):
         # If no world specified, just return True
