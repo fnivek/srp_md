@@ -40,7 +40,7 @@ from vision_msgs.msg import BoundingBox3D
 from jsk_recognition_msgs.msg import BoundingBox, BoundingBoxArray
 from copy import deepcopy
 import random
-
+import sys
 
 class SrpMd(object):
     """ Semantic Robot Programing Multiple Demonstrations.
@@ -181,7 +181,7 @@ class SrpMd(object):
 
         # Wait for message with timeout
         start = rospy.get_rostime()
-        timeout = rospy.Duration(15) # Wait for x seconds?
+        timeout = rospy.Duration(3600) # Wait for x seconds?
         rate = rospy.Rate(100)
         while ((self._new_image is None or self._new_pcd is None) and
                 (not rospy.is_shutdown()) and (rospy.get_rostime() - start < timeout)):
@@ -636,16 +636,22 @@ class SrpMd(object):
                 br = bridge.CvBridge()
                 cv_image = br.imgmsg_to_cv2(image)
 
+                # Get the rgb value
+                # hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+
                 # If first image, just store to past data
                 if j==0:
                     cv_image_init = cv_image
                     prev_depth = depth
+                    # prev_hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
                     frame['indices'] = []
 
                 # For following images, do:
                 else:
-                    # Compare prev_depth and depth for background subtraction
+                    # Compare prev_depth and depth for background subtraction (better than hsv)
                     filter_array = np.nan_to_num(np.abs(prev_depth-depth)) > depth_diff_threshold
+                    # Compare prev hsv and hsv for background subtraction
+                    # filter_array = (prev_hsv[:, :, 0] - hsv[:, :, 0]) > 20
 
                     # Morphology
                     filter_array = filter_array.astype('uint8') * 255
@@ -687,14 +693,20 @@ class SrpMd(object):
                     frame["indices"] = [row * pcd.width + col for row, col in
                                         zip(pc_indices[0].tolist(), pc_indices[1].tolist())]
 
+                    # Dilation on image patch
+                    kernel = np.ones((20, 20), np.uint8)
+                    largest_convex_mask = cv2.dilate(largest_convex_mask, kernel, iterations=1)
+
                     negative = largest_convex_mask == 0
                     cv_image_filtered = np.zeros(cv_image.shape, dtype='uint8')
                     cv_image_filtered[:, :, 0] = (cv_image[:, :, 0] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 0].astype('float32')
                     cv_image_filtered[:, :, 1] = (cv_image[:, :, 1] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 1].astype('float32')
                     cv_image_filtered[:, :, 2] = (cv_image[:, :, 2] * largest_convex_mask).astype('uint8') + negative.astype('uint8') * 255 #cv_image_init[:, :, 2].astype('float32')
+
                     cv_image_filtered = br.cv2_to_imgmsg(cv_image_filtered, "rgb8")
                     frame['image'] = cv_image_filtered
 
+                    # prev_hsv = hsv
                     prev_depth = depth
 
     def generate_obj_ass_sg(self, demo_num, demo):

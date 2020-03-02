@@ -382,13 +382,15 @@ bool PoseToSceneGraph::CheckProximity(scene_graph::Object object1, scene_graph::
 {
     std::vector<cv::Point2f> hull1;
     std::vector<cv::Point2f> hull2;
+    Get2DConvexHull(object1, &hull1);
+    Get2DConvexHull(object2, &hull2);
 
     for (auto&& point : hull1)
     {
         float dist = cv::pointPolygonTest(cv::Mat(hull2), point, true);
-        if (dist >= 0)
+        if (dist >= 0) // overlap
             return true;
-        if (fabs(dist) <= proximity_threshold_)
+        else if (fabs(dist) <= proximity_threshold_) // close
             return true;
     }
     return false;
