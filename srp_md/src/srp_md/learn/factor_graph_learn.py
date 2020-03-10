@@ -108,6 +108,7 @@ class FactorGraphLearner(learn.BaseLearner):
 
 class FactorHandler(object):
     def __init__(self, learner=None):
+        self.factor_type = 'object_relation'
         self._learner = learner
         if learner is None:
             self._learner = FreqFactorLearner()
@@ -157,6 +158,7 @@ class FactorHandler(object):
 class CardinalityFactorHandler(FactorHandler):
     def __init__(self, obj, class_name, rel_value):
         super(CardinalityFactorHandler, self).__init__(learner=JointFreqFactorLearner())
+        self.factor_type = 'cardinality'
         self._obj = obj
         self._class_name = class_name
         self._rel_value = rel_value

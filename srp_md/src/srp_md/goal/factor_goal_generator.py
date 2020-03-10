@@ -85,9 +85,9 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         #   For each type of factor generate all possible combinations
         #   If there are not enough vars for the factor the factor is skipped
         for factor_type, handler in factors.iteritems():
-            if self.use_cardinality and isinstance(handler, learn.CardinalityFactorHandler):
+            if self.use_cardinality and handler.factor_type == 'cardinality':
                 req.factors.extend(self.make_cardinality_factor(obs, factor_type, handler))
-            else:
+            elif handler.factor_type == 'object_relation':
                 req.factors.extend(self.make_factor(obs, factor_type, handler))
 
         if self.use_consistency:
