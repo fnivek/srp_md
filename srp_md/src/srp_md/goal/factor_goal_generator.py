@@ -20,7 +20,8 @@ import srp_md
 class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
     def __init__(self):
         super(FactorGraphGoalGenerator, self).__init__()
-        self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense', 'use_no_float'])
+        self._allowed_config_keys.extend(['goal_client', 'use_consistency', 'use_commonsense', 'use_no_float',
+                                          'use_cardinality'])
         self._logger = logging.getLogger(__name__)
         self._goal_client = None
         self._goal_client_name = '/get_goal'
@@ -28,6 +29,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self.use_consistency = True
         self.use_commonsense = False
         self.use_no_float = True
+        self.use_cardinality = True
 
         FactorGraphGoalGenerator.prepare_logical_consistency()
 
@@ -83,12 +85,10 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         #   For each type of factor generate all possible combinations
         #   If there are not enough vars for the factor the factor is skipped
         for factor_type, handler in factors.iteritems():
-            if isinstance(handler, learn.CardinalityFactorHandler):
+            if self.use_cardinality and isinstance(handler, learn.CardinalityFactorHandler):
                 req.factors.extend(self.make_cardinality_factor(obs, factor_type, handler))
-                # pass
             else:
                 req.factors.extend(self.make_factor(obs, factor_type, handler))
-                # pass
 
         if self.use_consistency:
             req.factors.extend(self.make_logical_consistency_factors(obs))
