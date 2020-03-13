@@ -251,34 +251,33 @@ def main():
         demo_graphs = generate_demo_scenes_from_list(grocery_experiment_demo_objs)
         # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
         # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num, [["cracker", "gelatin", "meat", "soup", "sugar"], ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
-    # logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
+    logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
-    # # Simulate initial scenegraphs
-    # init_num, init_objs_nums = 3, [2]
-    # test_graphs = generate_init_scenes(init_num, list(range(3, 5)), grocery_experiment_objs)
-    # # test_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
-    # logger.info('Generated {} initial scenes'.format(init_num))
+    # Simulate initial scenegraphs
+    init_num, init_objs_nums = 3, [2]
+    test_graphs = generate_init_scenes(init_num, list(range(3, 5)), grocery_experiment_objs)
+    # test_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
+    logger.info('Generated {} initial scenes'.format(init_num))
 
-    # # Setup SRP_MD object
-    # srp = srp_md.SrpMd(sensor="dope_sensor", learner="factor_graph_learner", goal_generator="factor_graph_goal_generator")
-    # srp.update_learner_config(factor_learner=args.factor_learner)
-    # srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
-    #                                  use_cardinality=args.use_cardinality)
-    # srp.set_scenes(demo_graphs, test_graphs)
-    # logger.info('Initialized SrpMd object with scenes')
+    # Setup SRP_MD object
+    srp = srp_md.SrpMd(sensor="dope_sensor", learner="factor_graph_learner", goal_generator="factor_graph_goal_generator")
+    srp.update_learner_config(factor_learner=args.factor_learner)
+    srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
+                                     use_cardinality=args.use_cardinality)
+    srp.set_scenes(demo_graphs, test_graphs)
+    logger.info('Initialized SrpMd object with scenes')
 
-    # # Learn from current data
-    # srp.learn()
-    # logger.info('Learned!')
+    # Learn from current data
+    srp.learn()
+    logger.info('Learned!')
 
-    # # Generate goals from learned factors
-    # srp.generate_goal()
-    # logger.info('Generated goals')
+    # Generate goals from learned factors
+    srp.generate_goal()
+    logger.info('Generated goals')
 
     # Save the graphs
     if args.output_dir is not None:
-        # save_graphs(demo_graphs, test_graphs, srp._goal_instances, args.output_dir)
-        save_graphs(demo_graphs, [], [], args.output_dir)
+        save_graphs(demo_graphs, test_graphs, srp._goal_instances, args.output_dir)
 
 if __name__ == '__main__':
     logger.info('Simulation Experiment starting up... #BOLD')
