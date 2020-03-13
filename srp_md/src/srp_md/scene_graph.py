@@ -145,6 +145,9 @@ class SceneGraph(srp_md.FactorGraph):
             rels.append(relation)
             # Finally yield the factor of these variables list
             yield srp_md.SgFactor(variables=list(obj_pair) + rels)
+            rels = [copy.deepcopy(relation)]
+            rels[0].rev_relation()
+            yield srp_md.SgFactor(variables=list(obj_pair)[-1::-1] + rels)
 
     def markov_blanket(self, vars):
         """ Get all vars in the markov blanket.
