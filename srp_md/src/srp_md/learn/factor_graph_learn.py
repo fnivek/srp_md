@@ -139,7 +139,11 @@ class FactorHandler(object):
     def _recurse_generate_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
-            self._probs[self._probs_index] = self._learner.predict(self._assignment) + 1e-6  # Add uniform bias to the score output
+            bias = 1e-9
+            self._probs[self._probs_index] = self._learner.predict(self._assignment) + bias  # Add uniform bias to the score output
+
+            debug = [assign['class'] for assign in self._assignment.values()[:2]]
+            print(self._assignment.values(), self._probs[self._probs_index])
             self._probs_index += 1
             return
 
@@ -172,9 +176,11 @@ class CardinalityFactorHandler(FactorHandler):
             try:
                 self._probs[self._probs_index] = cached_predictions[count]
             except KeyError:
+                # print(list(assignment['value'] for assignment in self._assignment.values()))
                 score = self._learner.predict({None: {'count': count}}) + 1e-3  # Add uniform bias to the score output
                 self._probs[self._probs_index] = score
                 cached_predictions[count] = score
+                # print(self._class_name, self._rel_value, count, self._probs[self._probs_index])
 
             self._probs_index += 1
             return

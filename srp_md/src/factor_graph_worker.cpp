@@ -66,6 +66,20 @@ bool FactorGraphWorker::GetGoal(srp_md_msgs::GetGoalRequest& req, srp_md_msgs::G
         // vars in order of ros_factor.pairs
         std::vector<dai::Real> sorted_probs;
         reorderFactorProbs(vars, ros_factor.probs, &sorted_probs);
+        int index = 0;
+        if (ros_factor.pairs.size() == 3)
+        {
+            for (int k = 0; k < dai::kNumRelations; k++)
+            {
+                for (int j = 0; j < dai::kNumRelations; j++)
+                {
+                    for (int i = 0; i < dai::kNumRelations; ++i)
+                    {
+                        std::cout << dai::kRelationStrings.at((dai::Relation)i) << " " << dai::kRelationStrings.at((dai::Relation)j) << " " << dai::kRelationStrings.at((dai::Relation)k) << " " << sorted_probs[index++] << std::endl;
+                    }
+                }
+            }
+        }
         scene_graph.addFactor(sorted_vars, sorted_probs);
     }
 

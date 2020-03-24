@@ -150,8 +150,9 @@ def generate_init_scenes(init_num, num_objs, obj_list=None):
         # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
         objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment={'class': "table"})]
         uuid = 1
-        for _ in range(random.choice(num_objs)):
-            name = random.choice(obj_list)
+        # for _ in range(random.choice(num_objs)):
+        #     name = random.choice(obj_list)
+        for name in ['sugar', 'meat', 'meat', 'soup']:
             objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment={'class': name}))
             uuid += 1
 
@@ -254,7 +255,7 @@ def main():
     logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
     # Simulate initial scenegraphs
-    init_num, init_objs_nums = 3, [2]
+    init_num, init_objs_nums = 1, [2]
     test_graphs = generate_init_scenes(init_num, list(range(3, 5)), grocery_experiment_objs)
     # test_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
     logger.info('Generated {} initial scenes'.format(init_num))

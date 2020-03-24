@@ -157,8 +157,13 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         for objs in itertools.combinations(obs.objs, 3):
             relations = [obs.get_rel_by_objs(objs[0], objs[1]), obs.get_rel_by_objs(objs[0], objs[2]),
                          obs.get_rel_by_objs(objs[1], objs[2])]
+            print(''.join(str(rel.obj1) + str(rel.obj2) for rel in relations))
             probs = [0 if rel_values[::-1] in self.INCONSISTENT_RELATIONS else 1 for rel_values in
                      itertools.product(srp_md.Relation.RELATION_STRS, repeat=3)]
+            if obs.get_ordered_rel_by_obj_names('meat_2', 'soup_4') in relations:
+                index = relations.index(obs.get_ordered_rel_by_obj_names('meat_2', 'soup_4'))
+                print(''.join(['{}\n'.format((s[0][::-1], s[1])) for s in zip(itertools.product(srp_md.Relation.RELATION_STRS, repeat=3), probs) if s[0][::-1][index] == 'disjoint' and s[1] == 0]))
+                # print(''.join(['{}\n'.format(s[0][::-1]) for s in zip(itertools.product(srp_md.Relation.RELATION_STRS, repeat=3), probs)]))
             ros_factors.append(srp_md.SgFactor(relations, probs).to_ros_factor())
         return ros_factors
 
