@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __furture__ import print_function
+from __future__ import print_function
 from builtins import input
 # In project imports
 import srp_md
@@ -12,9 +12,10 @@ import random
 import pickle
 import os
 import argparse
+import itertools
 # import sys
 # import random
-# import csv
+import csv
 # from datetime import datetime
 # import time
 # import multiprocessing
@@ -205,6 +206,74 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
+def evaluate_goal(scene):
+    # Ensure everything is on the table
+    table = [obj for obj in scene.objs if obj.name.find('table') != -1][0]
+    for obj in filter(lambda obj: not obj == table, scene.objs):
+        rel = scene.get_rel_by_objs(obj, table)
+        if rel.obj1 == table:
+            if rel.value != 'support':
+                return (False, 'table does not support an object')
+        else:
+            if rel.value != 'on':
+                return (False, 'an object is not on a table')
+
+    # Ensure all boxes are stacked by size
+    boxes = [obj for obj in scene.objs if obj.assignment['class'] == 'cracker' or obj.assignment['class'] == 'sugar']
+    for objs in itertools.combinations(boxes, 2):
+        rel = scene.get_rel_by_objs(objs[0], objs[1])
+        # Both objects the same class
+        if objs[0].assignment['class'] == objs[1].assignment['class']:
+            if rel.value != 'support' and rel.value != 'on':
+                return (False, 'boxes not stacked')
+        # Different class
+        else:
+            if rel.obj1.assignment['class'] == 'cracker':
+                if rel.value != 'support':
+                    return (False, 'cracker must support sugar')
+            else:
+                if rel.value != 'on':
+                    return (False, 'sugar must be on cracker')
+
+    # Ensure that the bottom box is next to all cans
+    # Find the bottom box
+    bot_box = None
+    for box in boxes:
+        num_on = 0
+        for obj in filter(lambda obj: not obj == box, scene.objs):
+            rel = scene.get_rel_by_objs(box, obj)
+            if rel.obj1 == box:
+                if rel.value == 'on':
+                    num_on += 1
+            elif rel.value == 'support':
+                num_on += 1
+            if num_on > 1:
+                break
+        if num_on == 1:
+            bot_box = box
+            break
+    # Ensure all cans next to bot_box
+    if bot_box is not None:
+        for obj in filter(lambda obj: obj.assignment['class'] == 'meat' or obj.assignment['class'] == 'soup',
+                          scene.objs):
+            rel = scene.get_rel_by_objs(obj, bot_box)
+            if rel.value != 'proximity':
+                return (False, 'cans not proximity to bottom box')
+
+    # Ensure mustards are grouped together but disjoint with all but the table
+    for mustard in filter(lambda obj: obj.assignment['class'] == 'mustard', scene.objs):
+        for obj in filter(lambda obj: not (obj == table or obj == mustard), scene.objs):
+            rel = scene.get_rel_by_objs(mustard, obj)
+            # Proximity or disjoint to other mustard
+            if obj.assignment['class'] == 'mustard':
+                if rel.value != 'proximity' and rel.value != 'disjoint':
+                    return (False, 'mustard not proximity or disjoint with other mustard')
+            elif rel.value != 'disjoint':
+                return (False, 'mustard not disjoint with non-mustard object')
+
+    return (True, 'success')
+
+
 def parse_args():
     """
     Parse input arguments
@@ -221,7 +290,8 @@ def parse_args():
                         ' if not provided then demos will be manually typed in on command prompt')
     parser.add_argument('--test_graphs_dir', type=str, help='Folder of test scenes as .sg files'
                         ' if not provided then random initial scenes will be generated')
-    parser.add_argument('--output_dir', type=str, help='To write the demo, test, and generated .sg files',
+    parser.add_argument('--output_dir', type=str,
+                        help='To write the demo, test, and generated .sg files and results.csv',
                         default='{}/graphs'.format(data_folder))
 
     # Extra useful arguments
@@ -291,6 +361,16 @@ def main():
 
     # Save the graphs
     if args.output_dir is not None:
+        # Generate results.csv
+        with open(args.output_dir + '/results.csv', 'w') as results_file:
+            results_writer = csv.writer(results_file)
+            for index, goal in enumerate(srp._goal_instances):
+                result, reason = evaluate_goal(goal)
+                print('Generated goal {} {} {}'.format(index,
+                                                       'succeded' if result else 'failed',
+                                                       'because ' + reason if not result else ''))
+                results_writer.writerow([index, result, reason])
+        # Save all graphs
         save_graphs(demo_graphs, test_graphs, srp._goal_instances, args.output_dir)
 
 
