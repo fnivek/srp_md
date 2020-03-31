@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __furture__ import print_function
+from builtins import input
 # In project imports
 import srp_md
 from srp_md import learn, sense, srp_md_log
@@ -33,9 +35,9 @@ OBJECTS = ["cracker", "meat", "mustard", "soup", "sugar"]
 RELATIONS = ["disjoint", "proximity", "on", "support"]
 
 # Objects used in experiments
-grocery_experiment_objs =["cracker", "meat", "mustard", "soup", "sugar"]
+grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar"]
 # Grocery experiment list
-grocery_experiment_demo_objs =[
+grocery_experiment_demo_objs = [
     ["cracker", "cracker", "sugar", "soup", "soup", "meat"],
     ["cracker", "sugar", "sugar", "meat", "meat", "meat"],
     ["cracker", "sugar", "soup", "soup", "soup", "mustard"],
@@ -57,6 +59,7 @@ grocery_experiment_demo_objs =[
     ["cracker", "sugar", "soup", "soup", "meat", "mustard", "mustard"],
     ["cracker", "sugar", "sugar", "soup", "soup", "mustard"]
 ]
+
 
 def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
     """
@@ -81,18 +84,18 @@ def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
         # print(scene_graph.get_obj_names())
 
         # Update all relations based on general grocery goal
-        print "\nObjects List: ", scene_graph.get_obj_names(), "\n"
+        print("\nObjects List: ", scene_graph.get_obj_names(), "\n")
         for relation in scene_graph.relations:
             user_input = None
 
             # Make the user give inputs
-            print "For ", relation.obj1, " and ", relation.obj2
-            print "Relation list: ", RELATIONS
-            user_input = raw_input("Specify relation for relations in the list by their index: \n")
+            print("For ", relation.obj1, " and ", relation.obj2)
+            print("Relation list: ", RELATIONS)
+            user_input = input("Specify relation for relations in the list by their index: \n")
             while int(user_input) not in range(len(RELATIONS)):
-                user_input = raw_input("Wrong value! Choose again... \n")
+                user_input = input("Wrong value! Choose again... \n")
             relation.value = RELATIONS[int(user_input)]
-            print "You chose: ", relation.value, "\n"
+            print("You chose: ", relation.value, "\n")
 
         # Add noise to the relation
         if i < noise_num:
@@ -103,12 +106,13 @@ def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
 
     return scene_graphs
 
+
 def generate_demo_scenes_from_list(objs_list):
     scene_graphs = []
     for objs in objs_list:
         print('New scene graph with {}'.format(objs))
         sg_objs = [srp_md.Object(name='{}_{}'.format(obj, uuid),
-            id_num=uuid, uuid=uuid, assignment={'class': obj}) for uuid, obj in enumerate(objs)]
+                   id_num=uuid, uuid=uuid, assignment={'class': obj}) for uuid, obj in enumerate(objs)]
         sg_objs.append(
             srp_md.Object(name='table', id_num=len(sg_objs), uuid=len(sg_objs), assignment={'class': 'table'}))
         scene_graph = srp_md.SceneGraph(sg_objs)
@@ -117,9 +121,9 @@ def generate_demo_scenes_from_list(objs_list):
             while True:
                 try:
                     rel = scene_graph.relations[index]
-                    rel.value = RELATIONS[int(raw_input(
+                    rel.value = RELATIONS[int(input(
                         'X(    {},    {}    )\n  Choices: {} (>={}: go back):\n'.format(
-                        rel.obj1, rel.obj2, list(enumerate(RELATIONS)), len(RELATIONS))))]
+                         rel.obj1, rel.obj2, list(enumerate(RELATIONS)), len(RELATIONS))))]
                     index += 1
                     break
                 except IndexError:
@@ -167,16 +171,19 @@ def generate_init_scenes(init_num, num_objs, obj_list=None):
 
     return scene_graphs
 
+
 def _save_graphs(graphs, pickle_name, file_prefix, dirname):
     pickle_file = os.path.join(dirname, pickle_name)
     pickle.dump(graphs, open(pickle_file, 'wb'))
     for i, demo in enumerate(graphs):
         demo.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i)), draw_disjoint=False, flip_relations=True)
 
+
 def save_graphs(demo_graphs, test_graphs, generated_graphs, dirname):
     _save_graphs(demo_graphs, 'data.pickle', 'demo', dirname)
     _save_graphs(test_graphs, 'test.pickle', 'test', dirname)
     _save_graphs(generated_graphs, 'generated.pickle', 'generated', dirname)
+
 
 def load_demos(dirname):
     file_names = [os.path.join(dirname, file) for file in os.listdir(dirname)
@@ -185,6 +192,7 @@ def load_demos(dirname):
     file_names.sort(key=lambda name: int(name[name.rfind('_')+1:name.rfind('.sg')]))
     demo_graphs = [srp_md.SceneGraph.from_file(file_name) for file_name in file_names]
     return demo_graphs
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -195,6 +203,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def parse_args():
     """
@@ -233,6 +242,7 @@ def parse_args():
 
     return args
 
+
 def main():
     args = parse_args()
     logger.setLevel(args.log_level)
@@ -250,17 +260,21 @@ def main():
         # demo_num, demo_objs_nums, noise_num = 20, [6], 0
         demo_graphs = generate_demo_scenes_from_list(grocery_experiment_demo_objs)
         # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
-        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num, [["cracker", "gelatin", "meat", "soup", "sugar"], ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
+        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num,
+        #                                    [["cracker", "gelatin", "meat", "soup", "sugar"],
+        #                                     ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
     logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
     # Simulate initial scenegraphs
-    init_num, init_objs_nums = 3, [2]
+    init_num, init_objs_nums = 100, [2]
     test_graphs = generate_init_scenes(init_num, list(range(3, 5)), grocery_experiment_objs)
     # test_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
     logger.info('Generated {} initial scenes'.format(init_num))
 
     # Setup SRP_MD object
-    srp = srp_md.SrpMd(sensor="dope_sensor", learner="factor_graph_learner", goal_generator="factor_graph_goal_generator")
+    srp = srp_md.SrpMd(sensor="dope_sensor",
+                       learner="factor_graph_learner",
+                       goal_generator="factor_graph_goal_generator")
     srp.update_learner_config(factor_learner=args.factor_learner)
     srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
                                      use_cardinality=args.use_cardinality)
@@ -278,6 +292,7 @@ def main():
     # Save the graphs
     if args.output_dir is not None:
         save_graphs(demo_graphs, test_graphs, srp._goal_instances, args.output_dir)
+
 
 if __name__ == '__main__':
     logger.info('Simulation Experiment starting up... #BOLD')
