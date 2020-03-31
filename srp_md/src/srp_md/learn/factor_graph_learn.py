@@ -139,7 +139,7 @@ class FactorHandler(object):
     def _recurse_generate_factor(self, var_index=0):
         # Assign prob
         if var_index >= len(self._vars):
-            self._probs[self._probs_index] = self._learner.predict(self._assignment) + 1e-6  # Add uniform bias to the score output
+            self._probs[self._probs_index] = self._learner.predict(self._assignment) + 1e-9  # Add uniform bias to the score output
             self._probs_index += 1
             return
 
