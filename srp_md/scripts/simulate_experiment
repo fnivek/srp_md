@@ -17,7 +17,7 @@ import itertools
 # import random
 import csv
 # from datetime import datetime
-# import time
+import time
 # import multiprocessing
 # import Queue
 
@@ -176,8 +176,10 @@ def generate_init_scenes(init_num, num_objs, obj_list=None):
 def _save_graphs(graphs, pickle_name, file_prefix, dirname):
     pickle_file = os.path.join(dirname, pickle_name)
     pickle.dump(graphs, open(pickle_file, 'wb'))
-    for i, demo in enumerate(graphs):
-        demo.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i)), draw_disjoint=False, flip_relations=True)
+    for i, graph in enumerate(graphs):
+        if graph is None:
+            continue
+        graph.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i)), draw_disjoint=False, flip_relations=True)
 
 
 def save_graphs(demo_graphs, test_graphs, generated_graphs, dirname):
@@ -207,6 +209,10 @@ def str2bool(v):
 
 
 def evaluate_goal(scene):
+    # Ensure a scene was generated
+    if scene is None:
+        return (False, 'failed to generate any goal')
+
     # Ensure everything is on the table
     table = [obj for obj in scene.objs if obj.name.find('table') != -1][0]
     for obj in filter(lambda obj: not obj == table, scene.objs):
@@ -274,6 +280,11 @@ def evaluate_goal(scene):
     return (True, 'success')
 
 
+def powerset(iterable):
+    s = list(iterable)
+    return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s) + 1))
+
+
 def parse_args():
     """
     Parse input arguments
@@ -335,12 +346,6 @@ def main():
         #                                     ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
     logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
-    # Simulate initial scenegraphs
-    init_num, init_objs_nums = 100, [2]
-    test_graphs = generate_init_scenes(init_num, list(range(3, 5)), grocery_experiment_objs)
-    # test_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
-    logger.info('Generated {} initial scenes'.format(init_num))
-
     # Setup SRP_MD object
     srp = srp_md.SrpMd(sensor="dope_sensor",
                        learner="factor_graph_learner",
@@ -348,30 +353,59 @@ def main():
     srp.update_learner_config(factor_learner=args.factor_learner)
     srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
                                      use_cardinality=args.use_cardinality)
-    srp.set_scenes(demo_graphs, test_graphs)
-    logger.info('Initialized SrpMd object with scenes')
 
-    # Learn from current data
-    srp.learn()
-    logger.info('Learned!')
+    output_sub_dir_dict = {x: 0 for x in range(len(demo_graphs))}
+    global_index = 0
+    start_time = time.time()
+    avg_time = 0
+    num_trials = 2**len(demo_graphs) - 1
+    for trial_num, demos in enumerate(filter(lambda demos: len(demos) != 0, powerset(demo_graphs))):
+        # Simulate initial scenegraphs
+        init_num, init_objs_nums = 10, [2]
+        test_graphs = generate_init_scenes(init_num, list(range(3, 5)), grocery_experiment_objs)
+        # test_graphs = generate_init_scenes(init_num, init_objs_nums, [["cracker", "gelatin"]])
+        logger.info('Generated {} initial scenes'.format(len(test_graphs)))
 
-    # Generate goals from learned factors
-    srp.generate_goal()
-    logger.info('Generated goals')
+        srp.set_scenes(demos, test_graphs)
+        logger.info('Initialized SrpMd object with {} demos'.format(len(demos)))
 
-    # Save the graphs
-    if args.output_dir is not None:
-        # Generate results.csv
-        with open(args.output_dir + '/results.csv', 'w') as results_file:
-            results_writer = csv.writer(results_file)
-            for index, goal in enumerate(srp._goal_instances):
-                result, reason = evaluate_goal(goal)
-                print('Generated goal {} {} {}'.format(index,
-                                                       'succeded' if result else 'failed',
-                                                       'because ' + reason if not result else ''))
-                results_writer.writerow([index, result, reason])
-        # Save all graphs
-        save_graphs(demo_graphs, test_graphs, srp._goal_instances, args.output_dir)
+        # Learn from current data
+        srp.learn()
+        logger.info('Learned!')
+
+        # Generate goals from learned factors
+        # try rospy.service.ServiceException
+        srp.generate_goal()
+        logger.info('Generated goals')
+
+        # Save the graphs
+        if args.output_dir is not None:
+            sub_dir = '/num_demos_{}_set_{}'.format(len(demos), output_sub_dir_dict[len(demos)])
+            if not os.path.isdir(args.output_dir + sub_dir):
+                os.mkdir(args.output_dir + sub_dir)
+            output_sub_dir_dict[len(demos)] += 1
+            # Generate results.csv
+            with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
+                global_results_writer = csv.writer(global_results_file)
+                with open(args.output_dir + sub_dir + '/results.csv', 'w+') as results_file:
+                    results_writer = csv.writer(results_file)
+                    for index, goal in enumerate(srp._goal_instances):
+                        result, reason = evaluate_goal(goal)
+                        logger.info('Generated goal {} {} {}'.format(index,
+                                                                     'succeded' if result else 'failed',
+                                                                     'because ' + reason if not result else ''))
+                        results_writer.writerow([index, result, reason])
+                        global_results_writer.writerow([index + global_index, len(demos), result, reason])
+            global_index += len(srp._goal_instances)
+            # Save all graphs
+            save_graphs(demos, test_graphs, srp._goal_instances, args.output_dir + sub_dir)
+
+        # Timing info
+        now = time.time()
+        diff = now - start_time
+        start_time = now
+        avg_time = (diff + trial_num * avg_time) / (trial_num + 1)
+        logger.info('avg_time: {}\nEstimated remaining: {}\n'.format(avg_time, (num_trials - trial_num - 1) * avg_time))
 
 
 if __name__ == '__main__':

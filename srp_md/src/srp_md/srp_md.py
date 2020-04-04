@@ -282,7 +282,8 @@ class SrpMd(object):
                     for i, init_graph in enumerate(self._initial_graphs):
                         goal_instance = self._goal_generator.generate_goal(self._factors, init_graph)
                         self._goal_instances.append(goal_instance)
-                        goal_instance.to_all(self._data_folder + '/graphs/generated_goal_{}.png'.format(i), draw_disjoint=False, flip_relations=True)
+                        if goal_instance is not None:
+                            goal_instance.to_all(self._data_folder + '/graphs/generated_goal_{}.png'.format(i), draw_disjoint=False, flip_relations=True)
                     self._logger.debug('The goal scenes are:\n{}'.format(''.join([str(goal) + '\n' for goal in self._goal_instances])))
             # If not using factor graph generator, just generate goal without inputs
             else:
