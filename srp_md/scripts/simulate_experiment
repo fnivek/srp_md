@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
+from builtins import range
 from builtins import input
 # In project imports
 import srp_md
-from srp_md import learn, sense, srp_md_log
+from srp_md import learn, sense, srp_md_log, utils
 
 # Ros and Python imports
 import rospy
@@ -285,6 +286,46 @@ def powerset(iterable):
     return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s) + 1))
 
 
+def random_combinations(iterable, r, num_combos):
+    """Random selection from itertools.combinations(iterable, r)"""
+    pool = tuple(iterable)
+    n = len(pool)
+    for _ in range(num_combos):
+        yield tuple(pool[index] for index in sorted(random.sample(range(n), r)))
+
+
+def random_powerset(iterable, num_to_sample):
+    """!
+    @brief      Randomly sample from the powerset in order of set size
+
+    @param      iterable       The iterable
+    @param      num_to_sample  The number to sample from each set size,
+                               if num_to_sample > len(iterable)! / (r! (n - r)!) then sample all combinations of size r
+
+    @return     Generator of the randomly selected elements of the powerset in order of set size
+    """
+    s = list(iterable)
+    n = len(s)
+    chain = itertools.chain()
+    for r in range(n + 1):
+        if utils.ncr(n, r) <= num_to_sample:
+            chain = itertools.chain(chain, itertools.combinations(s, r))
+        else:
+            chain = itertools.chain(chain, random_combinations(s, r, num_to_sample))
+    return chain
+
+
+def len_random_powerset(len_iterable, num_to_sample):
+    size = 0
+    for r in range(len_iterable + 1):
+        ncr = utils.ncr(len_iterable, r)
+        if ncr <= num_to_sample:
+            size += ncr
+        else:
+            size += num_to_sample
+    return size
+
+
 def secs_to_str(secs):
     secs = int(secs)
     weeks = secs // 604800
@@ -314,6 +355,14 @@ def parse_args():
                         ' if not provided then demos will be manually typed in on command prompt')
     parser.add_argument('--test_graphs_dir', type=str, help='Folder of test scenes as .sg files'
                         ' if not provided then random initial scenes will be generated')
+    parser.add_argument('--num_test_scenes', type=int, default=10, help='Number of test scenes to use for every set'
+                        ' of demonstrations')
+    parser.add_argument('--num_samples', type=int, default=20, help='Number of random samples to to take from each '
+                        'possible cardinality of demonstrations')
+    parser.add_argument('--max_num_test_objs', type=int, default=4, help='Maximum number of objects in test '
+                        'scene')
+    parser.add_argument('--min_num_test_objs', type=int, default=3, help='Minimum number of objects in test '
+                        'scene')
     parser.add_argument('output_dir', type=str,
                         help='To write the demo, test, and generated .sg files and results.csv',
                         default='{}/graphs'.format(data_folder))
@@ -375,20 +424,24 @@ def main():
             global_index = int(row[0])
     global_index += 1
 
-    num_test_scenes = 10
-    last_trial = global_index / num_test_scenes
-    logger.info('Previously completed {} trials, resuming at {}'.format(last_trial, last_trial + 1))
+    args.num_test_scenes = 10
+    args.num_samples = 20
+    last_trial = global_index / args.num_test_scenes
+    logger.info('Previously completed {} trials, resuming at {}'.format(last_trial - 1, last_trial))
     start_time = time.time()
     avg_time = 0
-    num_trials = 2**len(demo_graphs) - 1
-    for trial_num, demos in enumerate(filter(lambda demos: len(demos) != 0, powerset(demo_graphs))):
+    num_trials = len_random_powerset(len(demo_graphs), args.num_samples) - 1
+    for trial_num, demos in enumerate(filter(lambda demos: len(demos) != 0,
+                                      random_powerset(demo_graphs, args.num_samples))):
         # Skip until at resuming point
-        if trial_num <= last_trial:
+        if trial_num < last_trial:
             continue
 
         # Simulate initial scenegraphs
-        test_graphs = generate_init_scenes(num_test_scenes, list(range(3, 5)), grocery_experiment_objs)
-        # test_graphs = generate_init_scenes(num_test_scenes, init_objs_nums, [["cracker", "gelatin"]])
+        test_graphs = generate_init_scenes(args.num_test_scenes,
+                                           list(range(args.min_num_test_objs, args.max_num_test_objs + 1)),
+                                           grocery_experiment_objs)
+        # test_graphs = generate_init_scenes(args.num_test_scenes, init_objs_nums, [["cracker", "gelatin"]])
         logger.info('Generated {} initial scenes'.format(len(test_graphs)))
 
         srp.set_scenes(demos, test_graphs)
@@ -406,24 +459,25 @@ def main():
         # Generate results.csv
         with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
             global_results_writer = csv.writer(global_results_file)
-            for index, goal in enumerate(srp._goal_instances):
+            for index, (goal, test_graph) in enumerate(zip(srp._goal_instances, test_graphs)):
                 result, reason = evaluate_goal(goal)
                 logger.info('Generated goal {} {} {}'.format(index,
                                                              'succeded' if result else 'failed',
                                                              'because ' + reason if not result else ''))
-                global_results_writer.writerow([index + global_index, len(demos), result, reason])
+                global_results_writer.writerow([index + global_index, len(demos), result, reason,
+                                                test_graph.num_objs()])
         global_index += len(srp._goal_instances)
 
         # Timing info
         now = time.time()
         diff = now - start_time
         start_time = now
-        avg_time = (diff + (trial_num - last_trial - 1) * avg_time) / (trial_num - last_trial)
+        avg_time = (diff + (trial_num - last_trial) * avg_time) / (trial_num - last_trial + 1)
         print('----------------------')
         logger.info('avg_time: {}'.format(avg_time))
         logger.info('Trial: {} ({} remaining)'.format(trial_num, num_trials - trial_num - 1))
         logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - trial_num - 1) * avg_time)))
-        logger.info('Percent completed: {}%'.format(100.0 * trial_num / num_trials))
+        logger.info('Percent completed: {}%'.format(100.0 * (trial_num + 1) / num_trials))
         print('----------------------')
 
 
