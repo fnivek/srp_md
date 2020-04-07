@@ -371,7 +371,7 @@ def parse_args():
     parser.add_argument('--log_level', help='Set the logging level', default=logging.DEBUG, type=int,
                         choices=[logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL])
 
-    args = parser.parse_args()
+    args, others = parser.parse_known_args()
 
     # Handle input file dirs
     for path in [args.demo_graphs_dir, args.test_graphs_dir]:
@@ -417,68 +417,63 @@ def main():
                                      use_cardinality=args.use_cardinality)
 
     # Pickup where you left off
-    global_index = -1
+    last_trial = -1
     with open(args.output_dir + '/results.csv', 'r+') as results_file:
         csv_reader = csv.reader(results_file)
         for row in csv_reader:
-            global_index = int(row[0])
-    global_index += 1
+            last_trial = int(row[0])
 
-    args.num_test_scenes = 10
-    args.num_samples = 20
-    last_trial = global_index / args.num_test_scenes
-    logger.info('Previously completed {} trials, resuming at {}'.format(last_trial - 1, last_trial))
+    global_index = last_trial + 1
+    logger.info('Previously completed {} trials, resuming at {}'.format(last_trial, global_index))
     start_time = time.time()
     avg_time = 0
-    num_trials = len_random_powerset(len(demo_graphs), args.num_samples) - 1
-    for trial_num, demos in enumerate(filter(lambda demos: len(demos) != 0,
-                                      random_powerset(demo_graphs, args.num_samples))):
-        # Skip until at resuming point
-        if trial_num < last_trial:
-            continue
+    num_trials = (args.max_num_test_objs - args.min_num_test_objs + 1) * args.num_test_scenes
+    srp.set_scenes(demo_graphs, None)
+    srp.learn()
+    logger.info('Learn')
+    for trial_set, num_objs in enumerate(range(args.min_num_test_objs, args.max_num_test_objs + 1)):
+        for test_scene in range(args.num_test_scenes):
+            current_trial = trial_set * args.num_test_scenes + test_scene
+            if current_trial < last_trial:
+                # TODO(Kevin): Fix bug, on restart is off by 1
+                continue
 
-        # Simulate initial scenegraphs
-        test_graphs = generate_init_scenes(args.num_test_scenes,
-                                           list(range(args.min_num_test_objs, args.max_num_test_objs + 1)),
-                                           grocery_experiment_objs)
-        # test_graphs = generate_init_scenes(args.num_test_scenes, init_objs_nums, [["cracker", "gelatin"]])
-        logger.info('Generated {} initial scenes'.format(len(test_graphs)))
+            # Simulate initial scenegraphs
+            test_graphs = generate_init_scenes(1, [num_objs], grocery_experiment_objs)
+            logger.info('Generated {} initial scenes'.format(len(test_graphs)))
 
-        srp.set_scenes(demos, test_graphs)
-        logger.info('Initialized SrpMd object with {} demos'.format(len(demos)))
+            srp.set_scenes(demo_graphs, test_graphs)
+            logger.info('Initialized SrpMd object with {} demos'.format(len(demo_graphs)))
 
-        # Learn from current data
-        srp.learn()
-        logger.info('Learned!')
+            # Generate goals from learned factors
+            # try rospy.service.ServiceException
+            srp.generate_goal()
+            logger.info('Generated goals')
 
-        # Generate goals from learned factors
-        # try rospy.service.ServiceException
-        srp.generate_goal()
-        logger.info('Generated goals')
+            # Timing info
+            now = time.time()
+            diff = now - start_time
+            start_time = now
 
-        # Generate results.csv
-        with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
-            global_results_writer = csv.writer(global_results_file)
-            for index, (goal, test_graph) in enumerate(zip(srp._goal_instances, test_graphs)):
-                result, reason = evaluate_goal(goal)
-                logger.info('Generated goal {} {} {}'.format(index,
-                                                             'succeded' if result else 'failed',
-                                                             'because ' + reason if not result else ''))
-                global_results_writer.writerow([index + global_index, len(demos), result, reason,
-                                                test_graph.num_objs()])
-        global_index += len(srp._goal_instances)
+            # Generate results.csv
+            with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
+                global_results_writer = csv.writer(global_results_file)
+                for index, (goal, test_graph) in enumerate(zip(srp._goal_instances, test_graphs)):
+                    result, reason = evaluate_goal(goal)
+                    logger.info('Generated goal {} {} {}'.format(index,
+                                                                 'succeded' if result else 'failed',
+                                                                 'because ' + reason if not result else ''))
+                    global_results_writer.writerow([index + global_index, len(demo_graphs), result, reason,
+                                                    test_graph.num_objs(), diff])
+            global_index += len(srp._goal_instances)
 
-        # Timing info
-        now = time.time()
-        diff = now - start_time
-        start_time = now
-        avg_time = (diff + (trial_num - last_trial) * avg_time) / (trial_num - last_trial + 1)
-        print('----------------------')
-        logger.info('avg_time: {}'.format(avg_time))
-        logger.info('Trial: {} ({} remaining)'.format(trial_num, num_trials - trial_num - 1))
-        logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - trial_num - 1) * avg_time)))
-        logger.info('Percent completed: {}%'.format(100.0 * (trial_num + 1) / num_trials))
-        print('----------------------')
+            avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
+            print('----------------------')
+            logger.info('avg_time: {}'.format(avg_time))
+            logger.info('Trial: {} ({} remaining)'.format(global_index, num_trials - global_index - 1))
+            logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index - 1) * avg_time)))
+            logger.info('Percent completed: {}%'.format(100.0 * (global_index + 1) / num_trials))
+            print('----------------------')
 
 
 if __name__ == '__main__':
