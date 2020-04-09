@@ -434,8 +434,7 @@ def main():
     for trial_set, num_objs in enumerate(range(args.min_num_test_objs, args.max_num_test_objs + 1)):
         for test_scene in range(args.num_test_scenes):
             current_trial = trial_set * args.num_test_scenes + test_scene
-            if current_trial < last_trial:
-                # TODO(Kevin): Fix bug, on restart is off by 1
+            if current_trial <= last_trial:
                 continue
 
             # Simulate initial scenegraphs
