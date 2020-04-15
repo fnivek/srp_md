@@ -371,7 +371,7 @@ def parse_args():
     parser.add_argument('--log_level', help='Set the logging level', default=logging.DEBUG, type=int,
                         choices=[logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL])
 
-    args = parser.parse_args()
+    args, others = parser.parse_known_args()
 
     # Handle input file dirs
     for path in [args.demo_graphs_dir, args.test_graphs_dir]:
@@ -424,8 +424,6 @@ def main():
             global_index = int(row[0])
     global_index += 1
 
-    args.num_test_scenes = 10
-    args.num_samples = 20
     last_trial = global_index / args.num_test_scenes
     logger.info('Previously completed {} trials, resuming at {}'.format(last_trial - 1, last_trial))
     start_time = time.time()
