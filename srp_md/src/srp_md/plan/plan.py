@@ -68,26 +68,34 @@ class Planner(object):
                     num_ind[0] += 1
                     sup_group = set([])
                     on_dict = {}
+                    sup_dict = {}
                     self._logger.debug('Build on stacks')
                     for rel in graph.relations:
                         self._logger.debug(rel)
-                        if rel.value == 'disjoint':
-                            continue
-                        top_obj = rel.obj1.name
-                        bot_obj = rel.obj2.name
-                        if rel.value == "support":
-                            self._logger.debug('support')
-                            top_obj = rel.obj2.name
-                            bot_obj = rel.obj1.name
-                        self._logger.debug('top {} / bot {}'.format(top_obj, bot_obj))
-                        sup_group.add(bot_obj)
-                        try:
-                            on_dict[top_obj].append(bot_obj)
-                        except KeyError:
-                            on_dict[top_obj] = [bot_obj]
+                        if rel.value == 'proximity':
+                            self._logger.debug('proximity {} {}'.format(rel.obj1.name, rel.obj2.name))
+                            write('(proximity {} {})\n'.format(rel.obj1.name, rel.obj2.name))
+                        elif rel.value == 'on' or rel.value == 'support':
+                            top_obj = rel.obj1.name
+                            bot_obj = rel.obj2.name
+                            if rel.value == "support":
+                                self._logger.debug('support')
+                                top_obj = rel.obj2.name
+                                bot_obj = rel.obj1.name
+                            self._logger.debug('top {} / bot {}'.format(top_obj, bot_obj))
+                            sup_group.add(bot_obj)
+                            try:
+                                on_dict[top_obj].append(bot_obj)
+                            except KeyError:
+                                on_dict[top_obj] = [bot_obj]
+                            try:
+                                sup_dict[bot_obj].append(top_obj)
+                            except KeyError:
+                                sup_dict[bot_obj] = [top_obj]
 
                     self._logger.debug('sup_group %s', sup_group)
                     self._logger.debug('on_dict %s', on_dict)
+                    self._logger.debug('sup_dict %s', sup_dict)
                     # Find the objects on top and bottom
                     self._logger.debug('Recurse over stacks')
                     above_set = set([])
@@ -114,8 +122,9 @@ class Planner(object):
                                     if bot_obj == 'table':
                                         self._logger.debug('{} is on the table'.format(top_obj))
                                         continue
-                                    self._logger.debug('{} is on {}'.format(top_obj, bot_obj))
-                                    write("(on " + top_obj + " " + bot_obj + ")\n")
+                                    if not bool(set(bot_objs) & set(sup_dict[bot_obj])):
+                                        self._logger.debug('{} is directly on {}'.format(top_obj, bot_obj))
+                                        write("(on " + top_obj + " " + bot_obj + ")\n")
                                     above_str = "(above {} {})\n".format(top_obj, bot_obj)
                                     if above_str not in above_set:
                                         write(above_str)

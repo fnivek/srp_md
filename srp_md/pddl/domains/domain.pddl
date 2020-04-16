@@ -15,6 +15,7 @@
     (clear ?obj - object)
     (free ?grip - end_effector)
     (held ?obj - object ?grip - end_effector)
+    (proximity ?obj - object ?base_obj - object)
   )
 
   (:action pick_from_surface
@@ -89,4 +90,10 @@
   ;   :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip) (on ?from ?stack2) (on ?stack2 ?stack3) (on ?stack3 ?stack4) (on ?stack4 ?stack5) (at ?stack5 ?surf))
   ;   :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)) (not (above ?obj ?stack2)) (not (above ?obj ?stack3)) (not (above ?obj ?stack4)) (not (above ?obj ?stack5)))
   ; )
+
+  (:action place_on_surf_proximity_to
+    :parameters (?obj - object ?base_obj - object ?surf - surface ?grip - end_effector)
+    :precondition (and (held ?obj ?grip))
+    :effect (and (free ?grip) (at ?obj ?surf) (not (held ?obj ?grip)) (proximity ?obj ?base_obj))
+  )
 )
