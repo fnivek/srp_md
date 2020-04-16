@@ -167,7 +167,9 @@ def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
 
         # Make all relations disjoint
         for relation in scene_graph.relations:
-            relation.value = 'proximity'
+            relation.value = 'disjoint'
+            if relation.obj1.name == 'table':
+                relation.value = 'support'
 
         scene_graphs.append(scene_graph)
 
