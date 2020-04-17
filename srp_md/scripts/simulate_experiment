@@ -135,7 +135,7 @@ def generate_demo_scenes_from_list(objs_list):
                     print('Input an integer')
             print('{}({}, {})\n'.format(rel.value, rel.obj1, rel.obj2))
         scene_graphs.append(scene_graph)
-        _save_graphs(scene_graphs, 'save_state.pickle', 'save_state', '{}/graphs'.format(data_folder))
+        save_graphs(scene_graphs, 'save_state.pickle', 'save_state', '{}/graphs'.format(data_folder))
         print('Saved scene with {}'.format(objs))
 
     return scene_graphs
@@ -176,19 +176,29 @@ def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
     return scene_graphs
 
 
-def _save_graphs(graphs, pickle_name, file_prefix, dirname):
-    pickle_file = os.path.join(dirname, pickle_name)
-    pickle.dump(graphs, open(pickle_file, 'wb'))
+def save_graphs(graphs, pickle_name, file_prefix, current_trial, dirname):
+    # pickle_file = os.path.join(dirname, pickle_name)
+    # pickle.dump(graphs, open(pickle_file, 'wb'))
     for i, graph in enumerate(graphs):
         if graph is None:
             continue
-        graph.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i)), draw_disjoint=False, flip_relations=True)
+        graph.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i + current_trial)), draw_disjoint=False,
+                     flip_relations=True)
 
 
-def save_graphs(demo_graphs, test_graphs, generated_graphs, dirname):
-    _save_graphs(demo_graphs, 'data.pickle', 'demo', dirname)
-    _save_graphs(test_graphs, 'test.pickle', 'test', dirname)
-    _save_graphs(generated_graphs, 'generated.pickle', 'generated', dirname)
+def save_all(demo_graphs, test_graphs, generated_graphs, plans, current_trial, dirname):
+    save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname)
+    save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname)
+    save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname)
+    save_plans(plans, current_trial, dirname)
+
+
+def save_plans(plans, current_trial, dirname):
+    for i, plan in enumerate(plans):
+        with open(dirname + '/plan_{}.soln'.format(i + current_trial), 'w+') as file:
+            if plan is not None:
+                for action in plan:
+                    file.write(' '.join(action) + '\n')
 
 
 def load_demos(dirname):
@@ -420,7 +430,7 @@ def main():
 
     # Pickup where you left off
     last_trial = -1
-    with open(args.output_dir + '/results.csv', 'r+') as results_file:
+    with open(args.output_dir + '/results.csv', 'rw+') as results_file:
         csv_reader = csv.reader(results_file)
         for row in csv_reader:
             last_trial = int(row[0])
@@ -468,12 +478,15 @@ def main():
                                                     test_graph.num_objs(), diff])
             global_index += len(srp._goal_instances)
 
+            plans = srp.plan()
+            save_all(demo_graphs, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
+
             avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
             print('----------------------')
             logger.info('avg_time: {}'.format(avg_time))
-            logger.info('Trial: {} ({} remaining)'.format(global_index, num_trials - global_index - 1))
-            logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index - 1) * avg_time)))
-            logger.info('Percent completed: {}%'.format(100.0 * (global_index + 1) / num_trials))
+            logger.info('Trial: {} ({} remaining)'.format(global_index, num_trials - global_index))
+            logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index) * avg_time)))
+            logger.info('Percent completed: {}%'.format(100.0 * (global_index) / num_trials))
             print('----------------------')
 
 
