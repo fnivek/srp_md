@@ -111,7 +111,7 @@ def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
 
 def generate_demo_scenes_from_list(objs_list):
     scene_graphs = []
-    for objs in objs_list:
+    for i, objs in enumerate(objs_list):
         print('New scene graph with {}'.format(objs))
         sg_objs = [srp_md.Object(name='{}_{}'.format(obj, uuid),
                    id_num=uuid, uuid=uuid, assignment={'class': obj}) for uuid, obj in enumerate(objs)]
@@ -135,7 +135,7 @@ def generate_demo_scenes_from_list(objs_list):
                     print('Input an integer')
             print('{}({}, {})\n'.format(rel.value, rel.obj1, rel.obj2))
         scene_graphs.append(scene_graph)
-        save_graphs(scene_graphs, 'save_state.pickle', 'save_state', '{}/graphs'.format(data_folder))
+        save_graphs(scene_graphs, 'save_state.pickle', 'save_state', i, '{}/graphs'.format(data_folder))
         print('Saved scene with {}'.format(objs))
 
     return scene_graphs
