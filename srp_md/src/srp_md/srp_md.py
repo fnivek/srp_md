@@ -479,10 +479,11 @@ class SrpMd(object):
     def plan(self):
         if len(self._initial_graphs) == 0 and len(self._goal_instances) == 0:
             self._logger.warning('No initial graphs or no goal instances, using example files to plan instead')
-            self._planner.plan()
+            return [self._planner.plan()]
         else:
             # For this to work properly, generate goal must be run before hands!
-            self._planner.plan(self._initial_graphs[-1], self._goal_instances[-1])
+            return [self._planner.plan(init_graph, goal_graph) for
+                    init_graph, goal_graph in zip(self._initial_graphs, self._goal_instances)]
 
     def act(self):
         if self._solution_filename is None:

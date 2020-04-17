@@ -160,14 +160,21 @@ class Planner(object):
                 num_ind[0] -= 1
                 write(")\n")
 
-
-
         # Plan from the generated PDDL file
         self._plan_cmd = [self._planner_executable, self._domain_file, self._problem_file]
         out = subprocess.Popen(self._plan_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
-        print stdout, stderr
+        self._logger.debug(stdout)
+        self._logger.debug(stderr)
+        if stdout.find('Plan correct') != -1:
+            self._logger.info('Plan correct')
+        else:
+            self._logger.warn('Failed to plan')
+            return None
 
         self._soln_file = os.path.abspath(self._problem_file + '.soln')
+        lines = []
         with open(self._soln_file, 'r') as soln:
-            print soln.readlines()
+            lines = soln.readlines()
+        self._logger.debug(lines)
+        return [line[1:-1].split() for line in lines]
