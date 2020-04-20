@@ -37,6 +37,24 @@ class Actor(object):
         # root.add_children([AddAllCollisionBoxesAct(name='srp_md'), MoveToStartAct(name='srp_md')])
         root.add_children([AddAllCollisionBoxesAct(name='srp_md')])
         # Read in the solution file, and do:
+
+        object_num = 0
+        num_dict = dict()
+        num_dict['cracker'] = []
+        num_dict['gelatin'] = []
+        num_dict['meat'] = []
+        num_dict['mustard'] = []
+        num_dict['soup'] = []
+        num_dict['sugar'] = []
+        print("num_dict", num_dict)
+        # name_list = ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar']
+        # cracker_list = []
+        # gelatin_list = []
+        # meat = []
+        # mustard = []
+        # soup = []
+        # sugar = []
+
         with open(self._solution_file, "r") as solution:
 
             lines = list(solution)
@@ -49,44 +67,107 @@ class Actor(object):
             relative_object_near = []
             for i, line in enumerate(lines):
                 line = re.sub('[()]+', '', line)
-                action, obj_1, obj_2, _ = line.split()
+                # print(line.split())
+                if len(line.split()) == 4:
+                    action, obj_1, obj_2, _ = line.split()
+                elif len(line.split()) == 5:
+                    action, obj_1, obj_2, _, _ = line.split()
+                elif len(line.split()) == 6:
+                    action, obj_1, obj_2, _, _, _ = line.split()
+                elif len(line.split()) == 7:
+                    action, obj_1, obj_2, _, _, _, _ = line.split()
+                elif len(line.split()) == 8:
+                    action, obj_1, obj_2, _, _, _, _, _ = line.split()
+
+#               Assume the number of objects is less than 10
+                if obj_2 == 'table':
+                    if object_num < int(obj_1[-1]):
+                        object_num = int(obj_1[-1])
+                    if not int(obj_1[-1]) in num_dict[obj_1[0:-2]]:
+                        num_dict[obj_1[0:-2]].append(int(obj_1[-1]))
+                else:
+                    if object_num < int(obj_2[-1]):
+                        object_num = obj_2[-1]
+                    if not int(obj_2[-1]) in num_dict[obj_2[0:-2]]:
+                        num_dict[obj_2[0:-2]].append(int(obj_2[-1]))
                 if "place" in action:
                     if "stack" in action:
                         place_stack.append(i)
                         relative_object_stack.append(obj_2)
-                    if "near" in action:
+                    if "proximity" in action:
                         place_near.append(i)
-                        relative_object_near.append(i)
+                        relative_object_near.append(obj_2)
 
             print("place_stack: ", place_stack)
+            print('object_num', object_num)
+            print('num_dict: ', num_dict)
+            num_dict['cracker'].sort()
+            num_dict['gelatin'].sort()
+            num_dict['meat'].sort()
+            num_dict['mustard'].sort()
+            num_dict['soup'].sort()
+            num_dict['sugar'].sort()
+            print('object_num', object_num)
+            print('num_dict: ', num_dict)
 
             # for i, line in enumerate(solution):
             for i, line in enumerate(lines_copy):
                 print('ith is working')
+
                 # Get rid of the parentheses
                 line = re.sub('[()]+', '', line)
 
                 # Get the words
-                action, obj_1, obj_2, _ = line.split()
+                if len(line.split()) == 4:
+                    action, obj_1, obj_2, _ = line.split()
+                elif len(line.split()) == 5:
+                    action, obj_1, obj_2, _, _ = line.split()
+                elif len(line.split()) == 6:
+                    action, obj_1, obj_2, _, _, _ = line.split()
+                elif len(line.split()) == 7:
+                    action, obj_1, obj_2, _, _, _, _ = line.split()
+                elif len(line.split()) == 8:
+                    action, obj_1, obj_2, _, _, _, _, _ = line.split()
+                # print("line", line)
+                # print("action: ", action)
+                # print("obj_1: ", obj_1)
+                # print("obj_2: ", obj_2)
 
                 # If the action includes word pick, do:
                 if "pick" in action:
+                    object_1_index = num_dict[obj_1[0:-2]].index(int(obj_1[-1]))
                     if i+1 in place_stack:
                     # Add pick action to the root
                         print('relation=Stacking')
                         index_relative_object = place_stack.index(i+1)
-                        root.add_child(PickAct(i, obj_1, relative_object_stack[index_relative_object], relation='Stacking'))
+
+                        obj_2_stack = relative_object_stack[index_relative_object]
+                        # object_1_index = num_dict[obj_1[0:-2]].index(int(obj_1[-1]))
+                        object_2_index = num_dict[obj_2_stack[0:-2]].index(int(obj_2_stack[-1]))
+                        print("obj_1[0:-1] + str(object_1_index): ", obj_1[0:-1] + str(object_1_index))
+                        print('obj_2_stack[0:-1] + str(object_2_index): ', obj_2_stack[0:-1] + str(object_2_index))
+                        # print(obj_1[0:-1] + str(object_index))
+                        root.add_child(PickAct(i, obj_1[0:-1] + str(object_1_index), obj_2_stack[0:-1] + str(object_2_index), relation='Stacking'))
                     elif i+1 in place_near:
                         index_relative_object = place_near.index(i+1)
-                        root.add_child(PickAct(i, obj_1, relative_object_near[index_relative_object], relation='Near'))
+                        obj_2_near = relative_object_near[index_relative_object]
+                        # print(obj_2_near)
+                        # object_1_index = num_dict[obj_1[0:-2]].index(int(obj_1[-1]))
+                        object_2_index = num_dict[obj_2_near[0:-2]].index(int(obj_2_near[-1]))
+                        print("obj_1[0:-1] + str(object_1_index): ", obj_1[0:-1] + str(object_1_index))
+                        print('obj_2_near[0:-1] + str(object_2_index): ', obj_2_near[0:-1] + str(object_2_index))
+                        root.add_child(PickAct(i, obj_1[0:-1] + str(object_1_index), obj_2_near[0:-1] + str(object_2_index), relation='Near'))
                     else:
                         print('relation!=Stacking')
-                        root.add_child(PickAct(i, obj_1, obj_2))
+                        print("obj_1[0:-1] + str(object_1_index): ", obj_1[0:-1] + str(object_1_index))
+                        root.add_child(PickAct(i, obj_1[0:-1] + str(object_1_index), obj_2))
                         
                 # If the action includes word place, do:
                 if "place" in action:
                     # Add place action to the root
-                    root.add_child(PlaceAct(i, obj_1, obj_2))
+                    object_1_index = num_dict[obj_1[0:-2]].index(int(obj_1[-1]))
+                    # object_2_index = num_dict[obj_2[0:-2]].index(int(obj_1[-1]))
+                    root.add_child(PlaceAct(i, obj_1[0:-1] + str(object_1_index), obj_2))
 
         # Build the behavior tree
         tree = py_trees_ros.trees.BehaviourTree(root)
@@ -107,5 +188,4 @@ class Actor(object):
                 tree.blackboard_exchange.unregister_services()
                 self._logger.error('Action pipeline not successful!')
                 
-
 

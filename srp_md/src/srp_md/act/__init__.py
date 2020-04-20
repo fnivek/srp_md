@@ -6,7 +6,8 @@ from .actions import CloseGripperAct
 from .actions import MoveToPoseAct
 from .actions import MoveToFirstPoseAct
 from .actions import MoveToRelativePoseAct
-from .actions import GetDopeSnapshotAct
+# from .actions import GetDopeSnapshotAct
+from .actions import GetFakeDopeSnapshotAct
 from .actions import GetTableAct
 from .actions import PickWithPoseAct
 from .actions import PlaceWithPoseAct
@@ -34,3 +35,4 @@ from .actions import MoveToStartAct
 from .actions import GetDopeAndPoseAct
 from .actions import AttachObjectAct
 from .actions import InfiniteDopeAct
+from .actions import TeleportObjectAct

@@ -11,18 +11,23 @@ import tf
 import py_trees
 import py_trees_ros
 import message_filters
+import time
+
+import random
 
 import numpy as np
 
+from visualization_msgs.msg import MarkerArray, Marker
 from moveit_msgs.msg import PlanningScene, CollisionObject, PlanningSceneComponents
 from moveit_msgs.srv import GetPlanningScene
 from shape_msgs.msg import SolidPrimitive
 from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 from srp_md_msgs.msg import *
-from dope_msgs.msg import DopeAction, DopeGoal
-from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped, Vector3
+from dope_msgs.msg import DopeAction, DopeGoal, DopeResult
+from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped, Vector3, Point, Quaternion
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
-from vision_msgs.msg import BoundingBox3D
+from vision_msgs.msg import BoundingBox3D, Detection3D, ObjectHypothesisWithPose
+from gazebo_msgs.msg import *
 import actionlib_msgs.msg as actionlib_msgs
 from grasploc_wrapper_msgs.msg import GrasplocAction, GrasplocGoal, GrasplocResult
 from scipy.spatial.transform import Rotation as R
@@ -36,12 +41,12 @@ from behavior_manager.interfaces.fetch_manipulation_behavior import *
 from behavior_manager.interfaces.sleep_behavior import *
 
 
-gripper_length = 0.148
+gripper_length = 0.150
 pre_grasp_offset = 0.1
 
 to_grasp_tf = TransformStamped()
 to_grasp_tf.header.frame_id = "gripper_link"
-to_grasp_tf.transform.translation.x = pre_grasp_offset * 1.0
+to_grasp_tf.transform.translation.x = pre_grasp_offset * 0.8
 to_grasp_tf.transform.rotation.w = 1.0
 
 to_place_tf = TransformStamped()
@@ -56,7 +61,8 @@ up_tf_after_place.transform.rotation.w = 1
 
 up_tf = TransformStamped()
 up_tf.header.frame_id = "base_link"
-up_tf.transform.translation.z = 0.25
+# up_tf.transform.translation.z = 0.25
+up_tf.transform.translation.z = 0.15
 up_tf.transform.rotation.w = 1
 
 up_tf_little = TransformStamped()
@@ -97,6 +103,19 @@ bb.size.y = 0.25
 bb.size.z = 0.5
 py_trees.blackboard.Blackboard().set('crop_box', bb)
 
+
+grocery_box_size = Vector3()
+grocery_box_size.x = 0.8
+grocery_box_size.y = 0.8
+grocery_box_size.z = 0.15
+py_trees.blackboard.Blackboard().set('grocery_box_size', grocery_box_size)
+
+grocery_collision_box_name = []
+grocery_collision_box_name.append('grocery_collision_box_left')
+grocery_collision_box_name.append('grocery_collision_box_right')
+grocery_collision_box_name.append('grocery_collision_box_front')
+grocery_collision_box_name.append('grocery_collision_box_back')
+py_trees.blackboard.Blackboard().set('grocery_collision_box_name', grocery_collision_box_name)
 
 def ResetAct(name):
     """ Bring robot back to default pose.
@@ -240,123 +259,519 @@ class RelativeCartesianMoveAct(py_trees_ros.actions.ActionClient):
         )
         self.action_goal.pose_diff_msg = pose_diff_msg
 
-class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, *argv, **kwargs):
-        super(GetDopeSnapshotAct, self).__init__(
-            name=name,
-            action_spec=DopeAction,
-            action_goal=DopeGoal(),
-            action_namespace='dope',
-            *argv,
-            **kwargs
-        )
+# class GetDopeSnapshotAct(py_trees_ros.actions.ActionClient):
+#     def __init__(self, name, object_name=None, *argv, **kwargs):
+#         super(GetDopeSnapshotAct, self).__init__(
+#             name=name,
+#             action_spec=DopeAction,
+#             action_goal=DopeGoal(),
+#             action_namespace='dope',
+#             *argv,
+#             **kwargs
+#         )
 
-        self._timeout = 5
-        self._listener = tf.TransformListener()
+#         self._timeout = 5
+#         self._listener = tf.TransformListener()
 
-        self.image_sub = message_filters.Subscriber(
-            '/head_camera/rgb/image_raw',
-            ImageSensor_msg
-        )
-        self.info_sub = message_filters.Subscriber(
-            '/head_camera/rgb/camera_info',
-            CameraInfo
-        )
-        self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
-        self._blackboard = py_trees.blackboard.Blackboard()
-        self._pc = self._blackboard.get('depth_pc')
-        # print('init_ pc: ',type(self._pc))
-        self.ts.registerCallback(self.image_callback)
+#         self.image_sub = message_filters.Subscriber(
+#             '/head_camera/rgb/image_raw',
+#             ImageSensor_msg
+#         )
+#         self.info_sub = message_filters.Subscriber(
+#             '/head_camera/rgb/camera_info',
+#             CameraInfo
+#         )
+#         self.ts = message_filters.TimeSynchronizer([self.image_sub, self.info_sub], 100)
+#         self._blackboard = py_trees.blackboard.Blackboard()
+#         self._pc = self._blackboard.get('depth_pc')
+#         # print('init_ pc: ',type(self._pc))
+#         self.ts.registerCallback(self.image_callback)
+#         self._model_state = None
+#         self._object_name = object_name
 
-    def initialise(self):
-        super(GetDopeSnapshotAct, self).initialise()
-        self._pc = self._blackboard.get('depth_pc')
+#     def initialise(self):
+#         super(GetDopeSnapshotAct, self).initialise()
+#         self._pc = self._blackboard.get('depth_pc')
         
-    def image_callback(self, image, info):
-        self.action_goal = DopeGoal()
-        self.action_goal.image = image
-        self.action_goal.cam_info = info
-        # print('image_callback pc: ',type(self._pc))
-        # self.action_goal.pc = self._pc
+#     def image_callback(self, image, info):
+#         self.action_goal = DopeGoal()
+#         self.action_goal.image = image
+#         self.action_goal.cam_info = info
+#         # print('image_callback pc: ',type(self._pc))
+#         # self.action_goal.pc = self._pc
+
+#     def update(self):
+#         self.logger.debug("{0}.update()".format(self.__class__.__name__))
+#         if not self.action_client:
+#             self.feedback_message = "no action client, did you call setup() on your tree?"
+#             return py_trees.Status.INVALID
+#         # if not self.sent_goal and self.action_goal.cam_info != CameraInfo() and self.action_goal.image != ImageSensor_msg():
+#         if not self.sent_goal:
+#             # self._pc = self._blackboard.get('depth_pc')
+#             # print('send_goal pc: ',type(self.action_goal.pc))
+#             # print('self._pc: ',type(self._pc))
+#             self.action_goal.pc = self._pc
+#             # print("printing things:")
+#             time.sleep(1)
+#             # print(self.action_goal.image)
+            
+#             # print(self.action_goal.cam_info)
+#             # print(type(self.action_goal.cam_info))
+#             self.action_client.send_goal(self.action_goal)
+#             # print('send_goal pc: ',type(self.action_goal.pc))
+#             self.sent_goal = True
+#             self.feedback_message = "sent goal to the action server"
+#             return py_trees.Status.RUNNING
+#         self.feedback_message = self.action_client.get_goal_status_text()
+#         if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
+#                                               actionlib_msgs.GoalStatus.PREEMPTED]:
+#             return py_trees.Status.FAILURE
+#         result = self.action_client.get_result()
+#         # print(result)
+
+#         if result:
+#             # print(result.detections)
+#             # print(type(result))
+#             # test_result = DopeResult()
+#             # test_result.detections.append(Detection3D())
+#             # print("printing test_result: ")
+#             # print(test_result)
+#             # print('detection.bbox: ', result.detections[0].bbox)
+#             # self._model_state = py_trees.blackboard.Blackboard().get('model_state')
+#             # object_name = []
+#             # object_index = []
+#             # # cracker gelatin meat mustard soup sugar
+#             # All_size = []
+#             # All_size.append(Vector3(0.0718, 0.164, 0.213))
+#             # All_size.append(Vector3(0.09, 0.097, 0.029))
+#             # All_size.append(Vector3(0.103, 0.057, 0.084))
+#             # All_size.append(Vector3(0.08, 0.06, 0.19))
+#             # All_size.append(Vector3(0.068, 0.068, 0.102))
+#             # All_size.append(Vector3(0.045, 0.097, 0.174))
+#             # All_name = []
+#             # All_name.append("cracker")
+#             # All_name.append("gelatin")
+#             # All_name.append("meat")
+#             # All_name.append("mustard")
+#             # All_name.append("soup")
+#             # All_name.append("sugar")
+#             # dope_result = DopeResult()
+#             # if self._model_state is None:
+#             #     return py_trees.Status.FAILURE
+
+#             # for name in self._model_state.name:
+#             #     if name == "ground_plane" or name == "fetch"or name == "table" or name == "lower_table":
+#             #         continue
+#             #     else:
+#             #         if name[-1] == 't':
+#             #             object_name.append(name[0:-5] + '_0')
+#             #             object_index.append(All_name.index(name[0:-5]))
+#             #         else:
+#             #             object_name.append(name[0:-7] + '_' + str(int(name[-1]) + 1))
+#             #             object_index.append(All_name.index(name[0:-7]) + 1)
+#             #     dope_result.detections.append(Detection3D())
+#             #     index_cur = len(dope_result.detections) - 1
+#             #     dope_result.detections[index_cur].results.append(ObjectHypothesisWithPose())
+#             #     dope_result.detections[index_cur].results[0].id = object_index[len(object_index) - 1]
+#             #     dope_result.detections[index_cur].results[0].score = 0.9
+#             #     dope_result.detections[index_cur].results[0].pose = self._model_state.pose[self._model_state.name.index(name)]
+#             #     dope_result.detections[index_cur].bbox.center = self._model_state.pose[self._model_state.name.index(name)]
+#             #     dope_result.detections[index_cur].bbox.size = All_size[object_index[len(object_index) - 1] - 1]
+
+#             # # print("dope_result: ")
+#             # # print(dope_result)
+#             # print("object_name: ", object_name)
+#             # num_object = None
+#             # if not self._object_name == None:
+#             #     if self._object_name[-1] == '0':
+#             #         num_object = None
+#             #         name_model = self._object_name[0:-2] + "_test"
+#             #     else:
+#             #         num_object = int(self._object_name[-1] - 1)
+#             #         name_model = self._object_name[0:-2] + "_test" + str(num_object)
+                
+#             #     object_index = self._model_state.name.index(name_model)
+#             #     # print(type(self._model_state))
+#             #     # print(self._model_state.name[object_index])
+#             #     # print(type(self._model_state.pose[object_index]))
+#             #     # print(self._model_state.twist[object_index])
+
+
+#             obj_bboxes_prev = py_trees.blackboard.Blackboard().get('obj_bboxes')
+#             obj_bboxes_post = {}
+#             uuid = 0
+#             class_ids = rospy.get_param("/dope/class_ids")
+#             class_names = {class_id: name for name, class_id in class_ids.iteritems()}
+#             # print(class_names)
+#             for detection in result.detections:
+#                 pose_stamped = PoseStamped()
+#                 pose_stamped.header.frame_id = '/head_camera_rgb_optical_frame' # shouldn't this be same as self.imsage_sub?
+#                 pose_stamped.header.stamp = rospy.Time(0)
+#                 pose_stamped.pose = detection.bbox.center
+#                 try:
+#                     tfed_pose_stamped = self._listener.transformPose('/base_link', pose_stamped)
+#                     detection.bbox.center = tfed_pose_stamped.pose
+#                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
+#                     print 'Failed to transform from /head_camera_rgb_optical_frame to /base_link: {}'.format(e)
+#                     return None
+
+#                 obj_bboxes_post[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
+#                 uuid += 1
+
+#             # print 'obj_bboxes_post: {}'.format(obj_bboxes_post)
+
+#             if obj_bboxes_prev is None:
+#                 obj_bboxes = obj_bboxes_post
+#             else:
+#                 obj_bboxes = obj_bboxes_prev
+#                 for obj_prev_key in obj_bboxes_prev.keys():
+#                     closest_obj_name = None
+#                     closest_dist = 10000
+#                     for obj_post_key in obj_bboxes_post.keys():
+#                         # dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
+#                         pose_1 = obj_bboxes_prev[obj_prev_key].center
+#                         pose_2 = obj_bboxes_post[obj_post_key].center
+#                         dist = position_diff = np.sqrt((pose_1.position.x - pose_2.position.x) ** 2 + (pose_1.position.y - pose_2.position.y) ** 2 +
+#                             (pose_1.position.z - pose_2.position.z) ** 2)
+#                         if dist < closest_dist:
+#                             closest_dist = dist
+#                             closest_obj_name = obj_post_key
+#                     print('closest_dist: ', closest_dist)
+#                     # print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
+#                     if closest_dist <= 0.06:
+#                         obj_bboxes[obj_prev_key] = obj_bboxes_post[closest_obj_name]
+#                         del obj_bboxes_post[closest_obj_name]
+#                     else:
+#                         print 'No closest object found. Defaulting with previously seen object bbox value for {}'.format(obj_prev_key)
+
+#             py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
+#             print "obj bboxes: ", obj_bboxes
+
+#             return py_trees.Status.SUCCESS
+#         else:
+#             self.feedback_message = self.override_feedback_message_on_running
+#             return py_trees.Status.RUNNING
+
+class GetFakeDopeSnapshotAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, model_state_key="model_state"):
+        super(GetFakeDopeSnapshotAct, self).__init__(name)
+        self._model_state_key = model_state_key
+        self._model_state = None
+        self._dope_detection_pub = None
+        self._set_model_state_pub = None
+        self._obj_bboxes = dict()
+        self._marker = None
+        self._set_model_state = None
+
+    def setup(self, timeout):
+        # self._dope_detection_pub = rospy.Publisher('/original_grasploc_poses', DopeActionResult, queue_size=10)
+        self._marker_sub = rospy.Subscriber('/dope/markers', MarkerArray, self.initial_callback)
+        self._dope_detection_pub = rospy.Publisher('/dope/markers', MarkerArray, queue_size=10)
+        self._set_model_state_pub = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
+        return True
+
+    def initial_callback(self, marker):
+        self._marker = marker
 
     def update(self):
-        self.logger.debug("{0}.update()".format(self.__class__.__name__))
-        if not self.action_client:
-            self.feedback_message = "no action client, did you call setup() on your tree?"
-            return py_trees.Status.INVALID
-        # if not self.sent_goal and self.action_goal.cam_info != CameraInfo() and self.action_goal.image != ImageSensor_msg():
-        if not self.sent_goal:
-            # self._pc = self._blackboard.get('depth_pc')
-            # print('send_goal pc: ',type(self.action_goal.pc))
-            # print('self._pc: ',type(self._pc))
-            self.action_goal.pc = self._pc
-            self.action_client.send_goal(self.action_goal)
-            # print('send_goal pc: ',type(self.action_goal.pc))
-            self.sent_goal = True
-            self.feedback_message = "sent goal to the action server"
-            return py_trees.Status.RUNNING
-        self.feedback_message = self.action_client.get_goal_status_text()
-        if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
-                                              actionlib_msgs.GoalStatus.PREEMPTED]:
+        print(type(self._marker))
+        self._model_state = py_trees.blackboard.Blackboard().get('model_state')
+        self._set_model_state = ModelState()
+        self._set_model_state.model_name = 'cracker_test'
+        # self._set_model_state.pose = []
+        # self._set_model_state.twist = []
+        self._set_model_state.twist = self._model_state.twist[3]
+        # self._set_model_state.pose.append()
+        # self._set_model_state.name = list(self._model_state.name)
+        # self._set_model_state.pose = list(self._model_state.pose)
+        # self._set_model_state.twist = list(self._model_state.twist)
+        print("before: ", self._model_state)
+        # print("self._set_model_state.pose[3].position.x: ", self._set_model_state.pose[3].position.x)
+        
+        # print(type(self._model_state.name))
+        # print(type(self._model_state.pose))
+        # print(type(self._model_state.twist))
+        # # self._set_model_state.pose[3].position.x = self._set_model_state.pose[3].position.x + 10
+        # print(type(self._model_state.pose[3].position))
+        # print(type(self._model_state.pose[3].orientation))
+
+        position_test = Point()
+        orientation_test = Quaternion()
+        position_test.x = self._model_state.pose[3].position.x
+        position_test.y = self._model_state.pose[3].position.y
+        position_test.z = self._model_state.pose[3].position.z
+        pose_test = Pose(position_test, self._model_state.pose[3].orientation)
+        # pose_test = self._model_state.pose[3]
+        pose_test.position.x = 2
+        self._set_model_state.pose = pose_test
+        # print("after: ", self._model_state)
+        # self._set_model_state
+        object_name = []
+        object_index = []
+        # cracker gelatin meat mustard soup sugar
+        All_offset = []
+        All_offset.append(Vector3(-0.014, -0.014, 0.1))
+        All_offset.append(Vector3(-0.023, -0.01, 0.0145))
+        All_offset.append(Vector3(-0.032, -0.026, 0.038))
+        All_offset.append(Vector3(-0.016, -0.025, 0.095))
+        All_offset.append(Vector3(-0.01, 0.084, 0.053))
+        All_offset.append(Vector3(-0.0095, -0.017, 0.088))
+        All_size = []
+        All_size.append(Vector3(0.0718, 0.164, 0.213))
+        All_size.append(Vector3(0.09, 0.097, 0.029))
+        All_size.append(Vector3(0.103, 0.057, 0.084))
+        All_size.append(Vector3(0.08, 0.06, 0.19))
+        All_size.append(Vector3(0.068, 0.068, 0.102))
+        All_size.append(Vector3(0.045, 0.097, 0.174))
+        Table_size = []
+        Table_size.append(Vector3(0.85, 1, 0.55))
+        Table_size.append(Vector3(0.45, 0.5, 0.50))
+        table_size_z = 0.005
+        # Table_sizemod.append(Vector3(0.85, 1, 0.09))
+        # Table_size.append(Vector3(0.45, 0.5, 0.09))
+        All_name = []
+        All_name.append("cracker")
+        All_name.append("gelatin")
+        All_name.append("meat")
+        All_name.append("mustard")
+        All_name.append("soup")
+        All_name.append("sugar")
+        dope_result = DopeResult()
+        plane_bboxes = []
+        if self._model_state is None:
             return py_trees.Status.FAILURE
-        result = self.action_client.get_result()
 
-        if result:
-            # print('detection.bbox: ', result.detections[0].bbox)
-            obj_bboxes_prev = py_trees.blackboard.Blackboard().get('obj_bboxes')
-            obj_bboxes_post = {}
-            uuid = 0
-            class_ids = rospy.get_param("/dope/class_ids")
-            class_names = {class_id: name for name, class_id in class_ids.iteritems()}
-
-            for detection in result.detections:
-                pose_stamped = PoseStamped()
-                pose_stamped.header.frame_id = '/head_camera_rgb_optical_frame' # shouldn't this be same as self.imsage_sub?
-                pose_stamped.header.stamp = rospy.Time(0)
-                pose_stamped.pose = detection.bbox.center
-                try:
-                    tfed_pose_stamped = self._listener.transformPose('/base_link', pose_stamped)
-                    detection.bbox.center = tfed_pose_stamped.pose
-                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException), e:
-                    print 'Failed to transform from /head_camera_rgb_optical_frame to /base_link: {}'.format(e)
-                    return None
-
-                obj_bboxes_post[class_names[detection.results[0].id] + '_' + str(uuid)] = detection.bbox
-                uuid += 1
-
-            # print 'obj_bboxes_post: {}'.format(obj_bboxes_post)
-
-            if obj_bboxes_prev is None:
-                obj_bboxes = obj_bboxes_post
+        for name in self._model_state.name:
+            if name == "ground_plane" or name == "fetch":
+                continue
+            elif name == "table":
+                table_bbox = BoundingBox3D()
+                table_bbox.center = self._model_state.pose[self._model_state.name.index(name)]
+                table_bbox.size = Table_size[0]
+                table_bbox.center.position.z = table_bbox.center.position.z + table_bbox.size.z / 2
+                table_bbox.size.z = table_size_z
+                plane_bboxes.append(table_bbox)
+                continue
+            elif name == "lower_table":
+                table_bbox = BoundingBox3D()
+                table_bbox.center = self._model_state.pose[self._model_state.name.index(name)]
+                table_bbox.size = Table_size[1]
+                table_bbox.center.position.z = table_bbox.center.position.z + table_bbox.size.z / 2
+                table_bbox.size.z = table_size_z
+                plane_bboxes.append(table_bbox)
+                continue
             else:
-                obj_bboxes = obj_bboxes_prev
-                for obj_prev_key in obj_bboxes_prev.keys():
-                    closest_obj_name = None
-                    closest_dist = 10000
-                    for obj_post_key in obj_bboxes_post.keys():
-                        # dist = srp_md.pose_difference(obj_bboxes_prev[obj_prev_key].center, obj_bboxes_post[obj_post_key].center)
-                        pose_1 = obj_bboxes_prev[obj_prev_key].center
-                        pose_2 = obj_bboxes_post[obj_post_key].center
-                        dist = position_diff = np.sqrt((pose_1.position.x - pose_2.position.x) ** 2 + (pose_1.position.y - pose_2.position.y) ** 2 +
-                            (pose_1.position.z - pose_2.position.z) ** 2)
-                        if dist < closest_dist:
-                            closest_dist = dist
-                            closest_obj_name = obj_post_key
-                    print('closest_dist: ', closest_dist)
-                    # print 'Closest distance {}, with prev object {} and post object {}'.format(closest_dist, obj_prev_key, closest_obj_name)
-                    if closest_dist <= 0.06:
-                        obj_bboxes[obj_prev_key] = obj_bboxes_post[closest_obj_name]
-                        del obj_bboxes_post[closest_obj_name]
-                    else:
-                        print 'No closest object found. Defaulting with previously seen object bbox value for {}'.format(obj_prev_key)
+                if name[-1] == 't':
+                    object_name.append(name[0:-5] + '_0')
+                    object_index.append(All_name.index(name[0:-5]) + 1)
+                else:
+                    object_name.append(name[0:-7] + '_' + str(int(name[-1]) + 1))
+                    object_index.append(All_name.index(name[0:-7]) + 1)
+            dope_result.detections.append(Detection3D())
+            index_cur = len(dope_result.detections) - 1
+            dope_result.detections[index_cur].results.append(ObjectHypothesisWithPose())
+            dope_result.detections[index_cur].results[0].id = object_index[len(object_index) - 1]
+            dope_result.detections[index_cur].results[0].score = 0.9
 
-            py_trees.blackboard.Blackboard().set('obj_bboxes', obj_bboxes)
-            print "obj bboxes: ", obj_bboxes
+            # print("plane_bboxes: ", plane_bboxes)
 
-            return py_trees.Status.SUCCESS
+            pose_object = self._model_state.pose[self._model_state.name.index(name)]
+            pose_ori = R.from_quat([
+                pose_object.orientation.x,
+                pose_object.orientation.y,
+                pose_object.orientation.z,
+                pose_object.orientation.w])
+            pose_rotated = R.from_quat([0.5, 0.5 ,0.5 ,0.5])
+
+            pose_real = pose_ori * pose_rotated
+            print("pose_ori: ", pose_ori.as_quat())
+            print("pose_real: ", pose_real.as_quat())
+            pose_real_quat = pose_real.as_quat()
+            transformed_pose = Pose()
+            size_object = Vector3()
+            transformed_pose.orientation.x = pose_real_quat[0]
+            transformed_pose.orientation.y = pose_real_quat[1]
+            transformed_pose.orientation.z = pose_real_quat[2]
+            transformed_pose.orientation.w = pose_real_quat[3]
+            tf = R.from_quat([
+                transformed_pose.orientation.x,
+                transformed_pose.orientation.y,
+                transformed_pose.orientation.z,
+                transformed_pose.orientation.w])
+            
+            offset = pose_ori.apply([All_offset[object_index[len(object_index) - 1] - 1].x, All_offset[object_index[len(object_index) - 1] - 1].y, All_offset[object_index[len(object_index) - 1] - 1].z])
+            # transformed_pose.position.x = pose_object.position.x #+ All_offset[object_index[len(object_index) - 1] - 1].x
+            # transformed_pose.position.y = pose_object.position.y #+ All_offset[object_index[len(object_index) - 1] - 1].y
+            # transformed_pose.position.z = pose_object.position.z #+ All_offset[object_index[len(object_index) - 1] - 1].z
+            print("offset: ", offset)
+            transformed_pose.position.x = pose_object.position.x + offset[0]
+            transformed_pose.position.y = pose_object.position.y + offset[1]
+            transformed_pose.position.z = pose_object.position.z + offset[2]
+            print("transformed_pose: ", transformed_pose)
+            # print("transformed_pose.position: ", transformed_pose.position)
+            # print("pose_object.position", pose_object.position)
+            # transformed_pose.position = pose_object.position
+            size_object.x = All_size[object_index[len(object_index) - 1] - 1].y
+            size_object.y = All_size[object_index[len(object_index) - 1] - 1].z
+            size_object.z = All_size[object_index[len(object_index) - 1] - 1].x
+            # dope_result.detections[index_cur].results[0].pose = self._model_state.pose[self._model_state.name.index(name)]
+            # dope_result.detections[index_cur].bbox.center = self._model_state.pose[self._model_state.name.index(name)]
+            # dope_result.detections[index_cur].bbox.size = All_size[object_index[len(object_index) - 1] - 1]
+            dope_result.detections[index_cur].results[0].pose = transformed_pose
+            dope_result.detections[index_cur].bbox.center = transformed_pose
+            dope_result.detections[index_cur].bbox.size = size_object
+            self._obj_bboxes[object_name[len(object_name) - 1]] = dope_result.detections[index_cur].bbox
+        # print("dope_result: ")
+        # print(dope_result)
+        # print("object_name: ", object_name)
+        # orig.header.frame_id = 'base_link'
+        # new.header.frame_id = 'base_link'
+        # orig.poses = poses
+        # new.poses = offset_poses
+
+        test_markerarray = MarkerArray()
+        delete_all_marker = Marker()
+        delete_all_marker.action = 3
+        test_markerarray.markers.append(delete_all_marker)
+        if self._marker == None:
+            sequence = 1 
         else:
-            self.feedback_message = self.override_feedback_message_on_running
-            return py_trees.Status.RUNNING
+            sequence = self._marker.markers[len(self._marker.markers) - 1].header.seq
+            sequence = sequence + 1
+        for i in range(len(self._obj_bboxes)):
+            marker_temp = Marker()
+            # marker_temp.header.frame_id = "head_camera_rgb_optical_frame"
+            marker_temp.header.frame_id = "base_link"
+
+            marker_temp.header.stamp.secs = 2672
+            marker_temp.header.stamp.nsecs = 673000000
+            marker_temp.header.stamp=rospy.Time.now()
+            marker_temp.header.seq = sequence
+            marker_temp.ns = 'bboxes'
+            marker_temp.id = i + 1
+            # marker_temp.type = dope_result.detections[i].results[0].id
+            marker_temp.type = 1
+            # marker_temp.type = 7
+            marker_temp.action = 0
+            marker_temp.pose = dope_result.detections[i].results[0].pose
+            marker_temp.scale = dope_result.detections[i].bbox.size
+            marker_temp.color.r = 1.0
+            marker_temp.color.a = 0.4
+            
+            marker_text = Marker()
+            # marker_text.header.frame_id = "head_camera_rgb_optical_frame"
+            marker_text.header.frame_id = "base_link"
+
+            marker_text.header.stamp.secs = 2672 + i
+            marker_text.header.stamp.nsecs = 673000000 + i * 10000000
+            marker_text.header.stamp=rospy.Time.now()
+            marker_text.header.seq = sequence
+            marker_text.ns = 'text'
+            marker_text.id = i + 1
+            marker_text.type = 9
+            marker_text.action = 0
+            marker_text.pose = dope_result.detections[i].results[0].pose
+            marker_text.scale = Vector3(0.05, 0.05, 0.05)
+            marker_text.color.r = 1.0
+            marker_text.color.a = 0.4
+            marker_text.text = All_name[dope_result.detections[i].results[0].id - 1] + "(0.9)"
+
+            test_markerarray.markers.append(marker_temp)
+            test_markerarray.markers.append(marker_text)
+            # print(marker_temp.header)
+            # print(marker_temp.pose)
+        # print(len(self._obj_bboxes))
+        self._dope_detection_pub.publish(test_markerarray)
+        # self._set_model_state_pub.publish(self._set_model_state)
+        # print("plane_bboxes: ", plane_bboxes)
+        # blackboard.set(self._out_poses_key, offset_poses)
+        py_trees.blackboard.Blackboard().set('plane_bboxes', plane_bboxes)
+        py_trees.blackboard.Blackboard().set('obj_bboxes', self._obj_bboxes)
+        return py_trees.Status.SUCCESS
+
+class TeleportObjectAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, obj_name, model_state_key="model_state", free_space_poses_key="free_space_poses"):
+        super(TeleportObjectAct, self).__init__(name)
+        self._model_state_key = model_state_key
+        self._model_state = None
+        self._set_model_state = None
+        self._set_model_state_pub = None
+        self._free_space_poses_key = free_space_poses_key
+        self._free_space_poses = None
+        self._obj_name = obj_name
+        self._obj_index = None
+
+    def setup(self, timeout):
+        self._set_model_state_pub = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
+        return True
+
+
+    def update(self):
+        self._model_state = py_trees.blackboard.Blackboard().get(self._model_state_key)
+        self._free_space_poses = py_trees.blackboard.Blackboard().get(self._free_space_poses_key)
+
+        object_move_name = None
+        object_move_name = self._obj_name[0:-1] + 'test_' + str(int(self._obj_name[-1]) - 1)
+        if self._obj_name[-1] == '0':
+            object_move_name = object_move_name[0:-3]
+        # print(object_move_name)
+        self._obj_index = self._model_state.name.index(object_move_name)
+        print("self._obj_index: ", self._obj_index)
+
+        pose_first = self._free_space_poses[0]
+
+        orientation_initial = self._model_state.pose[self._obj_index].orientation
+
+        print("orientation_initial: ", orientation_initial)
+
+        pose_rotated = R.from_quat([0.5, 0.5 ,0.5 ,0.5])
+
+        All_offset = []
+        All_offset.append(Vector3(-0.014, -0.014, 0.1))
+        All_offset.append(Vector3(-0.023, -0.01, 0.0145))
+        All_offset.append(Vector3(-0.032, -0.026, 0.038))
+        All_offset.append(Vector3(-0.016, -0.025, 0.095))
+        All_offset.append(Vector3(-0.01, 0.084, 0.053))
+        All_offset.append(Vector3(-0.0095, -0.017, 0.088))
+
+        All_name = []
+        All_name.append("cracker")
+        All_name.append("gelatin")
+        All_name.append("meat")
+        All_name.append("mustard")
+        All_name.append("soup")
+        All_name.append("sugar")
+
+        pose_real = R.from_quat([
+                orientation_initial.x,
+                orientation_initial.y,
+                orientation_initial.z,
+                orientation_initial.w])
+
+        object_name_index = All_name.index(self._obj_name[0:-2])
+        # print("object_name_index: ", object_name_index)
+        # pose_real = pose_ori * pose_rotated
+
+        print("pose_real: ", pose_real.as_quat())
+        print("pose_ori: ", pose_ori.as_quat())
+
+        offset = pose_real.apply([All_offset[object_name_index].x, All_offset[object_name_index].y, All_offset[object_name_index].z])
+        print("offset: ", offset)
+
+
+        self._set_model_state = ModelState()
+        self._set_model_state.model_name = object_move_name
+        self._set_model_state.twist = self._model_state.twist[self._obj_index]
+        self._set_model_state.pose = self._model_state.pose[self._obj_index]
+        self._set_model_state.pose.position = self._free_space_poses[0].position
+
+        self._set_model_state.pose.position.x = self._set_model_state.pose.position.x - offset[0]
+        self._set_model_state.pose.position.y = self._set_model_state.pose.position.y - offset[1]
+        self._set_model_state.pose.position.z = self._set_model_state.pose.position.z - offset[2]
+
+        self._set_model_state_pub.publish(self._set_model_state)
+
+        return py_trees.Status.SUCCESS
 
 class GrasplocAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, in_pc_key, output_key='grasploc'):
@@ -489,7 +904,7 @@ class OffsetPoses(py_trees.behaviour.Behaviour):
             new.header.frame_id = 'base_link'
             orig.poses = poses
             new.poses = offset_poses
-            print(orig)
+            # print(orig)
             self._orig_pub.publish(orig)
             self._new_pub.publish(new)
 
@@ -539,7 +954,7 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
         self._obj_dim_key = obj_dim_key
         self._relative_obj_bbox_key = relative_obj_bbox_key
         self._distance_key = distance_key
-        self._distance = 0.1
+        self._distance = 0.03
         self._relation_key = relation_key
         self._relation = None
         self._object_index = object_index
@@ -600,6 +1015,9 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         gripper_ori_relative.append(R.from_quat([0.7071068,0,0,0.7071068]))
         gripper_ori_relative.append(R.from_quat([-0.7071068,0,0,0.7071068]))
 
+        gripper_ori_relative.append(R.from_quat([0, 0.7071068, 0,0.7071068]))
+        gripper_ori_relative.append(R.from_quat([0, -0.7071068,0,0.7071068]))
+
         gripper_ori_relative.append(R.from_quat([0.5,0.5,0.5,0.5]))
         gripper_ori_relative.append(R.from_quat([0.5,-0.5,-0.5,0.5]))
         gripper_ori_relative.append(R.from_quat([-0.5,0.5,-0.5,0.5]))
@@ -616,6 +1034,8 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
 
@@ -712,18 +1132,19 @@ class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
 
         poses_z_value = []
         test_gripper_poses_filtered = []
-        print("self._min_cos_theta", self._min_cos_theta)
-        print("self._min_cos_theta - 1", self._min_cos_theta - 1)
+        # print("self._min_cos_theta", self._min_cos_theta)
+        # print("self._min_cos_theta - 1", self._min_cos_theta - 1)
         for i in range(len(test_gripper_poses)):
             norm = np.array([x_axises[i][0], x_axises[i][1], x_axises[i][2]])
             norm = norm / np.linalg.norm(norm)
-            print(norm, np.arccos(np.dot(norm, self._center_axis)) * 180 / np.pi)
+            # print(norm, np.arccos(np.dot(norm, self._center_axis)) * 180 / np.pi)
             if np.dot(norm, self._center_axis) > self._min_cos_theta or np.dot(norm, self._center_axis) < -self._min_cos_theta:
-                print('good')
+                # print('good')
                 test_gripper_poses_filtered.append(test_gripper_poses[i])
                 poses_z_value.append(test_gripper_poses[i].position.z)
             else:
-                print('bad')
+                # print('bad')
+                pass
 
         if len(test_gripper_poses_filtered) == 0:
             return py_trees.Status.FAILURE
@@ -762,6 +1183,8 @@ class GetTableAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
         if result:
+            print("result.plane_bboxes: ")
+            print(type(result.plane_bboxes))
             py_trees.blackboard.Blackboard().set('plane_bboxes', result.plane_bboxes)
             return py_trees.Status.SUCCESS
         else:
@@ -789,6 +1212,7 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         if self._relative_object_bbox == None:
             self._relative_object_bbox = BoundingBox3D()
         self.action_goal.bot_pose = self._relative_object_bbox.center
+        print("self.action_goal.bot_pose: ", self.action_goal.bot_pose)
         self.action_goal.bot_dim = self._relative_object_bbox.size
         self.action_goal.dim = py_trees.blackboard.Blackboard().get(self._obj_dim_key)
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
@@ -825,8 +1249,8 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
             return py_trees.Status.RUNNING
 
 class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
-    def __init__(self, name, obj_bbox_key='crop_box', relative_bbox_key = 'relative_bbox',
-                 relation_key = 'relation', distance_key = 'distance', object_index=None, *argv, **kwargs):
+    def __init__(self, name, obj_bbox_key='crop_box', plane_bboxes_key = 'plane_bboxes', relative_bbox_key = 'relative_bbox',
+                 relation_key = 'relation', grocery_box_size_key='grocery_box_size', distance_key = 'distance', object_index=None, *argv, **kwargs):
         super(FreeSpaceFinderAct, self).__init__(
             name=name,
             action_spec=FreeSpaceFinderAction,
@@ -838,12 +1262,19 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         self._obj_bbox_key = obj_bbox_key
         self._obj_bbox = None
         self._plane_bboxes = None
+        self._plane_bboxes_key = plane_bboxes_key
         self._grasp_pose = None
         self._distance_key = distance_key
         self._relative_bbox_key = relative_bbox_key
         self._relation_key = relation_key
         self._relation = None
         self._object_index = object_index
+        self._grocery_box_size_key = grocery_box_size_key
+        self._grocery_box_size = None
+        self._plane_bbox = None
+        self._grocery_box_size_key = grocery_box_size_key
+        self._grocery_box_size = None
+        self._grocery_bbox = BoundingBox3D()
 
     def initialise(self):
         self.action_goal.points = py_trees.blackboard.Blackboard().get('depth_downsampled')
@@ -857,6 +1288,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         test_bbox = py_trees.blackboard.Blackboard().get(self._relative_bbox_key)
         self._grasp_pose = grasp_poses[0]
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
+        self._grocery_box_size = py_trees.blackboard.Blackboard().get(self._grocery_box_size_key)
         
         if self._obj_bbox is None:
             self.action_goal.obj_bbox = BoundingBox3D()
@@ -864,12 +1296,60 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
              self.action_goal.obj_bbox = self._obj_bbox
         self.action_goal.relation = 'test'
         # self.action_goal.relative_obj_bbox = BoundingBox3D()
-        self._plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
-        plane_bboxes = py_trees.blackboard.Blackboard().get('plane_bboxes')
-        if len(plane_bboxes) == 0:
+        self._plane_bboxes = py_trees.blackboard.Blackboard().get(self._plane_bboxes_key)
+        self._grocery_box_size = py_trees.blackboard.Blackboard().get(self._grocery_box_size_key)
+        self._grocery_bbox.size = self._grocery_box_size
+
+        # plane_bboxes = py_trees.blackboard.Blackboard().get(self._plane_bboxes_key)
+        if len(self._plane_bboxes) == 0:
             self.action_goal.plane_bbox = BoundingBox3D()
         else:
-            self.action_goal.plane_bbox = plane_bboxes[0]
+            if len(self._plane_bboxes) > 1:
+                if self._plane_bboxes[0].center.position.z > self._plane_bboxes[1].center.position.z:
+                    self.action_goal.plane_bbox = self._plane_bboxes[1]
+                    self._grocery_bbox.center = self._plane_bboxes[1].center
+                    self._plane_bbox = self._plane_bboxes[1]
+                    self._grocery_bbox.size.z = self._plane_bboxes[1].size.z
+                else:
+                    self.action_goal.plane_bbox = self._plane_bboxes[0]
+                    self._grocery_bbox.center = self._plane_bboxes[0].center
+                    self._plane_bbox = self._plane_bboxes[0]
+                    self._grocery_bbox.size.z = self._plane_bboxes[0].size.z
+            else:
+                self.action_goal.plane_bbox = self._plane_bboxes[0]
+                self._grocery_bbox.center = self._plane_bboxes[0].center
+                self._plane_bbox = self._plane_bboxes[0]
+                self._grocery_bbox.size.z = self._plane_bboxes[0].size.z
+                self.action_goal.plane_bbox = self._grocery_bbox
+        obj_bboxes = py_trees.blackboard.Blackboard().get('obj_bboxes')
+        print(obj_bboxes.values()[0])
+        print(obj_bboxes.values()[0].center.position.x)
+        print(type(obj_bboxes))
+        print(len(obj_bboxes))
+        obj_bboxes_value = obj_bboxes.values()
+        if self._relation == 'Away':
+            for rand_index in range(100):
+                x_rand = random.uniform(self.action_goal.plane_bbox.center.position.x - self.action_goal.plane_bbox.size.x / 2 * 0.9, self.action_goal.plane_bbox.center.position.x + self.action_goal.plane_bbox.size.x / 2 * 0.9)
+                y_rand = random.uniform(self.action_goal.plane_bbox.center.position.y - self.action_goal.plane_bbox.size.y / 2 * 0.9, self.action_goal.plane_bbox.center.position.y + self.action_goal.plane_bbox.size.y / 2 * 0.9)
+                add_if = True
+                for object_index in range(len(obj_bboxes)):
+                    print(object_index)
+                    if np.sqrt((obj_bboxes_value[object_index].center.position.x - x_rand) * (obj_bboxes_value[object_index].center.position.x - x_rand) + (obj_bboxes_value[object_index].center.position.y - y_rand) * (obj_bboxes_value[object_index].center.position.y - y_rand)) < 0.10:
+                        add_if = False
+                if add_if:
+                    print("x_rand: ", x_rand)
+                    print("y_rand: ", y_rand)
+                    self.action_goal.relative_obj_bbox.center.position.x = x_rand
+                    self.action_goal.relative_obj_bbox.center.position.y = y_rand
+                    break
+
+            # self.action_goal.plane_bbox = self._plane_bboxes[1]
+            # self.action_goal.plane_bbox.center.position.x = self.action_goal.plane_bbox.center.position.x +
+            #                                                 self.action_goal.plane_bbox.size.x - self._grocery_box_size.x / 2
+            # self.action_goal.plane_bbox.center.position.y = self.action_goal.plane_bbox.center.position.y +
+            #                                                 self.action_goal.plane_bbox.size.y - self._grocery_box_size.y / 2
+            # self.action_goal.plane_bbox.size.x = self._grocery_box_size.x
+            # self.action_goal.plane_bbox.size.y = self._grocery_box_size.y
 
     def update(self):
         if not self.action_client:
@@ -885,9 +1365,9 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         if self._relation == 'Stacking':
             return py_trees.Status.SUCCESS
         if not self.sent_goal:
-            print(self.action_goal.plane_bbox)
+            print("self.action_goal.plane_bbox: ", self.action_goal.plane_bbox)
             print(self.action_goal.relative_obj_bbox)
-            print(self.action_goal.obj_bbox)
+            print("self.action_goal.obj_bbox: ", self.action_goal.obj_bbox)
             self.action_client.send_goal(self.action_goal)
             self.sent_goal = True
             self.feedback_message = "sent goal to the action server"
@@ -905,8 +1385,8 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                 pose.orientation.z = 0
                 pose.orientation.w = 0.7071068
                 pose.position.z = self._grasp_pose.position.z
-                if pose.position.z -  self._plane_bboxes[0].center.position.z > self._obj_bbox.size.y * 1.5:
-                    pose.position.z = self._plane_bboxes[0].center.position.z + self._obj_bbox.size.y * 1.1
+                if pose.position.z -  self._plane_bbox.center.position.z > self._obj_bbox.size.y * 1.5:
+                    pose.position.z = self._plane_bbox.center.position.z + self._obj_bbox.size.y * 1.1
                 poses.append(pose)
 
             print('table pose: ', self._plane_bboxes)
@@ -1255,7 +1735,8 @@ class RemoveCollisionBoxAct(py_trees.behaviour.Behaviour):
         return py_trees.Status.SUCCESS
 
 class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, frame_id='base_link', bbox_key='obj_bboxes'):
+    def __init__(self, name, frame_id='base_link', bbox_key='obj_bboxes', grocery_box_size_key='grocery_box_size',
+                 plane_bbox_key = 'plane_bboxes'):
         super(AddAllObjectCollisionBoxAct, self).__init__(name)
         self._pub = None
         self._bbox_key = bbox_key
@@ -1263,6 +1744,10 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
         self._box_pose = None
         self._box_size = None
         self._frame_id = frame_id
+        self._grocery_box_size_key = grocery_box_size_key
+        self._grocery_box_size = None
+        self._plane_bbox_key = plane_bbox_key
+        self._plane_bboxes = None
 
     def setup(self, timeout):
         self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
@@ -1272,12 +1757,99 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
         # Make the box
         blackboard = py_trees.blackboard.Blackboard()
         bboxes = blackboard.get(self._bbox_key)
+        self._grocery_box_size = blackboard.get(self._grocery_box_size_key)
+        self._plane_bboxes = blackboard.get(self._plane_bbox_key)
+        print(type(self._plane_bboxes))
+        if len(self._plane_bboxes) > 1:
+            if self._plane_bboxes[0].center.position.z > self._plane_bboxes[1].center.position.z:
+                plane_bbox = self._plane_bboxes[1]
+            elif self._plane_bboxes[0].center.position.z < self._plane_bboxes[1].center.position.z:
+                plane_bbox = self._plane_bboxes[0]
+        else:
+            plane_bbox = self._plane_bboxes[0]
+        # order of adding: left right front back
+        print("plane_bbox: ", plane_bbox)
+        grocery_collsion_box_bboxes = []
+        grocery_collision_box_name = blackboard.get('grocery_collision_box_name')
+        # bot_wall_pose = Pose()
+        # bot_wall_pose.position.z = 0.45
+        # bot_wall_pose.orientation.w = 1.0
+        left_bbox = BoundingBox3D()
+        left_bbox.center = Pose()
+        left_bbox.center.orientation.w = 1.0
+        left_bbox.center.position.z = plane_bbox.center.position.z + plane_bbox.size.z / 2
+        left_bbox.center.position.x = plane_bbox.center.position.x 
+        left_bbox.center.position.y = plane_bbox.center.position.y + self._grocery_box_size.y / 2
+        left_bbox.size.x = self._grocery_box_size.x
+        left_bbox.size.z = self._grocery_box_size.z
+        left_bbox.size.y = 0.01
+
+        right_bbox = BoundingBox3D()
+        right_bbox.center = Pose()
+        right_bbox.center.orientation.w = 1.0
+        right_bbox.center.position.z = plane_bbox.center.position.z
+        right_bbox.center.position.x = plane_bbox.center.position.x
+        right_bbox.center.position.y = plane_bbox.center.position.y - self._grocery_box_size.y / 2
+        right_bbox.size.x = self._grocery_box_size.x
+        right_bbox.size.z = self._grocery_box_size.z
+        right_bbox.size.y = 0.01
+
+        front_bbox = BoundingBox3D()
+        front_bbox.center = Pose()
+        front_bbox.center.orientation.w = 1.0
+        front_bbox.center.position.z = plane_bbox.center.position.z
+        front_bbox.center.position.x = plane_bbox.center.position.x - self._grocery_box_size.x / 2
+        front_bbox.center.position.y = plane_bbox.center.position.y
+        front_bbox.size.y = self._grocery_box_size.y
+        front_bbox.size.z = self._grocery_box_size.z
+        front_bbox.size.x = 0.01
+
+        back_bbox = BoundingBox3D()
+        back_bbox.center = Pose()
+        back_bbox.center.orientation.w = 1.0
+        back_bbox.center.position.z = plane_bbox.center.position.z
+        back_bbox.center.position.x = plane_bbox.center.position.x + self._grocery_box_size.x / 2
+        back_bbox.center.position.y = plane_bbox.center.position.y
+        back_bbox.size.y = self._grocery_box_size.y
+        back_bbox.size.z = self._grocery_box_size.z
+        back_bbox.size.x = 0.01
+
+        grocery_bbox = BoundingBox3D()
+        grocery_bbox.center = plane_bbox.center
+        grocery_bbox.size = self._grocery_box_size
+
+        grocery_collsion_box_bboxes.append(left_bbox)
+        grocery_collsion_box_bboxes.append(right_bbox)
+        grocery_collsion_box_bboxes.append(front_bbox)
+        grocery_collsion_box_bboxes.append(back_bbox)
+
         planning_scene = PlanningScene()
         planning_scene.is_diff = True
         for i in  range(len(bboxes)):
             self._box_name = bboxes.keys()[i]
             self._box_pose = bboxes[self._box_name].center
             box_size = bboxes[self._box_name].size
+            self._box_size = [box_size.x + 0.01, box_size.y + 0.01, box_size.z + 0.01]
+            box = SolidPrimitive()
+            box.type = SolidPrimitive.BOX
+            box.dimensions = self._box_size
+
+            # Define the collision object
+            obj = CollisionObject()
+            obj.header.frame_id = self._frame_id
+            obj.id = self._box_name
+            obj.primitives.append(box)
+            obj.primitive_poses.append(self._box_pose)
+            obj.operation = obj.ADD
+
+        # Update the planning scene
+            planning_scene.world.collision_objects.append(obj);
+
+        # grocery box collision box
+        for i in  range(4):
+            self._box_name = grocery_collision_box_name[i]
+            self._box_pose = grocery_collsion_box_bboxes[i].center
+            box_size = grocery_collsion_box_bboxes[i].size
             self._box_size = [box_size.x + 0.01, box_size.y + 0.01, box_size.z + 0.01]
             box = SolidPrimitive()
             box.type = SolidPrimitive.BOX
@@ -1480,14 +2052,15 @@ def AddAllCollisionBoxesAct(name):
     table = Pose()
     table.position.x = 0.70
     table.position.y = 0.0
-    table.position.z = 0.33
+    table.position.z = 0.280
     table.orientation.w = 1.0
     blackboard.set('table_collision_obj', ['table', table, [0.85, 4, table.position.z * 2]])
 
     # Add each collision boxes to the root node
     root.add_children([
-        AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
-        AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
+        # do not forget to add this back when real robot test
+        # AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
+        # AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
         AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
     ])
@@ -1540,15 +2113,15 @@ def PickAct(name, obj, surface, relation='None'):
     grasploc_grasp_fall = py_trees.composites.Selector('grasploc_grasp_fall')
     grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     grasploc_grasp_seq.add_children([
-        # SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
-        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
-        # CloseGripperAct('act_close_gripper'),
+        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
+        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
+        CloseGripperAct('act_close_gripper'),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name=object_index),
         AddCollisionBoxAct('act_add_inhand_collision_object', box_bb_key='inhand_collision_object'),
         SleepBehavior('act_sleep_a_smidge', duration=1),
         AttachObjectAct('act_attach_object', object_name='inhand_collision_object', to_attach=True),
-        # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
-        # SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False)
+        RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
+        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False)
     ])
     
     grasploc_grasp_fall.add_children([
@@ -1564,6 +2137,12 @@ def PickAct(name, obj, surface, relation='None'):
             blackboard_variables={'in_pc': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        py_trees_ros.subscribers.ToBlackboard(
             name='act_get_pc',
             topic_name='/head_camera/depth_downsample/points',
             topic_type=PointCloud2,
@@ -1571,7 +2150,8 @@ def PickAct(name, obj, surface, relation='None'):
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_pc',
-            topic_name='/head_camera/depth/points',
+            # topic_name='/head_camera/depth/points',
+            topic_name='/head_camera/depth_registered/points',
             topic_type=PointCloud2,
             blackboard_variables={'depth_pc': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
@@ -1579,10 +2159,14 @@ def PickAct(name, obj, surface, relation='None'):
         CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
         PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
 
-        AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
+        # AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
 
-        GetDopeSnapshotAct('act_get_dope_snapshot'),
+        # GetDopeSnapshotAct('act_get_dope_snapshot', object_name=object_index),
+        GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+
+        # GetTableAct('act_get_table'),
+
 
         ChooseGrasplocObjAct('act_choose_grasploc_obj', relation=relation, object_index=object_index, relative_object_index=relative_object_index),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
@@ -1592,11 +2176,12 @@ def PickAct(name, obj, surface, relation='None'):
                     offset=[-(gripper_length + pre_grasp_offset), 0, 0],
                     in_poses_key='filtered_grasploc',
                     out_poses_key='offset_grasploc', debug=True), # The gripper origin is in the wrist so move out along x
-        GetTableAct('act_get_table'),
+        # GetTableAct('act_get_table'),
         FreeSpaceFinderAct('act_find_free_space', object_index = object_index),   
         GetStackPoseAct('act_get_stack_pose'),
         # MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
-        grasploc_grasp_fall,
+        
+        # grasploc_grasp_fall,
     ])
     return root
 
@@ -1622,15 +2207,16 @@ def PlaceAct(name, obj, surface):
         # MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose', place_if=True, object_index=object_index),
         # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
         # OpenGripperAct('act_open_gripper'),
-
-        AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
+        TeleportObjectAct('TeleportObject', obj_name=object_index),
+        # AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
         RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox'),
+
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
 
-        # SleepBehavior('act_sleep_a_smidge', duration=1),
+        SleepBehavior('act_sleep_a_smidge', duration=1),
         # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
-        # place_act_fall,
+        place_act_fall,
         SleepBehavior('act_sleep_a_smidge', duration=1),
         RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox')
     ])
