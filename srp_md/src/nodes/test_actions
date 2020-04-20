@@ -10,9 +10,13 @@ import py_trees_ros
 from geometry_msgs.msg import Pose, Transform, TransformStamped
 from sensor_msgs.msg import PointCloud2
 from vision_msgs.msg import BoundingBox3D
+from behavior_manager.interfaces.sleep_behavior import *
+from gazebo_msgs.msg import *
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
-                        GetDopeSnapshotAct, PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
+                        # GetDopeSnapshotAct, 
+                        GetFakeDopeSnapshotAct, TeleportObjectAct,
+                        PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
                         FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct, PickAct,MoveToStartAct,
                         SetAllowGripperCollisionAct, GetDesiredPoseAct, RelativeCartesianMoveAct, GraspPoseGeneration, PlaceAct,
@@ -106,7 +110,7 @@ def build_tree():
     table = Pose()
     table.position.x = 0.70
     table.position.y = 0.0
-    table.position.z = 0.33
+    table.position.z = 0.280
     table.orientation.w = 1.0
     blackboard.set('table_collision_obj', ['table', table, [0.85, 4, table.position.z * 2]])
 
@@ -155,8 +159,9 @@ def build_tree():
     # ])
 
     root.add_children([
-        AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
-        AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
+        # do not forget to add this back when real robot test
+        # AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
+        # AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
         AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
         AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
@@ -169,6 +174,7 @@ def build_tree():
         # PickAct('pick_1', 'grasp_pose'),
         OpenGripperAct('act_open_gripper'),
         TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
+        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.2),
         # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
         # # # PlaceWithPoseAct('place_1', 'grasp_pose'),
         # # MsurfaceoveToPoseAct('move_to_test_pose', pose=test_pose),
@@ -190,12 +196,23 @@ def build_tree():
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_pc',
-            topic_name='/head_camera/depth/points',
+            topic_name='/head_camera/depth_registered/points',
             topic_type=PointCloud2,
             blackboard_variables={'depth_pc': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        
-        GetDopeSnapshotAct('act_get_dope_snapshot'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+
+        # SleepBehavior('act_sleep_a_smidge', duration=1),
+        GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        # TeleportObjectAct('TeleportObject', obj_name='cracker_0'),
+        # TeleportObjectAct('TeleportObject', obj_name='cracker_1'),
+        # TeleportObjectAct('TeleportObject', obj_name='soup_0'),
+        # GetDopeSnapshotAct('act_get_dope_snapshot'),
         # ChooseGrasplocObjAct('act_choose_grasploc_obj'),
         # py_trees_ros.subscribers.ToBlackboard(
         #     name='act_get_pc',
@@ -234,15 +251,25 @@ def build_tree():
         # GrasplocPickAct('act_grasploc_pick', 'offset_grasploc'),
         # MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
 
-
-        # PickAct('PickAct', 'cracker_0', 'cracker_1', relation='Near'),
-        # PlaceAct('placeAct', 'cracker_0', 'cracker_1'),
+# 'Near' 'Stacking'
+        # PickAct('PickAct', 'cracker_0', 'table'),
+        # PlaceAct('placeAct', 'cracker_0', 'table'),
         # PickAct('PickAct', 'sugar_0', 'table'),
         # PlaceAct('placeAct', 'sugar_0', 'table'),
         # PickAct('PickAct', 'cracker_0', 'table'),
         # PlaceAct('placeAct', 'cracker_0', 'table'),
-        # PickAct('PickAct', 'cracker_1', 'table'),
-        # PlaceAct('placeAct', 'cracker_1', 'table'),
+        PickAct('PickAct', 'meat_0', 'meat_1', 'Stacking'),
+        PlaceAct('placeAct', 'meat_0', 'meat_1'),
+        # PickAct('PickAct', 'sugar_0', 'cracker_0', 'Stacking'),
+        # PlaceAct('placeAct', 'sugar_0', 'cracker_0'),
+        # PickAct('PickAct', 'gelatin_0', 'cracker_0', 'Near'),
+        # PlaceAct('placeAct', 'gelatin_0', 'cracker_0'),
+        # PickAct('PickAct', 'gelatin_0', 'cracker_0', 'Near'),
+        # PlaceAct('placeAct', 'gelatin_0', 'cracker_0'),
+        # PickAct('PickAct', 'meat_0', 'cracker_0', 'Near'),
+        # PlaceAct('placeAct', 'meat_0', 'cracker_0'),
+        # PickAct('PickAct', 'mustard_0', 'cracker_0', 'Near'),
+        # PlaceAct('placeAct', 'mustard_0', 'cracker_0'),
         # PickAct('PickAct', 'cracker_2', 'cracker_0', relation='Stacking'),
         # PlaceAct('placeAct', 'cracker_2', 'cracker_0'),
 
@@ -285,7 +312,7 @@ def main():
 
     # Setup the tree
     #   Give it 10 seconds to start
-    timeout = 10
+    timeout = 100000
     print 'Waiting {}s for tree to start'.format(timeout)
     if not tree.setup(timeout=timeout):
         rospy.logerr("failed to setup the tree, aborting.")

@@ -971,9 +971,10 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
                             const float distance)
     // const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose)
 {
-    std::cerr<<"pose of the table: "<<plane_bbox.center<<std::endl;
+    double x_axis_offset = 0.04;
+    // std::cerr<<"pose of the table: "<<plane_bbox.center<<std::endl;
     std::cerr<<"size of the table: "<<plane_bbox.size<<std::endl;
-    std::cout<<"pose.size() before function: "<<pose.size()<<std::endl;
+    // std::cout<<"pose.size() before function: "<<pose.size()<<std::endl;
     pose.clear();
     // enum x_axix = {Right = -1, none = 0, Left = 1};
     // enum y_axix = {Front = -1, none = 0, Back = 1}; //need to be fixed
@@ -1004,13 +1005,15 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     float edge_deduction_ratio = 0.15;
     float plane_expansion_ratio = 2.0;
     float object_placing_offset = 0.05;
-    int points_threshold = 10;
+    int points_threshold = 0;
 
     // Transform the pointcloud to base frame
     transform_pc(*points, "base_link", *points_tf);
-
+    cout<<"testing1"<<endl<<endl;
     // Crop out the plane
     plane_bbox_mod.size.z = (1 + plane_expansion_ratio) * plane_bbox.size.z;
+    cout<<"plane_bbox.size.z: "<<plane_bbox.size.z<<endl;
+    // crop_box_filt_pc(points_tf, plane_bbox_mod, *points_plane_filtered, true);
     crop_box_filt_pc(points_tf, plane_bbox_mod, *points_plane_filtered, true);
     plane_cropped_.publish(points_plane_filtered);
     jsk_recognition_msgs::BoundingBox plane_bbox_jsk;
@@ -1038,7 +1041,7 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
                                                     );
     Eigen::Vector3d z_axix = Eigen::Vector3d(0,0,1);
     // std::cout<<"obj_quat * z_axix: "<<obj_quat * z_axix<<std::endl;
-    std::cout<<"obj_quat.inverse()  * z_axix: "<<obj_quat.inverse() * z_axix<<std::endl;
+    // std::cout<<"obj_quat.inverse()  * z_axix: "<<obj_quat.inverse() * z_axix<<std::endl;
     Eigen::Vector3d z_axix_rotated = obj_quat.inverse() * z_axix;
     enum axis_prolonged {yes = 1, no = 0};
     axis_prolonged x_axis = no;
@@ -1046,10 +1049,13 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     axis_prolonged z_axis = no;
     if (abs(z_axix_rotated(0,0)) > abs(z_axix_rotated(1,0)) && abs(z_axix_rotated(0,0)) > abs(z_axix_rotated(2,0))) {
         x_axis = yes;
+        cout<<"x_axis: "<<endl;
     } else if (abs(z_axix_rotated(1,0)) > abs(z_axix_rotated(0,0)) && abs(z_axix_rotated(1,0)) > abs(z_axix_rotated(2,0))) {
         y_axis = yes;
+        cout<<"y_axis: "<<endl;
     } else {
         z_axis = yes;
+        cout<<"z_axis: "<<endl;
     }
     // std::cout<<"abs(z_axix_rotated(0,0)): "<<abs(z_axix_rotated(0,0))<<std::endl;
     // std::cout<<"abs(z_axix_rotated(1,0)): "<<abs(z_axix_rotated(1,0))<<std::endl;
@@ -1058,8 +1064,10 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     // std::cout<<"y_axis: "<<y_axis<<std::endl;
     // std::cout<<"z_axis: "<<z_axis<<std::endl;
     std::map<double, geometry_msgs::Pose> dis_pose_map;
+    cout<<"testing2"<<endl<<endl;
+    cout<<"obj_bbox.center.orientation: "<<obj_bbox.center.orientation<<endl;
     // Might want to cap this at limit 1000 or sth
-    for (int loop_times = 0; loop_times < 1000; loop_times++) {
+    for (int loop_times = 0; loop_times < 2500; loop_times++) {
 
         // Generate random pose on the table
         double x_random, y_random;
@@ -1072,28 +1080,43 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
         test_object_pose.position.z = plane_bbox.center.position.z + obj_bbox.size.z * 0.5 + object_placing_offset;
         test_object_pose.orientation = obj_bbox.center.orientation;
         double distance_actual = 1000;
+        // cout<<"testing3"<<endl<<endl;
         // std::cout<<1<<std::endl;
         if (distance != 0) {
-            // std::cout<<distance<<std::endl;
+            // std::cout<<distance_actual<<std::endl;
             distance_actual = sqrt(
                                           (relative_obj_bbox.center.position.x - test_object_pose.position.x) * (relative_obj_bbox.center.position.x - test_object_pose.position.x) +
                                           (relative_obj_bbox.center.position.y - test_object_pose.position.y) * (relative_obj_bbox.center.position.y - test_object_pose.position.y) +
                                           (relative_obj_bbox.center.position.z - test_object_pose.position.z) * (relative_obj_bbox.center.position.z - test_object_pose.position.z));
+            // cout<<"before distance_actual: "<<distance_actual<<endl;
+            distance_actual = distance_actual -
+                    sqrt(relative_obj_bbox.size.x * relative_obj_bbox.size.x + relative_obj_bbox.size.y * relative_obj_bbox.size.y + relative_obj_bbox.size.z * relative_obj_bbox.size.z) / 2 -
+                    sqrt(obj_bbox.size.x * obj_bbox.size.x + obj_bbox.size.y * obj_bbox.size.y + obj_bbox.size.z * obj_bbox.size.z) / 2;
+            // cout<<"sqrt(relative_obj_bbox.size.x * relative_obj_bbox.size.x + relative_obj_bbox.size.y * relative_obj_bbox.size.y + relative_obj_bbox.size.z * relative_obj_bbox.size.z): "<<sqrt(relative_obj_bbox.size.x * relative_obj_bbox.size.x + relative_obj_bbox.size.y * relative_obj_bbox.size.y + relative_obj_bbox.size.z * relative_obj_bbox.size.z)<<endl;
+            // cout<<"sqrt(obj_bbox.size.x * obj_bbox.size.x + obj_bbox.size.y * obj_bbox.size.y + obj_bbox.size.z * obj_bbox.size.z): "<<sqrt(obj_bbox.size.x * obj_bbox.size.x + obj_bbox.size.y * obj_bbox.size.y + obj_bbox.size.z * obj_bbox.size.z)<<endl;
+            // cout<<"after distance_actual: "<<distance_actual<<endl;
             if (distance_actual > distance) {
                 continue;
             }
             
         }
+        // cout<<"testing3"<<endl<<endl;
         vision_msgs::BoundingBox3D test_bbox;
         test_bbox.center = test_object_pose;
+        
+        // cout<<"test_bbox.center.position.x before: "<<test_bbox.center.position.x<<endl;
+        // test_bbox.center.position.x = test_bbox.center.position.x + x_axis_offset;
+        // cout<<"test_bbox.center.position.x after: "<<test_bbox.center.position.x<<endl;
         // test_bbox.size = obj_dim;
-        test_bbox.size.x = obj_bbox.size.x + x_axis * obj_bbox.size.x;
-        test_bbox.size.y = obj_bbox.size.y + y_axis * obj_bbox.size.y;
-        test_bbox.size.z = obj_bbox.size.z + z_axis * obj_bbox.size.z;
+        test_bbox.size.x = obj_bbox.size.x + x_axis * obj_bbox.size.x * 3;
+        test_bbox.size.y = obj_bbox.size.y + y_axis * obj_bbox.size.y * 3;
+        test_bbox.size.z = obj_bbox.size.z + z_axis * obj_bbox.size.z * 3;
         crop_box_filt_pc(points_plane_filtered, test_bbox, *points_object_filtered, false);
         int num_points = points_object_filtered->height * points_object_filtered->width;
-        // std::cout<<"point num in cropbox: "<<num_points<<std::endl;
+        // test_bbox.center.position.x = test_bbox.center.position.x - x_axis_offset;
+        std::cout<<"point num in cropbox: "<<num_points<<std::endl;
         jsk_recognition_msgs::BoundingBox object_bbox_jsk;
+
         object_bbox_jsk.pose = test_bbox.center;
         object_bbox_jsk.dimensions = test_bbox.size;
         object_bbox_jsk.header.frame_id = "base_link";
@@ -1104,16 +1127,27 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
             continue; // right syntax?
         } else {
             // std::cout<<"push_back here"<<std::endl;
+            // test_object_pose.position.x += 1;
             pose.push_back(test_object_pose);
             // std::cout<<"distance_actual: "<<distance_actual<<std::endl;
             dis_pose_map[distance_actual] = test_object_pose;
+            cout<<"num_points: "<<num_points<<endl;
             bool success = true;
-            if (pose.size() > 10) {
+            if (pose.size() > 20) {
+
                 std::cout<<dis_pose_map.size()<<std::endl;
                 std::cout<<"pose: "<<pose.size()<<std::endl;
                 break;
             }
         }
     }
+    pose.clear();
+    for (std::map<double, geometry_msgs::Pose>::iterator iter_map = dis_pose_map.begin(); iter_map != dis_pose_map.end(); iter_map++) {
+        cout<<"iter_map.first: "<<iter_map->first<<endl;
+        pose.push_back(iter_map->second);
+        // cout<<"iter_map->second: "<<iter_map->second<<endl;
+    }
+    // std::reverse(pose.begin(), pose.end());
+    // cout<<"pose[0]: "<<pose[0]<<endl;
     return success;
 }
