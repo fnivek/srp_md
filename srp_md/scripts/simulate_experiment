@@ -36,7 +36,7 @@ logger.setLevel(logging.DEBUG)
 # OBJECTS = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar", "bleach"]
 OBJECTS = ["cracker", "meat", "mustard", "soup", "sugar"]
 RELATIONS = ["disjoint", "proximity", "on", "support"]
-FEATURES = yaml.load(file(os.path.realpath(script_path + '/../config/feature_space.yaml'), 'r'))
+FEATURES = yaml.load(open(os.path.realpath(script_path + '/../config/feature_space.yaml'), 'r'))
 
 # Objects used in experiments
 grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar"]
@@ -432,7 +432,7 @@ def main():
 
     # Pickup where you left off
     last_trial = -1
-    with open(args.output_dir + '/results.csv', 'rw+') as results_file:
+    with open(args.output_dir + '/results.csv', 'r') as results_file:
         csv_reader = csv.reader(results_file)
         for row in csv_reader:
             last_trial = int(row[0])
