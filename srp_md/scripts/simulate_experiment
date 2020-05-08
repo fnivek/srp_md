@@ -19,6 +19,7 @@ import itertools
 import csv
 # from datetime import datetime
 import time
+import yaml
 # import multiprocessing
 # import Queue
 
@@ -35,30 +36,31 @@ logger.setLevel(logging.DEBUG)
 # OBJECTS = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar", "bleach"]
 OBJECTS = ["cracker", "meat", "mustard", "soup", "sugar"]
 RELATIONS = ["disjoint", "proximity", "on", "support"]
+FEATURES = yaml.load(file(os.path.realpath(script_path + '/../config/feature_space.yaml'), 'r'))
 
 # Objects used in experiments
 grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar"]
 # Grocery experiment list
 grocery_experiment_demo_objs = [
-    ["cracker", "cracker", "sugar", "soup", "soup", "meat"],
-    ["cracker", "sugar", "sugar", "meat", "meat", "meat"],
-    ["cracker", "sugar", "soup", "soup", "soup", "mustard"],
-    ["cracker", "cracker", "sugar", "sugar", "mustard", "mustard", "soup"],
-    ["cracker", "sugar", "sugar", "sugar", "mustard", "meat", "meat"],
-    ["cracker", "cracker", "sugar", "soup", "soup", "meat", "meat"],
-    ["cracker", "sugar", "meat", "meat", "meat", "soup", "soup"],
-    ["cracker", "sugar", "sugar", "soup", "meat", "soup"],
-    ["cracker", "sugar", "soup", "soup", "meat", "meat"],
-    ["cracker", "cracker", "sugar", "mustard", "mustard", "mustard", "mustard"],
-    ["cracker", "cracker", "sugar", "meat", "meat", "soup"],
-    ["cracker", "cracker", "cracker", "sugar", "mustard", "mustard", "mustard"],
-    ["cracker", "sugar", "sugar", "sugar", "meat", "meat", "soup"],
-    ["cracker", "cracker", "sugar", "meat", "meat", "meat"],
-    ["sugar", "sugar", "sugar", "soup", "soup", "soup"],
-    ["cracker", "cracker", "cracker", "soup", "soup", "soup", "soup"],
-    ["cracker", "cracker", "meat", "meat", "meat", "soup", "mustard"],
-    ["cracker", "sugar", "sugar", "soup", "meat", "meat", "mustard"],
-    ["cracker", "sugar", "soup", "soup", "meat", "mustard", "mustard"],
+    # ["cracker", "cracker", "sugar", "soup", "soup", "meat"],
+    # ["cracker", "sugar", "sugar", "meat", "meat", "meat"],
+    # ["cracker", "sugar", "soup", "soup", "soup", "mustard"],
+    # ["cracker", "cracker", "sugar", "sugar", "mustard", "mustard", "soup"],
+    # ["cracker", "sugar", "sugar", "sugar", "mustard", "meat", "meat"],
+    # ["cracker", "cracker", "sugar", "soup", "soup", "meat", "meat"],
+    # ["cracker", "sugar", "meat", "meat", "meat", "soup", "soup"],
+    # ["cracker", "sugar", "sugar", "soup", "meat", "soup"],
+    # ["cracker", "sugar", "soup", "soup", "meat", "meat"],
+    # ["cracker", "cracker", "sugar", "mustard", "mustard", "mustard", "mustard"],
+    # ["cracker", "cracker", "sugar", "meat", "meat", "soup"],
+    # ["cracker", "cracker", "cracker", "sugar", "mustard", "mustard", "mustard"],
+    # ["cracker", "sugar", "sugar", "sugar", "meat", "meat", "soup"],
+    # ["cracker", "cracker", "sugar", "meat", "meat", "meat"],
+    # ["sugar", "sugar", "sugar", "soup", "soup", "soup"],
+    # ["cracker", "cracker", "cracker", "soup", "soup", "soup", "soup"],
+    # ["cracker", "cracker", "meat", "meat", "meat", "soup", "mustard"],
+    # ["cracker", "sugar", "sugar", "soup", "meat", "meat", "mustard"],
+    # ["cracker", "sugar", "soup", "soup", "meat", "mustard", "mustard"],
     ["cracker", "sugar", "sugar", "soup", "soup", "mustard"]
 ]
 
@@ -73,13 +75,13 @@ def generate_demo_scenes(demo_num, demo_objs_nums, noise_num, obj_list=None):
     for i in range(demo_num):
 
         # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
-        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment={'class': "table"})]
+        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment=FEATURES["table"])]
         uuid = 1
         for j in range(random.choice(demo_objs_nums)):
             name = random.choice(OBJECTS)
             if obj_list is not None:
                 name = obj_list[i][j]
-            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment={'class': name}))
+            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment=FEATURES[name]))
             uuid += 1
 
         scene_graph = srp_md.SceneGraph(objs)
@@ -114,9 +116,9 @@ def generate_demo_scenes_from_list(objs_list):
     for i, objs in enumerate(objs_list):
         print('New scene graph with {}'.format(objs))
         sg_objs = [srp_md.Object(name='{}_{}'.format(obj, uuid),
-                   id_num=uuid, uuid=uuid, assignment={'class': obj}) for uuid, obj in enumerate(objs)]
+                   id_num=uuid, uuid=uuid, assignment=FEATURES[obj]) for uuid, obj in enumerate(objs)]
         sg_objs.append(
-            srp_md.Object(name='table', id_num=len(sg_objs), uuid=len(sg_objs), assignment={'class': 'table'}))
+            srp_md.Object(name='table', id_num=len(sg_objs), uuid=len(sg_objs), assignment=FEATURES["table"]))
         scene_graph = srp_md.SceneGraph(sg_objs)
         index = 0
         while index < len(scene_graph.relations):
@@ -154,11 +156,11 @@ def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
     for i in range(num_test_scenes):
 
         # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
-        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment={'class': "table"})]
+        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment=FEATURES["table"])]
         uuid = 1
         for _ in range(random.choice(num_objs)):
             name = random.choice(obj_list)
-            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment={'class': name}))
+            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment=FEATURES[name]))
             uuid += 1
 
         scene_graph = srp_md.SceneGraph(objs)

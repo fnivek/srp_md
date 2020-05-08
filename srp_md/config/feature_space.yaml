@@ -1,0 +1,48 @@
+table:
+  class: table
+  shape: table
+  color: table
+  size: table
+  weight: table
+cracker:
+  class: cracker
+  shape: box
+  color: red
+  size: large
+  weight: light
+gelatin:
+  class: gelatin
+  shape: box
+  color: red
+  size: small
+  weight: light
+meat:
+  class: meat
+  shape: cylinder
+  color: blue
+  size: small
+  weight: medium
+mustard:
+  class: mustard
+  shape: complex
+  color: yellow
+  size: medium
+  weight: heavy
+soup:
+  class: soup
+  shape: cylinder
+  color: red
+  size: small
+  weight: medium
+sugar:
+  class: sugar
+  shape: box
+  color: white
+  size: medium
+  weight: heavy
+bleach:
+  class: bleach
+  shape: complex
+  color: white
+  size: large
+  weight: heavy
