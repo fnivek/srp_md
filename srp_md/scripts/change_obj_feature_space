@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+import srp_md
+import yaml
+import os
+import argparse
+from io import open
+
+# Define file path
+script_dir = os.path.dirname(os.path.realpath(__file__))
+config_dir = os.path.realpath(script_dir + '/../config')
+demo_dir = os.path.realpath(script_dir + '/../../data/demos')
+out_dir = os.path.realpath(script_dir + '/../../data/delete_me')
+
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Change the feature space of scene graphs .sg files')
+    parser.add_argument('input_dir', type=str, help='Directory with all .sg files')
+    parser.add_argument('--features', '-f', type=str, help='yaml file with features for each class of object',
+                        default=config_dir+'/feature_space.yaml')
+    parser.add_argument('--output_dir', '-o', type=str, help='Directory to write .sg files to, default is input_dir')
+
+    args = parser.parse_args()
+
+    # Handle output file dirs
+    if args.output_dir is None:
+        args.output_dir = args.input_dir
+
+    return args
+
+
+def load_graphs(dirname):
+    file_names = [os.path.join(dirname, file) for file in os.listdir(dirname)
+                  if os.path.isfile(os.path.join(dirname, file)) and os.path.splitext(file)[-1] == '.sg']
+    demo_graphs = [(srp_md.SceneGraph.from_file(file_name), file_name) for file_name in file_names]
+    return demo_graphs
+
+
+def save_graphs(graphs, dirname):
+    for graph, name in graphs:
+        if graph is None:
+            continue
+        graph.to_file(os.path.join(dirname, os.path.split(name)[-1]))
+
+
+def main():
+    # Parse command line args
+    args = parse_args()
+    # Load the scene graph
+    print('Loading from {}'.format(args.input_dir))
+    scene_graphs = load_graphs(args.input_dir)
+    # Udpate features
+    print('Changing features to {}'.format(args.features))
+    features = yaml.load(open(args.features, 'rt'))
+    for graph, _ in scene_graphs:
+        for obj in graph.objs:
+            obj.assignment = features[obj.assignment['class']]
+    # Save the graphs
+    print('Writing to {}'.format(args.output_dir))
+    save_graphs(scene_graphs, args.output_dir)
+
+
+if __name__ == '__main__':
+    main()

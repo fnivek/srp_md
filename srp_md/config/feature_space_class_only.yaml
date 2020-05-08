@@ -1,0 +1,16 @@
+table:
+  class: table
+cracker:
+  class: cracker
+gelatin:
+  class: gelatin
+meat:
+  class: meat
+mustard:
+  class: mustard
+soup:
+  class: soup
+sugar:
+  class: sugar
+bleach:
+  class: bleach
