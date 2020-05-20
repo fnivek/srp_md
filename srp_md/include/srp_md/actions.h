@@ -66,6 +66,17 @@
 #include <visualization_msgs/Marker.h>
 #include <pcl/io/pcd_io.h>
 
+#include <sdf/sdf.hh>
+#include "gazebo/gazebo.hh"
+#include <gazebo/physics/physics.hh>
+#include "gazebo/physics/PhysicsTypes.hh"
+#include <gazebo/transport/TransportTypes.hh>
+#include <gazebo/common/Time.hh>
+#include <gazebo/common/Plugin.hh>
+#include <gazebo/common/Events.hh>
+#include "gazebo/msgs/msgs.hh"
+#include "gazebo/transport/transport.hh"
+
 #include <math.h>
 #include <ctime>
 #include <algorithm>

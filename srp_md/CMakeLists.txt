@@ -39,11 +39,14 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   pcl_ros
   cv_bridge
+  gazebo_ros
+  gazebo_ros_link_attacher
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(gazebo REQUIRED)
 # find_package(PCL 1.8.1 REQUIRED)
 
 ## This macro ensures modules and global scripts declared therein get installed
@@ -88,6 +91,7 @@ catkin_package(
     pcl_conversions
     pcl_ros
     cv_bridge
+    gazebo_ros_link_attacher
 #  DEPENDS system_lib
 )
 
@@ -114,6 +118,7 @@ include_directories(
   ${GLEW_INCLUDE_DIRS}
   /usr/include/glm/
   ${EIGEN3_INCLUDE_DIR}
+  ${GAZEBO_INCLUDE_DIRS}
 )
 
 # Factor Graph Node

@@ -12,6 +12,11 @@
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
 
+  <!-- The export tag contains other, unspecified, tags -->
+  <build_depend>gazebo_ros</build_depend>
+  <build_depend>gazebo</build_depend>
+  <!-- The export tag contains other, unspecified, tags -->
+
   <depend>actionlib_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>vision_msgs</depend>

@@ -26,6 +26,7 @@ add_service_files(
   FILES
     GetGoal.srv
     PoseToSceneGraph.srv
+    Attach.srv
 )
 
 # Generate actions in the 'action' folder

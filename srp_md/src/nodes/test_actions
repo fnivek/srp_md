@@ -15,7 +15,7 @@ from gazebo_msgs.msg import *
 
 from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         # GetDopeSnapshotAct, 
-                        GetFakeDopeSnapshotAct, TeleportObjectAct,
+                        GetFakeDopeSnapshotAct, TeleportObjectAct, StabilizeObjectAct, LinkAttachingAct, LinkDettachingAct,
                         PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
                         FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct, PickAct,MoveToStartAct,
@@ -159,6 +159,12 @@ def build_tree():
     # ])
 
     root.add_children([
+        # AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
+        LinkDettachingAct('LinkDettachAct', object_name='cracker_1', link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='gelatin_0', link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='mustard_0', link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='meat_0', link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='soup_0', link_name='link_1'),
         # do not forget to add this back when real robot test
         # AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
         # AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
@@ -208,7 +214,7 @@ def build_tree():
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
 
         # SleepBehavior('act_sleep_a_smidge', duration=1),
-        GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        # GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         # TeleportObjectAct('TeleportObject', obj_name='cracker_0'),
         # TeleportObjectAct('TeleportObject', obj_name='cracker_1'),
         # TeleportObjectAct('TeleportObject', obj_name='soup_0'),
@@ -256,10 +262,44 @@ def build_tree():
         # PlaceAct('placeAct', 'cracker_0', 'table'),
         # PickAct('PickAct', 'sugar_0', 'table'),
         # PlaceAct('placeAct', 'sugar_0', 'table'),
-        # PickAct('PickAct', 'cracker_0', 'table'),
-        # PlaceAct('placeAct', 'cracker_0', 'table'),
-        PickAct('PickAct', 'meat_0', 'meat_1', 'Stacking'),
-        PlaceAct('placeAct', 'meat_0', 'meat_1'),
+        # StablizeObjectAct('StablizeObjectAct', obj_name="cracker_0"),
+        # StablizeObjectAct('StablizeObjectAct', obj_name='cracker_1'),
+        # LinkAttachingAct('LinkAttachAct', object_name='unit_box', link_name='link', relative_object_name='cracker_test', relative_link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='unit_box', link_name='link', relative_object_name='cracker_0', relative_link_name='link_1'),
+        # PickAct('PickAct', 'cracker_0', 'cracker_1', 'Stacking'),
+        # PickAct('PickAct', 'cracker_0', 'cracker_1', 'Near'),
+        # PlaceAct('placeAct', 'cracker_0', 'cracker_1'),
+        # PickAct('PickAct', 'soup_0', 'soup_1', 'Near'),
+        # PlaceAct('PickAct', 'soup_0', 'soup_1'),
+
+        PickAct('PickAct', 'cracker_0', 'table'),
+        PlaceAct('PickAct', 'cracker_0', 'table'),
+
+
+        # PickAct('PickAct', 'cracker_1', 'cracker_0', 'Stacking'),
+        # PlaceAct('PickAct', 'cracker_1', 'cracker_0'),
+        # PickAct('PickAct', 'gelatin_0', 'cracker_0', 'Stacking'),
+        # PlaceAct('PickAct', 'gelatin_0', 'cracker_0'),
+
+        PickAct('PickAct', 'sugar_0', 'cracker_0', 'Stacking'),
+        PlaceAct('PickAct', 'sugar_0', 'cracker_0'),
+
+        PickAct('PickAct', 'soup_0', 'cracker_0', "Near"),
+        PlaceAct('PickAct', 'soup_0', 'cracker_0'),
+
+        PickAct('PickAct', 'soup_1', 'cracker_0', "Near"),
+        PlaceAct('PickAct', 'soup_1', 'cracker_0'),
+
+        PickAct('PickAct', 'mustard_0', 'table', "Away"),
+        PlaceAct('PickAct', 'mustard_0', 'table'), 
+
+        # PickAct('PickAct', 'meat_0', 'cracker_0', "Near"),
+        # PlaceAct('PickAct', 'meat_0', 'cracker_0'),
+
+        # PlaceAct('placeAct', 'mustard_0', 'table'),
+        # StablizeObjectAct('StablizeObjectAct', obj_name="mustard_0"),
+        # PickAct('PickAct', 'meat_0', 'meat_1', 'Stacking'),
+        # PlaceAct('placeAct', 'meat_0', 'meat_1'),
         # PickAct('PickAct', 'sugar_0', 'cracker_0', 'Stacking'),
         # PlaceAct('placeAct', 'sugar_0', 'cracker_0'),
         # PickAct('PickAct', 'gelatin_0', 'cracker_0', 'Near'),
