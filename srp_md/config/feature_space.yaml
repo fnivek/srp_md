@@ -10,12 +10,6 @@ cracker:
   color: red
   size: large
   weight: light
-gelatin:
-  class: gelatin
-  shape: box
-  color: red
-  size: small
-  weight: light
 meat:
   class: meat
   shape: cylinder
@@ -46,3 +40,33 @@ bleach:
   color: white
   size: large
   weight: heavy
+gelatin:
+  class: gelatin
+  shape: box
+  color: red
+  size: small
+  weight: light
+apple:
+  class: apple
+  shape: complex
+  color: red
+  size: small
+  weight: light
+chips:
+  class: chips
+  shape: cylinder
+  color: red
+  size: large
+  weight: medium
+coffee:
+  class: coffee
+  shape: cylinder
+  color: blue
+  size: large
+  weight: heavy
+tuna:
+  class: tuna
+  shape: cylinder
+  color: blue
+  size: small
+  weight: medium

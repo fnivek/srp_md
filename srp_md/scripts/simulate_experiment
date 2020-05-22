@@ -39,7 +39,10 @@ RELATIONS = ["disjoint", "proximity", "on", "support"]
 FEATURES = yaml.load(open(os.path.realpath(script_path + '/../config/feature_space.yaml'), 'r'))
 
 # Objects used in experiments
-grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar"]
+grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar", "gelatin", "apple", "chips", "coffee", "tuna"]
+novel_objs = ["apple", "chips", "coffee", "tuna"]
+size_dict = {"small": 1, "medium": 2, "large": 3}
+
 # Grocery experiment list
 grocery_experiment_demo_objs = [
     # ["cracker", "cracker", "sugar", "soup", "soup", "meat"],
@@ -151,17 +154,21 @@ def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
         obj_list = OBJECTS
 
     scene_graphs = []
+    num_novel = 0
 
     # For number of demos needed, do:
     for i in range(num_test_scenes):
 
-        # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
-        objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment=FEATURES["table"])]
-        uuid = 1
-        for _ in range(random.choice(num_objs)):
-            name = random.choice(obj_list)
-            objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment=FEATURES[name]))
-            uuid += 1
+        while num_novel == 0:
+            # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
+            objs = [srp_md.Object(name="table", id_num=0, uuid=0, assignment=FEATURES["table"])]
+            uuid = 1
+            for _ in range(random.choice(num_objs)):
+                name = random.choice(obj_list)
+                if name in novel_objs:
+                    num_novel += 1
+                objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment=FEATURES[name]))
+                uuid += 1
 
         scene_graph = srp_md.SceneGraph(objs)
 
@@ -175,7 +182,7 @@ def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
 
         scene_graphs.append(scene_graph)
 
-    return scene_graphs
+    return scene_graphs, num_novel
 
 
 def save_graphs(graphs, pickle_name, file_prefix, current_trial, dirname):
@@ -192,7 +199,8 @@ def save_all(demo_graphs, test_graphs, generated_graphs, plans, current_trial, d
     save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname)
     save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname)
     save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname)
-    save_plans(plans, current_trial, dirname)
+    if plans is not None:
+        save_plans(plans, current_trial, dirname)
 
 
 def save_plans(plans, current_trial, dirname):
@@ -240,21 +248,21 @@ def evaluate_goal(scene):
                 return (False, 'an object is not on a table')
 
     # Ensure all boxes are stacked by size
-    boxes = [obj for obj in scene.objs if obj.assignment['class'] == 'cracker' or obj.assignment['class'] == 'sugar']
+    boxes = [obj for obj in scene.objs if obj.assignment["shape"] == "box"]
     for objs in itertools.combinations(boxes, 2):
         rel = scene.get_rel_by_objs(objs[0], objs[1])
-        # Both objects the same class
-        if objs[0].assignment['class'] == objs[1].assignment['class']:
+        # Both objects the same size
+        if objs[0].assignment["size"] == objs[1].assignment["size"]:
             if rel.value != 'support' and rel.value != 'on':
                 return (False, 'boxes not stacked')
-        # Different class
+        # Different size
         else:
-            if rel.obj1.assignment['class'] == 'cracker':
+            if size_dict[rel.obj1.assignment["size"]] > size_dict[rel.obj2.assignment["size"]]:
                 if rel.value != 'support':
-                    return (False, 'cracker must support sugar')
+                    return (False, 'larger box must support smaller one')
             else:
                 if rel.value != 'on':
-                    return (False, 'sugar must be on cracker')
+                    return (False, 'smaller box must be on bigger one')
 
     # Ensure that the bottom box is next to all cans
     # Find the bottom box
@@ -275,22 +283,22 @@ def evaluate_goal(scene):
             break
     # Ensure all cans next to bot_box
     if bot_box is not None:
-        for obj in filter(lambda obj: obj.assignment['class'] == 'meat' or obj.assignment['class'] == 'soup',
+        for obj in filter(lambda obj: obj.assignment["shape"] == "cylinder",
                           scene.objs):
             rel = scene.get_rel_by_objs(obj, bot_box)
             if rel.value != 'proximity':
                 return (False, 'cans not proximity to bottom box')
 
-    # Ensure mustards are grouped together but disjoint with all but the table
-    for mustard in filter(lambda obj: obj.assignment['class'] == 'mustard', scene.objs):
-        for obj in filter(lambda obj: not (obj == table or obj == mustard), scene.objs):
-            rel = scene.get_rel_by_objs(mustard, obj)
-            # Proximity or disjoint to other mustard
-            if obj.assignment['class'] == 'mustard':
+    # Ensure complex objects are grouped together but disjoint with all but the table
+    for complex_obj in filter(lambda obj: obj.assignment["shape"] == "complex", scene.objs):
+        for other_obj in filter(lambda obj: not (obj == table or obj == complex_obj), scene.objs):
+            rel = scene.get_rel_by_objs(complex_obj, other_obj)
+            # Proximity or disjoint to other complex object
+            if obj.assignment["shape"] == "complex":
                 if rel.value != 'proximity' and rel.value != 'disjoint':
-                    return (False, 'mustard not proximity or disjoint with other mustard')
+                    return (False, 'complex object not proximity or disjoint with other complex object')
             elif rel.value != 'disjoint':
-                return (False, 'mustard not disjoint with non-mustard object')
+                return (False, 'complex object not disjoint with non-complex object')
 
     return (True, 'success')
 
@@ -452,7 +460,7 @@ def main():
                 continue
 
             # Simulate initial scenegraphs
-            test_graphs = generate_init_scenes(1, [num_objs], grocery_experiment_objs)
+            test_graphs, num_novel = generate_init_scenes(1, [num_objs], grocery_experiment_objs)
             logger.info('Generated {} initial scenes'.format(len(test_graphs)))
 
             srp.set_scenes(demo_graphs, test_graphs)
@@ -477,10 +485,11 @@ def main():
                                                                  'succeded' if result else 'failed',
                                                                  'because ' + reason if not result else ''))
                     global_results_writer.writerow([index + global_index, len(demo_graphs), result, reason,
-                                                    test_graph.num_objs(), diff])
+                                                    test_graph.num_objs(), diff, num_novel])
             global_index += len(srp._goal_instances)
 
-            plans = srp.plan()
+            # plans = srp.plan()
+            plans = None
             save_all(demo_graphs, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
 
             avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
