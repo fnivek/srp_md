@@ -5,6 +5,7 @@ import operator
 from functools import reduce
 from itertools import chain, combinations
 import numpy as np
+import time
 
 # Utils logger
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ class ConfigMixin(object):
                 raise KeyError('{} is not an allowed to be changed'.format(key))
             setattr(self, key, value)
 
+
 def pose_difference(pose_1, pose_2):
     position_diff = np.sqrt((pose_1.position.x - pose_2.position.x) ** 2 + (pose_1.position.y - pose_2.position.y) ** 2 +
                             (pose_1.position.z - pose_2.position.z) ** 2)
@@ -111,3 +113,36 @@ def pose_difference(pose_1, pose_2):
                             # pose_1.orientation.z * pose_2.orientation.z + pose_1.orientation.w * pose_2.orientation.w)
     # return np.sqrt(position_diff ** 2 + orientation_diff ** 2)
     return position_diff
+
+
+class GlobalTimer(object):
+    """!
+    @brief      Global timer for timing algorithms.
+
+                Borg style class for timming the algorithm without needing to pass around a timing variable. To use
+                Make a new instance of Global timer and run start(<your_name>) and stop(<your_name>). Then results are
+                in diff_times[<your_name>].
+    """
+    _shared_state = {}
+
+    def __init__(self):
+        super(GlobalTimer, self).__init__()
+        self.__dict__ = self._shared_state
+        if not hasattr(self, 'start_times'):
+            self.start_times = {}
+        if not hasattr(self, 'end_times'):
+            self.end_times = {}
+        if not hasattr(self, 'diff_times'):
+            self.diff_times = {}
+
+    def start(self, name):
+        self.start_times[name] = time.time()
+
+    def stop(self, name):
+        self.end_times[name] = time.time()
+        try:
+            self.diff_times[name] = self.end_times[name] - self.start_times[name]
+        except KeyError:
+            logger.error('No start time for timer named {}'.format(name))
+            raise
+        return self.diff_times[name]
