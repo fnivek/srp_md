@@ -15,14 +15,66 @@ class Planner(object):
 
         # Get the directories for planner, domain, and problems
         root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/../../../..')
-        self._planner_dir = os.path.abspath(root_dir + '/submodules/pyperplan/src')
+        self._planner_dir = os.path.abspath('/opt/downward/')
         self._domain_dir = os.path.abspath(root_dir + '/srp_md/pddl/domains')
         self._problem_dir = os.path.abspath(root_dir + '/srp_md/pddl/problems')
         for path in [self._planner_dir, self._domain_dir, self._problem_dir]:
             if not os.path.exists(path):
                 raise IOError(path + ' does not exist')
-        self._planner_executable = os.path.abspath(self._planner_dir + '/pyperplan.py')
+        self._planner_executable = os.path.abspath(self._planner_dir + '/fast-downward.py')
         self._domain_file = os.path.abspath(self._domain_dir + '/domain.pddl')
+
+        # Define options
+        self._search_options = {
+            # Optimal
+            'dijkstra': ['--evaluator', 'h=blind(transform=adapt_costs(cost_type=NORMAL))',
+                         '--search', 'astar(h,cost_type=NORMAL,max_time=30)'],
+            'max-astar': ['--evaluator', 'h=hmax(transform=adapt_costs(cost_type=NORMAL))',
+                          '--search', 'astar(h,cost_type=NORMAL,max_time=%s,bound=%s)'],
+            'cerberus': ['--evaluator', 'h=hmax(transform=adapt_costs(cost_type=NORMAL))',
+                         '--search', 'astar(h,cost_type=NORMAL,max_time=%s,bound=%s)'],
+            'lmcut-astar': ['--evaluator', 'h=lmcut(transform=adapt_costs(cost_type=NORMAL))',
+                            '--search', 'astar(h,cost_type=NORMAL,max_time=%s,bound=%s)'],
+
+            # Suboptimal
+            'ff-astar': ['--evaluator', 'h=ff(transform=adapt_costs(cost_type=NORMAL))',
+                         '--search', 'astar(h,cost_type=NORMAL,max_time=90)'],
+            'ff-eager': ['--evaluator', 'h=ff(transform=adapt_costs(cost_type=PLUSONE))',
+                         '--search', 'eager_greedy([h],max_time=%s,bound=%s)'],
+            'ff-eager-pref': ['--evaluator', 'h=ff(transform=adapt_costs(cost_type=PLUSONE))',
+                              '--search', 'eager_greedy([h],preferred=[h],max_time=%s,bound=%s)'],
+            'ff-lazy': ['--evaluator', 'h=ff(transform=adapt_costs(cost_type=PLUSONE))',
+                        '--search', 'lazy_greedy([h],preferred=[h],max_time=%s,bound=%s)'],
+            'goal-lazy': ['--evaluator', 'h=goalcount(transform=no_transform())',
+                          '--search', 'lazy_greedy([h],randomize_successors=True,max_time=%s,bound=%s)'],
+            'add-random-lazy': ['--evaluator', 'h=add(transform=adapt_costs(cost_type=PLUSONE))',
+                                '--search', 'lazy_greedy([h],randomize_successors=True,max_time=%s,bound=%s)'],
+
+            'ff-eager-tiebreak': ['--evaluator', 'h=ff(transform=no_transform())',
+                                  '--search', 'eager(tiebreaking([h, g()]),reopen_closed=false,'
+                                  'cost_type=NORMAL,max_time=%s,bound=%s, f_eval=sum([g(), h]))'],  # preferred=[h],
+            'ff-lazy-tiebreak': ['--evaluator', 'h=ff(transform=no_transform())',
+                                 '--search', 'lazy(tiebreaking([h, g()]),reopen_closed=false,'
+                                 'randomize_successors=True,cost_type=NORMAL,max_time=%s,bound=%s)'],  # preferred=[h],
+
+            'ff-ehc': ['--evaluator', 'h=ff(transform=adapt_costs(cost_type=NORMAL))'
+                       '--search', 'ehc(h,preferred=[h],preferred_usage=RANK_PREFERRED_FIRST,'
+                       'cost_type=NORMAL,max_time=%s,bound=%s)'],
+            'astar': ['--search', 'astar(blind())'],
+            # The key difference is that ehc resets the open list upon finding an improvement
+
+        }
+        for w in range(1, 1+5):
+            self._search_options['ff-wastar{}'.format(w)] = [
+                '--evaluator', 'h=ff(transform=adapt_costs(cost_type=NORMAL))',
+                '--search', 'lazy_wastar([h],preferred=[h],reopen_closed=true,boost=100,w={},'
+                'preferred_successors_first=true,cost_type=NORMAL,max_time=%s,bound=%s)'.format(w)]
+            self._search_options['cea-wastar{}'.format(w)] = [
+                '--evaluator', 'h=cea(transform=adapt_costs(cost_type=PLUSONE))',
+                '--search', 'lazy_wastar([h],preferred=[h],reopen_closed=false,boost=1000,w={},'
+                'preferred_successors_first=true,cost_type=PLUSONE,max_time=%s,bound=%s)'.format(w)]
+
+        self._default_planner = 'ff-astar'
 
     def plan(self, init_graph=None, goal_graph=None):
         self._logger.debug('Starting to plan')
@@ -161,20 +213,28 @@ class Planner(object):
                 write(")\n")
 
         # Plan from the generated PDDL file
-        self._plan_cmd = [self._planner_executable, self._domain_file, self._problem_file]
+        self._soln_file = os.path.abspath(self._problem_file + '.soln')
+        self._plan_cmd = [
+            self._planner_executable,
+            # '--validate',
+            '--plan-file',
+            self._soln_file,
+            self._domain_file,
+            self._problem_file
+        ] + self._search_options[self._default_planner]
+        self._logger.debug('Plan command: {}'.format(self._plan_cmd))
         out = subprocess.Popen(self._plan_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
         self._logger.debug(stdout)
         self._logger.debug(stderr)
-        if stdout.find('Plan correct') != -1:
+        if stdout.find('search exit code: 0') != -1:
             self._logger.info('Plan correct')
         else:
             self._logger.warn('Failed to plan')
             return None
 
-        self._soln_file = os.path.abspath(self._problem_file + '.soln')
         lines = []
         with open(self._soln_file, 'r') as soln:
             lines = soln.readlines()
         self._logger.debug(lines)
-        return [line[1:-1].split() for line in lines]
+        return [line[1:-1].split() for line in lines[:-2]]
