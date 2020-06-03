@@ -28,7 +28,7 @@ class Planner(object):
         self._search_options = {
             # Optimal
             'dijkstra': ['--evaluator', 'h=blind(transform=adapt_costs(cost_type=NORMAL))',
-                         '--search', 'astar(h,cost_type=NORMAL,max_time=30)'],
+                         '--search', 'astar(h,cost_type=NORMAL,max_time=5)'],
             'max-astar': ['--evaluator', 'h=hmax(transform=adapt_costs(cost_type=NORMAL))',
                           '--search', 'astar(h,cost_type=NORMAL,max_time=%s,bound=%s)'],
             'cerberus': ['--evaluator', 'h=hmax(transform=adapt_costs(cost_type=NORMAL))',
@@ -179,25 +179,25 @@ class Planner(object):
                                         write("(on " + top_obj + " " + bot_obj + ")\n")
                                     above_str = "(above {} {})\n".format(top_obj, bot_obj)
                                     if above_str not in above_set:
-                                        write(above_str)
+                                        # write(above_str)
                                         above_set.add(above_str)
                                     for above_obj in above_objs:
                                         above_str = "(above {} {})\n".format(above_obj, bot_obj)
                                         if above_str not in above_set:
-                                            write(above_str)
+                                            # write(above_str)
                                             above_set.add(above_str)
                                     write_above(bot_obj, above_objs + [top_obj])
                             write_above(obj_name)
 
                     # Start with empty gripper hand
                     write("(free fetch_gripper)\n")
-                    num_ind[0] -= 1
-                    write(")\n\n")
 
                 # Write the initial scene
                 write("(:init\n")
                 self._logger.debug('Converting {} to an init scene'.format(init_graph))
                 graph_to_pddl(init_graph)
+                num_ind[0] -= 1
+                write(")\n\n")
 
                 # Write the goal scene
                 write("(:goal\n")
@@ -205,6 +205,12 @@ class Planner(object):
                 write("(and\n")
                 self._logger.debug('Converting {} to a goal'.format(goal_graph))
                 graph_to_pddl(goal_graph)
+                for obj in goal_graph.get_obj_names():
+                    if obj == 'table':
+                        continue
+                    write("(in_box {})\n".format(obj))
+                num_ind[0] -= 1
+                write(")\n\n")
                 num_ind[0] -= 1
                 write(")\n")
 
@@ -221,7 +227,8 @@ class Planner(object):
             self._soln_file,
             self._domain_file,
             self._problem_file
-        ] + self._search_options[self._default_planner]
+        # ] + self._search_options[self._default_planner]
+        ] + self._search_options['dijkstra']
         self._logger.debug('Plan command: {}'.format(self._plan_cmd))
         out = subprocess.Popen(self._plan_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
@@ -237,4 +244,4 @@ class Planner(object):
         with open(self._soln_file, 'r') as soln:
             lines = soln.readlines()
         self._logger.debug(lines)
-        return [line[1:-1].split() for line in lines[:-2]]
+        return [line[1:-1].split() for line in lines[:-1]]

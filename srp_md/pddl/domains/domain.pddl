@@ -1,6 +1,7 @@
 (define (domain srp-md)
   (:requirements
     :typing
+    :adl
   )
 
   (:types
@@ -10,90 +11,61 @@
 
   (:predicates
     (on ?top_obj - object ?bot_obj - object)
-    (above ?top_obj - object ?bot_obj - object)
     (at ?obj - object ?surf - surface)
     (clear ?obj - object)
     (free ?grip - end_effector)
     (held ?obj - object ?grip - end_effector)
-    (proximity ?obj - object ?base_obj - object)
+    (proximity ?obj - object ?other_obj - object)
+    (in_box ?obj - object)
   )
 
   (:action pick_from_surface
     :parameters (?obj - object ?from - surface ?grip - end_effector)
     :precondition (and (clear ?obj) (at ?obj ?from) (free ?grip))
-    :effect (and (held ?obj ?grip) (not (free ?grip)) (not (at ?obj ?from)))
+    :effect (and (held ?obj ?grip) (not (free ?grip)) (not (at ?obj ?from)) (not (in_box ?obj))
+              (forall (?prox_obj)
+                (when (or (proximity ?obj ?prox_obj) (proximity ?prox_obj ?obj))
+                  (and (not (proximity ?obj ?prox_obj)) (not (proximity ?prox_obj ?obj))))))
   )
 
   (:action place_on_surface
     :parameters (?obj - object ?to - surface ?grip - end_effector)
     :precondition (and (held ?obj ?grip))
-    :effect (and (free ?grip) (at ?obj ?to) (not (held ?obj ?grip)))
+    :effect (and (free ?grip) (at ?obj ?to) (not (held ?obj ?grip)) (in_box ?obj))
   )
 
-  (:action place_on_stack1
-    :parameters (?obj - object ?to - object ?surf - surface ?grip - end_effector)
-    :precondition (and (clear ?to) (held ?obj ?grip) (at ?to ?surf))
-    :effect (and (free ?grip) (on ?obj ?to) (not (held ?obj ?grip)) (not (clear ?to)) (above ?obj ?to))
+  (:action place_on_stack
+    :parameters (?obj - object ?to - object ?grip - end_effector)
+    :precondition (and (clear ?to) (held ?obj ?grip) (in_box ?to))
+    :effect (and (free ?grip) (on ?obj ?to) (not (held ?obj ?grip)) (not (clear ?to)) (in_box ?obj))
   )
 
-  (:action pick_from_stack1
-    :parameters (?obj - object ?from - object ?surf - surface ?grip - end_effector)
-    :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip) (at ?from ?surf))
-    :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)))
+  (:action pick_from_stack
+    :parameters (?obj - object ?from - object ?grip - end_effector)
+    :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip))
+    :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (in_box ?obj))
+              (forall (?prox_obj)
+                (when (or (proximity ?obj ?prox_obj) (proximity ?prox_obj ?obj))
+                  (and (not (proximity ?obj ?prox_obj)) (not (proximity ?prox_obj ?obj))))))
   )
-
-  (:action place_on_stack2
-    :parameters (?obj - object ?to - object ?surf - surface ?grip - end_effector ?stack2 - object)
-    :precondition (and (clear ?to) (held ?obj ?grip) (on ?to ?stack2) (at ?stack2 ?surf))
-    :effect (and (free ?grip) (on ?obj ?to) (above ?obj ?to) (not (held ?obj ?grip)) (not (clear ?to)) (above ?obj ?stack2))
-  )
-
-  (:action pick_from_stack2
-    :parameters (?obj - object ?from - object ?surf - surface ?grip - end_effector ?stack2 - object)
-    :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip) (on ?from ?stack2) (at ?stack2 ?surf))
-    :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)) (not (above ?obj ?stack2)))
-  )
-
-  (:action place_on_stack3
-    :parameters (?obj - object ?to - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object)
-    :precondition (and (clear ?to) (held ?obj ?grip) (on ?to ?stack2) (on ?stack2 ?stack3) (at ?stack3 ?surf))
-    :effect (and (free ?grip) (on ?obj ?to) (above ?obj ?to) (not (held ?obj ?grip)) (not (clear ?to)) (above ?obj ?stack2) (above ?obj ?stack3))
-  )
-
-  (:action pick_from_stack3
-    :parameters (?obj - object ?from - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object)
-    :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip) (on ?from ?stack2) (on ?stack2 ?stack3) (at ?stack3 ?surf))
-    :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)) (not (above ?obj ?stack2)) (not (above ?obj ?stack3)))
-  )
-
-  (:action place_on_stack4
-    :parameters (?obj - object ?to - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object ?stack4 - object)
-    :precondition (and (clear ?to) (held ?obj ?grip) (on ?to ?stack2) (on ?stack2 ?stack3) (on ?stack3 ?stack4) (at ?stack4 ?surf))
-    :effect (and (free ?grip) (on ?obj ?to) (above ?obj ?to) (not (held ?obj ?grip)) (not (clear ?to)) (above ?obj ?stack2) (above ?obj ?stack3) (above ?obj ?stack4))
-  )
-
-  (:action pick_from_stack4
-    :parameters (?obj - object ?from - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object ?stack4 - object)
-    :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip) (on ?from ?stack2) (on ?stack2 ?stack3) (on ?stack3 ?stack4) (at ?stack4 ?surf))
-    :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)) (not (above ?obj ?stack2)) (not (above ?obj ?stack3)) (not (above ?obj ?stack4)))
-  )
-
-  ; Commented out to save computational time
-  ; (:action place_on_stack5
-  ;   :parameters (?obj - object ?to - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object ?stack4 - object ?stack5 - object)
-  ;   :precondition (and (clear ?to) (held ?obj ?grip) (on ?to ?stack2) (on ?stack2 ?stack3) (on ?stack3 ?stack4) (on ?stack4 ?stack5) (at ?stack5 ?surf))
-  ;   :effect (and (free ?grip) (on ?obj ?to) (above ?obj ?to) (not (held ?obj ?grip)) (not (clear ?to)) (above ?obj ?stack2) (above ?obj ?stack3) (above ?obj ?stack4) (above ?obj ?stack5))
-  ; )
-
-  ; (:action pick_from_stack5
-  ;   :parameters (?obj - object ?from - object ?surf - surface ?grip - end_effector ?stack2 - object ?stack3 - object ?stack4 - object ?stack5 - object)
-  ;   :precondition (and (clear ?obj) (on ?obj ?from) (free ?grip) (on ?from ?stack2) (on ?stack2 ?stack3) (on ?stack3 ?stack4) (on ?stack4 ?stack5) (at ?stack5 ?surf))
-  ;   :effect (and (clear ?from) (held ?obj ?grip) (not (free ?grip)) (not (on ?obj ?from)) (not (above ?obj ?from)) (not (above ?obj ?stack2)) (not (above ?obj ?stack3)) (not (above ?obj ?stack4)) (not (above ?obj ?stack5)))
-  ; )
 
   (:action place_on_surf_proximity_to
-    :parameters (?obj - object ?base_obj - object ?surf - surface ?grip - end_effector)
-    :precondition (and (held ?obj ?grip))
-    :effect (and (free ?grip) (at ?obj ?surf) (not (held ?obj ?grip)) (proximity ?obj ?base_obj))
+    :parameters (?obj - object ?other_obj - object ?surf - surface ?grip - end_effector)
+    :precondition (and (held ?obj ?grip) (in_box ?other_obj))
+    :effect (and (free ?grip) (at ?obj ?surf) (not (held ?obj ?grip)) (proximity ?obj ?other_obj)
+             (proximity ?other_obj ?obj) (in_box ?obj)
+             (forall (?prox_obj)
+              (when (or (proximity ?other_obj ?prox_obj) (proximity ?prox_obj ?other_obj))
+                (and (proximity ?obj ?prox_obj) (proximity ?prox_obj ?obj)))))
+  )
+
+  (:action place_on_obj_proximity_to
+    :parameters (?obj - object ?other_obj - object ?bot_obj - object ?grip - end_effector)
+    :precondition (and (held ?obj ?grip) (in_box ?other_obj) (in_box ?bot_obj))
+    :effect (and (free ?grip) (on ?obj ?bot_obj) (not (held ?obj ?grip)) (proximity ?obj ?other_obj)
+             (proximity ?other_obj ?obj) (in_box ?obj)
+             (forall (?prox_obj)
+              (when (or (proximity ?other_obj ?prox_obj) (proximity ?prox_obj ?other_obj))
+                (and (proximity ?obj ?prox_obj) (proximity ?prox_obj ?obj)))))
   )
 )
