@@ -235,8 +235,8 @@ class Planner(object):
             self._soln_file,
             self._domain_file,
             self._problem_file
-        # ] + self._search_options[self._default_planner]
-        ] + self._search_options['goal-lazy']
+        ] + self._search_options[self._default_planner]
+        # ] + self._search_options['goal-lazy']
         self._logger.debug('Plan command: {}'.format(self._plan_cmd))
         out = subprocess.Popen(self._plan_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
