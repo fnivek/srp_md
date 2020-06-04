@@ -2,6 +2,7 @@
   (:requirements
     :typing
     :adl
+    :equality
   )
 
   (:types
@@ -61,7 +62,7 @@
 
   (:action place_on_obj_proximity_to
     :parameters (?obj - object ?other_obj - object ?bot_obj - object ?grip - end_effector)
-    :precondition (and (held ?obj ?grip) (in_box ?other_obj) (in_box ?bot_obj))
+    :precondition (and (held ?obj ?grip) (in_box ?other_obj) (in_box ?bot_obj) (not (= ?other_obj ?bot_obj)))
     :effect (and (free ?grip) (on ?obj ?bot_obj) (not (held ?obj ?grip)) (proximity ?obj ?other_obj)
              (proximity ?other_obj ?obj) (in_box ?obj)
              (forall (?prox_obj)

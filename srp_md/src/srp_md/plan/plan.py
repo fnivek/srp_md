@@ -28,7 +28,7 @@ class Planner(object):
         self._search_options = {
             # Optimal
             'dijkstra': ['--evaluator', 'h=blind(transform=adapt_costs(cost_type=NORMAL))',
-                         '--search', 'astar(h,cost_type=NORMAL,max_time=5)'],
+                         '--search', 'astar(h,cost_type=NORMAL,max_time=30)'],
             'max-astar': ['--evaluator', 'h=hmax(transform=adapt_costs(cost_type=NORMAL))',
                           '--search', 'astar(h,cost_type=NORMAL,max_time=%s,bound=%s)'],
             'cerberus': ['--evaluator', 'h=hmax(transform=adapt_costs(cost_type=NORMAL))',
@@ -46,7 +46,7 @@ class Planner(object):
             'ff-lazy': ['--evaluator', 'h=ff(transform=adapt_costs(cost_type=PLUSONE))',
                         '--search', 'lazy_greedy([h],preferred=[h],max_time=%s,bound=%s)'],
             'goal-lazy': ['--evaluator', 'h=goalcount(transform=no_transform())',
-                          '--search', 'lazy_greedy([h],randomize_successors=True,max_time=%s,bound=%s)'],
+                          '--search', 'lazy_greedy([h],randomize_successors=True,max_time=30,bound=40)'],
             'add-random-lazy': ['--evaluator', 'h=add(transform=adapt_costs(cost_type=PLUSONE))',
                                 '--search', 'lazy_greedy([h],randomize_successors=True,max_time=%s,bound=%s)'],
 
@@ -81,8 +81,8 @@ class Planner(object):
 
         # If graphs are not inputs, just use default auto_gen_problem for debugging
         if init_graph is None or goal_graph is None:
-            self._logger.debug('Using auto_gen_problem due to missing inputs')
-            self._problem_file = os.path.abspath(self._problem_dir + '/auto_gen_problem.pddl')
+            self._logger.error('Missing initial scene graph or goal scene graph')
+            return None
         # Make the PDDL file from input graphs
         else:
             # Change the name of problem file here
@@ -125,8 +125,7 @@ class Planner(object):
                     for rel in graph.relations:
                         self._logger.debug(rel)
                         if rel.value == 'proximity':
-                            self._logger.debug('proximity {} {}'.format(rel.obj1.name, rel.obj2.name))
-                            write('(proximity {} {})\n'.format(rel.obj1.name, rel.obj2.name))
+                            continue
                         elif rel.value == 'on' or rel.value == 'support':
                             top_obj = rel.obj1.name
                             bot_obj = rel.obj2.name
@@ -151,6 +150,7 @@ class Planner(object):
                     # Find the objects on top and bottom
                     self._logger.debug('Recurse over stacks')
                     above_set = set([])
+                    directly_on_dict = {}
                     for obj_name in graph.get_obj_names():
                         if obj_name not in sup_group:
                             self._logger.debug('{} is on top and clear'.format(obj_name))
@@ -169,6 +169,7 @@ class Planner(object):
                                 if len(bot_objs) == 1 and 'table' in bot_objs:
                                     self._logger.debug('{} is on the table'.format(top_obj))
                                     write("(at " + top_obj + " table)\n")
+                                    directly_on_dict[top_obj] = 'table'
                                     return
                                 for bot_obj in bot_objs:
                                     if bot_obj == 'table':
@@ -177,6 +178,7 @@ class Planner(object):
                                     if not bool(set(bot_objs) & set(sup_dict[bot_obj])):
                                         self._logger.debug('{} is directly on {}'.format(top_obj, bot_obj))
                                         write("(on " + top_obj + " " + bot_obj + ")\n")
+                                        directly_on_dict[top_obj] = bot_obj
                                     above_str = "(above {} {})\n".format(top_obj, bot_obj)
                                     if above_str not in above_set:
                                         # write(above_str)
@@ -188,6 +190,12 @@ class Planner(object):
                                             above_set.add(above_str)
                                     write_above(bot_obj, above_objs + [top_obj])
                             write_above(obj_name)
+                    # Handle proximity
+                    for rel in graph.relations:
+                        if (rel.value == 'proximity' and
+                           directly_on_dict[rel.obj1.name] == directly_on_dict[rel.obj2.name]):
+                            self._logger.debug('proximity {} {}'.format(rel.obj1.name, rel.obj2.name))
+                            write('(proximity {} {})\n'.format(rel.obj1.name, rel.obj2.name))
 
                     # Start with empty gripper hand
                     write("(free fetch_gripper)\n")
@@ -228,7 +236,7 @@ class Planner(object):
             self._domain_file,
             self._problem_file
         # ] + self._search_options[self._default_planner]
-        ] + self._search_options['dijkstra']
+        ] + self._search_options['goal-lazy']
         self._logger.debug('Plan command: {}'.format(self._plan_cmd))
         out = subprocess.Popen(self._plan_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
@@ -244,4 +252,4 @@ class Planner(object):
         with open(self._soln_file, 'r') as soln:
             lines = soln.readlines()
         self._logger.debug(lines)
-        return [line[1:-1].split() for line in lines[:-1]]
+        return [line[1:-2].split() for line in lines[:-1]]
