@@ -28,7 +28,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._goal_client_changed = True
         self.use_consistency = True
         self.use_commonsense = False
-        self.use_no_float = True
+        self.use_no_float = False
         self.use_cardinality = True
 
         FactorGraphGoalGenerator.prepare_logical_consistency()
