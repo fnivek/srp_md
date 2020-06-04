@@ -29,7 +29,7 @@ class DopeSensor(sense.BaseSensor):
         self._timeout = 15
 
         # Initilize properties
-        # TODO(Henry): Add properties?
+        # TODO(Kevin): Load from yaml file
         self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach', 'apple', 'chips', 'coffee', 'tuna', 'table'],
                            "shape": ['box', 'cylinder', 'complex', 'table'],
                            "color": ['red', 'yellow', 'blue', 'white', 'table'],
