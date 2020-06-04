@@ -1,0 +1,267 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import functools
+import sys
+import os
+import argparse
+
+import rospy
+
+import py_trees
+import py_trees_ros
+
+from geometry_msgs.msg import Pose, Transform, TransformStamped
+from sensor_msgs.msg import PointCloud2
+from vision_msgs.msg import BoundingBox3D
+from behavior_manager.interfaces.sleep_behavior import *
+from gazebo_msgs.msg import *
+
+from srp_md import learn, sense, srp_md_log
+import srp_md
+import logging
+
+from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
+                        GetFakeDopeSnapshotAct, TeleportObjectAct, StabilizeObjectAct, LinkAttachingAct,
+                        LinkDettachingAct, PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
+                        ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
+                        FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct,
+                        PickAct, MoveToStartAct, SetAllowGripperCollisionAct, GetDesiredPoseAct,
+                        RelativeCartesianMoveAct, GraspPoseGeneration, PlaceAct, GetDopeAndPoseAct, AttachObjectAct)
+from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondBehavior, HeadMoveBehavior, TuckBehavior,
+                                                                   FullyCollapseTorso, FullyExtendTorso)
+from behavior_manager.interfaces.fetch_manipulation_behavior import *
+
+TICKPERIOD = 500  # ms
+
+# Define file path
+script_path = os.path.dirname(os.path.realpath(__file__))
+data_folder = os.path.realpath(script_path + '/../../data')
+demo_folder = os.path.realpath(script_path + '/../../data/demos')
+
+# Get a logger
+logger = logging.getLogger('srp_md')
+logger.setLevel(logging.DEBUG)
+
+
+def load_demos(dirname):
+    file_names = [os.path.join(dirname, file) for file in os.listdir(dirname)
+                  if os.path.isfile(os.path.join(dirname, file)) and os.path.splitext(file)[-1] == '.sg']
+    # Sort by number, note this expects the name to follow this pattern '<name>_#.sg'
+    file_names.sort(key=lambda name: int(name[name.rfind('_')+1:name.rfind('.sg')]))
+    demo_graphs = [srp_md.SceneGraph.from_file(file_name) for file_name in file_names]
+    return demo_graphs
+
+
+def build_tree():
+    root = py_trees.composites.Sequence(name='seq_conveyor_belt_root')
+
+    test_pose = Pose()
+    test_pose.position.x = 0.75
+    test_pose.position.y = 0.
+    test_pose.position.z = 1.0
+    test_pose.orientation.w = 0.707
+    test_pose.orientation.x = 0.707
+    test_pose.orientation.y = 0.
+    test_pose.orientation.z = 0.
+
+    test_transform1 = TransformStamped()
+    test_transform1.header.frame_id = "base_link"
+    test_transform1.transform.translation.x = 0.
+    test_transform1.transform.translation.y = 0.
+    test_transform1.transform.translation.z = 0.25
+    test_transform1.transform.rotation.x = 0.707
+    test_transform1.transform.rotation.y = 0.
+    test_transform1.transform.rotation.z = 0.
+    test_transform1.transform.rotation.w = 0.707
+
+    test_transform2 = TransformStamped()
+    test_transform2.header.frame_id = "gripper_link"
+    test_transform2.transform.translation.x = 0.
+    test_transform2.transform.translation.y = 0.25
+    test_transform2.transform.translation.z = 0.
+    test_transform2.transform.rotation.x = 0.707
+    test_transform2.transform.rotation.y = 0.
+    test_transform2.transform.rotation.z = 0.
+    test_transform2.transform.rotation.w = 0.707
+
+    test_transform3 = TransformStamped()
+    test_transform3.header.frame_id = "gripper_link"
+    test_transform3.transform.translation.x = 0.
+    test_transform3.transform.translation.y = 0.
+    test_transform3.transform.translation.z = -0.25
+    test_transform3.transform.rotation.x = 0.707
+    test_transform3.transform.rotation.y = 0.
+    test_transform3.transform.rotation.z = 0.
+    test_transform3.transform.rotation.w = 0.707
+
+    blackboard = py_trees.blackboard.Blackboard()
+
+    grasp_pose = Pose()
+    grasp_pose.position.x = 0.75
+    grasp_pose.position.y = 0.0
+    grasp_pose.position.z = 1.0
+    grasp_pose.orientation.w = 0.924
+    grasp_pose.orientation.x = 0.
+    grasp_pose.orientation.y = 0.383
+    grasp_pose.orientation.z = 0.
+    blackboard.set('grasp_pose', grasp_pose)
+
+    bb = BoundingBox3D()
+    bb.center.position.x = 1.0
+    bb.center.position.y = 0.0
+    bb.center.position.z = 0.75
+    bb.center.orientation.x = 0.0
+    bb.center.orientation.y = 0.087
+    bb.center.orientation.z = 0.0
+    bb.center.orientation.w = 0.996
+    bb.size.x = 0.25
+    bb.size.y = 0.25
+    bb.size.z = 0.5
+    blackboard.set('crop_box', bb)
+
+    left_wall_pose = Pose()
+    left_wall_pose.position.y = 0.5
+    left_wall_pose.orientation.w = 1.0
+
+    right_wall_pose = Pose()
+    right_wall_pose.position.y = -0.5
+    right_wall_pose.orientation.w = 1.0
+
+    bot_wall_pose = Pose()
+    bot_wall_pose.position.z = 0.45
+    bot_wall_pose.orientation.w = 1.0
+
+    table = Pose()
+    table.position.x = 0.70
+    table.position.y = 0.0
+    table.position.z = 0.280
+    table.orientation.w = 1.0
+    blackboard.set('table_collision_obj', ['table', table, [0.85, 4, table.position.z * 2]])
+
+    # gripper_length = 0.154
+    # gripper_length = 0.145
+    gripper_length = 0.150
+    pre_grasp_offset = 0.1
+
+    table_crop_box = BoundingBox3D()
+    table_crop_box.center.orientation.w = 1.0
+    table_crop_box.size.x = 20
+    table_crop_box.size.y = 20
+    table_crop_box.size.z = 4
+    py_trees.blackboard.Blackboard().set('table_crop_box', table_crop_box)
+
+    root.add_children([
+        py_trees.behaviours.Success(name='act_success')
+    ])
+    return py_trees_ros.trees.BehaviourTree(root)
+
+
+def shutdown(tree):
+    """Stop the tree."""
+    tree.interrupt()
+
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Run an simulated experiment')
+
+    # Main arguments, used for paper's experiments
+    parser.add_argument('--factor_learner', help='Specify the factor learner', default='decision_tree', type=str,
+                        choices=learn.FACTOR_LEARNERS.keys())
+    parser.add_argument('--use_consistency', help='Choose to use consistency prior', default=True, type=srp_md.str2bool)
+    parser.add_argument('--use_no_float', help='Choose to use no float prior', default=False, type=srp_md.str2bool)
+    parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=True,
+                        type=srp_md.str2bool)
+    parser.add_argument('--max_num_objs', type=int, default=4, help='Maximum number of objects allowed in object set')
+    parser.add_argument('--min_num_test_objs', type=int, default=3, help='Minimum number of objects in object set')
+    # Positional arguments
+    parser.add_argument('demo_graphs_dir', type=str, help='Folder with all .sg demo files')
+    parser.add_argument('output_dir', type=str,
+                        help='To write the demo, test, and generated .sg files and results.csv',
+                        default='{}/graphs'.format(data_folder))
+
+    # Extra useful arguments
+    parser.add_argument('--log_level', help='Set the logging level', default=logging.INFO, type=int,
+                        choices=[logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL])
+    parser.add_argument('--bt_log_level', help='Set pytrees logging level', default=py_trees.logging.Level.INFO,
+                        type=int,
+                        choices=[int(py_trees.logging.Level.DEBUG), int(py_trees.logging.Level.INFO),
+                                 int(py_trees.logging.Level.WARN), int(py_trees.logging.Level.ERROR)])
+
+    args, others = parser.parse_known_args()
+
+    # Handle input file dirs
+    for path in [args.demo_graphs_dir]:
+        if path is not None:
+            if not os.path.isdir(path):
+                raise(IOError('{} not a valid path'.format(path)))
+    # Handle output file dirs
+    if args.output_dir is not None:
+        if not os.path.isdir(args.output_dir):
+            os.mkdir(args.output_dir)
+
+    return args
+
+
+def main():
+    args = parse_args()
+    # Set logging levels
+    logger.setLevel(args.log_level)
+    logger.info('Running with these args: {}'.format(args))
+    py_trees.logging.level = args.bt_log_level
+
+    # Setup timer
+    timer = srp_md.GlobalTimer()
+    timer.start('conveyor_belt_experiment')
+
+    # Init ros
+    rospy.init_node('conveyor_belt_experiment', anonymous=True)
+    logger.info('Started the simulate_experiment node...')
+
+    # Init srp_md
+    demo_graphs = load_demos(args.demo_graphs_dir)
+    srp = srp_md.SrpMd(sensor="dope_sensor",
+                       learner="factor_graph_learner",
+                       goal_generator="factor_graph_goal_generator")
+    srp.update_learner_config(factor_learner=args.factor_learner)
+    srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
+                                     use_cardinality=args.use_cardinality)
+    srp.set_scenes(demo_graphs, None)
+    logger.info('Learning from {} demonstrations'.format(len(demo_graphs)))
+    timer.start('learn')
+    srp.learn()
+    timer.stop('learn')
+
+    # Build a tree
+    tree = build_tree()
+
+    # Make sure the tree gets shutdown when ros does
+    rospy.on_shutdown(functools.partial(shutdown, tree))
+
+    # Setup the tree
+    #   Give it 10 seconds to start
+    timeout = 100000
+    logger.info('Waiting {}s for tree to start'.format(timeout))
+    timer.start('bt_setup')
+    if not tree.setup(timeout=timeout):
+        logger.error("failed to setup the tree, aborting.")
+        sys.exit(1)
+    timer.stop('bt_setup')
+
+    # Start ticking tree at 1 / TICKPERIOD(ms)
+    logger.info('Start tree ticking at {}hz'.format(1000.0 / TICKPERIOD))
+    tree.tick_tock(TICKPERIOD)
+
+    # End of experiment
+    timer.stop('conveyor_belt_experiment')
+    logger.debug(timer.diff_times)
+
+
+if __name__ == '__main__':
+    logger.info('Conveyor belt experiment starting up... #BOLD')
+    try:
+        main()
+    finally:
+        logger.info('Conveyor belt experiment stopping... #BOLD')
