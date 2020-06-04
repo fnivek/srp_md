@@ -39,3 +39,12 @@ from .actions import TeleportObjectAct
 from .actions import StabilizeObjectAct
 from .actions import LinkAttachingAct
 from .actions import LinkDettachingAct
+from .actions import ObjectTranslationAct
+from .actions import ObjectInitializationAct
+from .actions import AddAllObjectCollisionBoxAct
+from .actions import GroceryBoxInitializationAct
+from .actions import ObjectTestInitializationAct
+from .actions import FetchInitializationAct
+from .actions import PushBoxAct
+from .actions import GrabBoxAct
+from .actions import SpawnModelAct

@@ -45,6 +45,7 @@ add_action_files(
     RelativeCartesianMove.action
     GetStackPose.action
     AttachObject.action
+    FetchMove.action
 )
 
 # Generate added messages and services with any dependencies listed here
