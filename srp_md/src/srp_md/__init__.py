@@ -15,3 +15,4 @@ from .utils import powerset
 from .utils import ConfigMixin
 from .utils import pose_difference
 from .utils import GlobalTimer
+from .utils import str2bool

@@ -220,17 +220,6 @@ def load_demos(dirname):
     return demo_graphs
 
 
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
 def evaluate_goal(scene):
     # Ensure a scene was generated
     if scene is None:
@@ -370,9 +359,10 @@ def parse_args():
     # Main arguments, used for paper's experiments
     parser.add_argument('--factor_learner', help='Specify the factor learner', default='decision_tree', type=str,
                         choices=learn.FACTOR_LEARNERS.keys())
-    parser.add_argument('--use_consistency', help='Choose to use consistency prior', default=True, type=str2bool)
-    parser.add_argument('--use_no_float', help='Choose to use no float prior', default=False, type=str2bool)
-    parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=True, type=str2bool)
+    parser.add_argument('--use_consistency', help='Choose to use consistency prior', default=True, type=srp_md.str2bool)
+    parser.add_argument('--use_no_float', help='Choose to use no float prior', default=False, type=srp_md.str2bool)
+    parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=True,
+                        type=srp_md.str2bool)
     parser.add_argument('--demo_graphs_dir', type=str, help='Folder with all .sg files'
                         ' if not provided then demos will be manually typed in on command prompt')
     parser.add_argument('--test_graphs_dir', type=str, help='Folder of test scenes as .sg files'
