@@ -27,6 +27,8 @@ Act::Act(ros::NodeHandle &nh)
     wait_for_server(ac_torso_ctrl_, "/torso_controller/follow_joint_trajectory");
     wait_for_server(ac_head_pan_tilt_, "/head_controller/follow_joint_trajectory");
     wait_for_server(ac_head_point_, "/head_controller/point_head");
+    wait_for_server(ac_fetch_move_, "/head_controller/point_head");
+    
 
     move_group_.setPlannerId("RRTConnectkConfigDefault");
     get_scene_client_ = nh_.serviceClient<moveit_msgs::GetPlanningScene>("/get_planning_scene");
@@ -1026,7 +1028,7 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     // Initialize structures for random sampling
     static std::default_random_engine e(time(0));
     // static std::normal_distribution<double> n(MU,SIGMA);
-    static std::uniform_real_distribution<double> dis(0.0 + edge_deduction_ratio, 1.0 - edge_deduction_ratio);
+    static std::uniform_real_distribution<double> dis(0.0 + edge_deduction_ratio / 2, 1.0 - edge_deduction_ratio / 2);
     // std::cout<<"teyseyshuehgiughytghjk"<<std::endl;
     // std::cout<<distance<<std::endl;
     // std::cout<<relative_obj_bbox.center.orientation.x<<std::endl;
@@ -1064,8 +1066,8 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     // std::cout<<"y_axis: "<<y_axis<<std::endl;
     // std::cout<<"z_axis: "<<z_axis<<std::endl;
     std::map<double, geometry_msgs::Pose> dis_pose_map;
-    cout<<"testing2"<<endl<<endl;
-    cout<<"obj_bbox.center.orientation: "<<obj_bbox.center.orientation<<endl;
+    // cout<<"testing2"<<endl<<endl;
+    // cout<<"obj_bbox.center.orientation: "<<obj_bbox.center.orientation<<endl;
     // Might want to cap this at limit 1000 or sth
     for (int loop_times = 0; loop_times < 3000; loop_times++) {
 
@@ -1078,6 +1080,9 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
         test_object_pose.position.x = plane_bbox.center.position.x + x_random * plane_bbox.size.x - plane_bbox.size.x / 2;
         test_object_pose.position.y = plane_bbox.center.position.y + y_random * plane_bbox.size.y - plane_bbox.size.y / 2;
         test_object_pose.position.z = plane_bbox.center.position.z + obj_bbox.size.z * 0.5 + object_placing_offset;
+        if (y_random > 0.85){
+            // cout<<"test_object_pose.position.y: "<<test_object_pose.position.y<<endl;
+        }
         test_object_pose.orientation = obj_bbox.center.orientation;
         double distance_actual = 1000;
         // cout<<"testing3"<<endl<<endl;
@@ -1135,13 +1140,13 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
             dis_pose_map[distance_actual] = test_object_pose;
             // cout<<"num_points: "<<num_points<<endl;
             bool success = true;
-            if (dis_pose_map.size() > 40 && distance != 0) {
+            if (dis_pose_map.size() > 50 && distance != 0) {
 
                 // std::cout<<dis_pose_map.size()<<std::endl;
                 // std::cout<<"pose: "<<pose.size()<<std::endl;
                 break;
             }
-            if (pose.size() > 40 && distance == 0) {
+            if (pose.size() > 50 && distance == 0) {
                 break;
             }
         }

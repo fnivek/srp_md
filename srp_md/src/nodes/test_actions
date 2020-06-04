@@ -7,16 +7,22 @@ import rospy
 import py_trees
 import py_trees_ros
 
+from gazebo_msgs.srv import SpawnModel
 from geometry_msgs.msg import Pose, Transform, TransformStamped
 from sensor_msgs.msg import PointCloud2
 from vision_msgs.msg import BoundingBox3D
 from behavior_manager.interfaces.sleep_behavior import *
 from gazebo_msgs.msg import *
+import move_base_msgs.msg as move_base_msgs
 
-from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
+from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct, ObjectTestInitializationAct,
                         # GetDopeSnapshotAct, 
-                        GetFakeDopeSnapshotAct, TeleportObjectAct, StabilizeObjectAct, LinkAttachingAct, LinkDettachingAct,
-                        PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,
+                        SpawnModelAct,
+                        # FetchInitializationAct,
+                        ObjectTranslationAct, ObjectInitializationAct, PushBoxAct, GrabBoxAct, AddAllObjectCollisionBoxAct,
+                        GetFakeDopeSnapshotAct, TeleportObjectAct, StabilizeObjectAct, 
+                        # LinkAttachingAct, LinkDettachingAct,
+                        PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,GroceryBoxInitializationAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
                         FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct, PickAct,MoveToStartAct,
                         SetAllowGripperCollisionAct, GetDesiredPoseAct, RelativeCartesianMoveAct, GraspPoseGeneration, PlaceAct,
@@ -141,6 +147,17 @@ def build_tree():
     table_crop_box.size.z = 4
     py_trees.blackboard.Blackboard().set('table_crop_box', table_crop_box)
 
+    test_move_base = move_base_msgs.MoveBaseGoal()
+    test_move_base.target_pose.header.stamp=rospy.Time.now()
+    test_move_base.target_pose.header.seq = 2
+    test_move_base.target_pose.header.frame_id = "map"
+    test_move_base.target_pose.pose.orientation.w = 1
+    test_move_base.target_pose.pose.position.y = -3
+    test_move_base.target_pose.pose.position.x = 3
+
+
+    f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/table_1/model.sdf','r')
+    sdff = f.read()
     # grasploc_grasp_fall = py_trees.composites.Selector('grasploc_grasp_fall')
     # grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     # grasploc_grasp_seq.add_children([
@@ -159,18 +176,52 @@ def build_tree():
     # ])
 
     root.add_children([
-        # AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
-        LinkDettachingAct('LinkDettachAct', object_name='cracker_1', link_name='link_1'),
-        # LinkDettachingAct('LinkDettachAct', object_name='gelatin_0', link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='meat_0', link_name='link_1'),
+        # PushBoxAct('PushBoxAct'),
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # StabilizeObjectAct('StabilizeObjectAct', obj_name='cracker_0'),
         # LinkDettachingAct('LinkDettachAct', object_name='mustard_0', link_name='link_1'),
+        SpawnModelAct('SpawnModelAct'),
+        # TuckBehavior('TuckBehavior'),
+        # GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # GroceryBoxInitializationAct('GroceryBoxInitializationAct'),
+        # ObjectTestInitializationAct('ObjectTestInitializationAct'),
+        # ObjectInitializationAct('ObjectInitializationAct'),
+
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
+        # LinkDettachingAct('LinkDettachAct', object_name='cracker_1', link_name='link_1'),
+        # LinkDettachingAct('LinkDettachAct', object_name='gelatin_0', link_name='link_1'),
+        
         # LinkDettachingAct('LinkDettachAct', object_name='meat_0', link_name='link_1'),
         # LinkDettachingAct('LinkDettachAct', object_name='soup_0', link_name='link_1'),
         # do not forget to add this back when real robot test
         # AddCollisionBoxAct('act_add_left_wall', box_name='left_wall', box_pose=left_wall_pose, box_size=[10, 0.1, 10]),
         # AddCollisionBoxAct('act_add_right_wall', box_name='right_wall', box_pose=right_wall_pose, box_size=[10, 0.1, 10]),
-        AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
-        AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
-        AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
+        # AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
+        # AddCollisionBoxAct('act_add_table', box_bb_key='table_collision_obj'),
+        # AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         # py_trees.meta.oneshot(ResetAct)('reset'),
         # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),
         FullyExtendTorso('act_please_extend_torso'),
@@ -180,7 +231,7 @@ def build_tree():
         # PickAct('pick_1', 'grasp_pose'),
         OpenGripperAct('act_open_gripper'),
         TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
-        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.2),
+        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
         # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
         # # # PlaceWithPoseAct('place_1', 'grasp_pose'),
         # # MsurfaceoveToPoseAct('move_to_test_pose', pose=test_pose),
@@ -206,12 +257,13 @@ def build_tree():
             topic_type=PointCloud2,
             blackboard_variables={'depth_pc': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        py_trees_ros.subscribers.ToBlackboard(
-            name='act_get_groundtruth',
-            topic_name='/gazebo/model_states',
-            topic_type=ModelStates,
-            blackboard_variables={'model_state': None},
-            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # FetchInitializationAct('FetchInitializationAct'),
 
         # SleepBehavior('act_sleep_a_smidge', duration=1),
         # GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
@@ -271,27 +323,192 @@ def build_tree():
         # PlaceAct('placeAct', 'cracker_0', 'cracker_1'),
         # PickAct('PickAct', 'soup_0', 'soup_1', 'Near'),
         # PlaceAct('PickAct', 'soup_0', 'soup_1'),
+        # PushBoxAct('PushBoxAct'),
+        # GrabBoxAct('GrabBoxAct'),
 
-        PickAct('PickAct', 'cracker_0', 'table'),
-        PlaceAct('PickAct', 'cracker_0', 'table'),
+        # PushBoxAct('PushBoxAct'),
+        # GrabBoxAct('GrabBoxAct'),
+        # py_trees_ros.actions.ActionClient(
+        # name="Move Out",
+        # action_namespace="/move_base",
+        # action_spec=move_base_msgs.MoveBaseAction,
+        # action_goal=test_move_base
+        # ),
 
+        # py_trees_ros.actions.ActionClient(
+        # name="Move Out",
+        # action_namespace="/gazebo/spawn_sdf_model",
+        # action_spec=move_base_msgs.MoveBaseAction,
+        # action_goal=test_move_base
+        # ),
+        
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
 
-        # PickAct('PickAct', 'cracker_1', 'cracker_0', 'Stacking'),
-        # PlaceAct('PickAct', 'cracker_1', 'cracker_0'),
+        # PickAct('PickAct', 'cracker_0', 'table'),
+        # PlaceAct('PickAct', 'cracker_0', 'table'),
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
         # PickAct('PickAct', 'gelatin_0', 'cracker_0', 'Stacking'),
         # PlaceAct('PickAct', 'gelatin_0', 'cracker_0'),
 
-        PickAct('PickAct', 'sugar_0', 'cracker_0', 'Stacking'),
-        PlaceAct('PickAct', 'sugar_0', 'cracker_0'),
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
 
-        PickAct('PickAct', 'soup_0', 'cracker_0', "Near"),
-        PlaceAct('PickAct', 'soup_0', 'cracker_0'),
+        # # PickAct('PickAct', 'sugar_0', 'cracker_0', 'Stacking'),
+        # # PlaceAct('PickAct', 'sugar_0', 'cracker_0'),
 
-        PickAct('PickAct', 'soup_1', 'cracker_0', "Near"),
-        PlaceAct('PickAct', 'soup_1', 'cracker_0'),
+        # PickAct('PickAct', 'soup_0', 'cracker_0', "Near"),
+        # PlaceAct('PickAct', 'soup_0', 'cracker_0'),
 
-        PickAct('PickAct', 'mustard_0', 'table', "Away"),
-        PlaceAct('PickAct', 'mustard_0', 'table'), 
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # PickAct('PickAct', 'soup_1', 'cracker_0', "Near"),
+        # PlaceAct('PickAct', 'soup_1', 'cracker_0'),
+
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+
+        # PickAct('PickAct', 'meat_0', 'cracker_0', "Near"),
+        # PlaceAct('PickAct', 'meat_0', 'cracker_0'),
+
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+        # PickAct('PickAct', 'mustard_0', 'table', "Away"),
+        # PlaceAct('PickAct', 'mustard_0', 'table'), 
+
+        # PushBoxAct('PushBoxAct'),
+        # GrabBoxAct('GrabBoxAct'),
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # PickAct('PickAct', 'cracker_1', 'table'),
+        # PlaceAct('PickAct', 'cracker_1', 'table'),
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # # PickAct('PickAct', 'gelatin_0', 'cracker_1', "Stacking"),
+        # # PlaceAct('PickAct', 'gelatin_0', 'cracker_1'),
+        # PickAct('PickAct', 'sugar_0', 'cracker_1', 'Stacking'),
+        # PlaceAct('PickAct', 'sugar_0', 'cracker_1'),
+
+        
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # PickAct('PickAct', 'soup_2', 'cracker_1', "Near"),
+        # PlaceAct('PickAct', 'soup_2', 'cracker_1'),
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # PickAct('PickAct', 'soup_3', 'cracker_1', "Near"),
+        # PlaceAct('PickAct', 'soup_3', 'cracker_1'),
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # PickAct('PickAct', 'meat_1', 'cracker_1', "Near"),
+        # PlaceAct('PickAct', 'meat_1', 'cracker_1'),
+
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+
+        # PickAct('PickAct', 'meat_2', 'cracker_1', "Near"),
+        # PlaceAct('PickAct', 'meat_2', 'cracker_1'),
+        # py_trees_ros.subscribers.ToBlackboard(
+        #     name='act_get_groundtruth',
+        #     topic_name='/gazebo/model_states',
+        #     topic_type=ModelStates,
+        #     blackboard_variables={'model_state': None},
+        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # ObjectTranslationAct('ObjectTranslationAct'),
+        # PickAct('PickAct', 'mustard_1', 'table', "Away"),
+        # PlaceAct('PickAct', 'mustard_1', 'table'),
+        # PickAct('PickAct', 'mustard_0', 'table', "Away"),
+        # PlaceAct('PickAct', 'mustard_0', 'table'), 
 
         # PickAct('PickAct', 'meat_0', 'cracker_0', "Near"),
         # PlaceAct('PickAct', 'meat_0', 'cracker_0'),
