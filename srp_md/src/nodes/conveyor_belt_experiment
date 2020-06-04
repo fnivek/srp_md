@@ -241,8 +241,8 @@ def main():
     rospy.on_shutdown(functools.partial(shutdown, tree))
 
     # Setup the tree
-    #   Give it 10 seconds to start
-    timeout = 100000
+    #   Give it <timeout> seconds to start
+    timeout = 10
     logger.info('Waiting {}s for tree to start'.format(timeout))
     timer.start('bt_setup')
     if not tree.setup(timeout=timeout):
