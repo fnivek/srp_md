@@ -41,6 +41,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   gazebo_ros
   gazebo_ros_link_attacher
+  move_base_msgs
 )
 find_package(Graphviz REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -92,6 +93,7 @@ catkin_package(
     pcl_ros
     cv_bridge
     gazebo_ros_link_attacher
+    move_base_msgs
 #  DEPENDS system_lib
 )
 

@@ -44,6 +44,7 @@
   <depend>cv_bridge</depend>
   <test_depend>unittest</test_depend>
   <depend>gazebo_ros_link_attacher</depend>
+  <depend>move_base_msgs</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
