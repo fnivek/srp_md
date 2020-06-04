@@ -63,8 +63,10 @@ class Actor(object):
             # For each line in solution, do:
             place_stack = []
             place_near = []
+            place_away = []
             relative_object_stack = []
             relative_object_near = []
+            relative_object_away = []
             for i, line in enumerate(lines):
                 line = re.sub('[()]+', '', line)
                 # print(line.split())
@@ -97,6 +99,9 @@ class Actor(object):
                     if "proximity" in action:
                         place_near.append(i)
                         relative_object_near.append(obj_2)
+                    if "away" in action:
+                        place_away.append(i)
+                        relative_object_away.append(obj_2)
 
             print("place_stack: ", place_stack)
             print('object_num', object_num)
@@ -157,6 +162,18 @@ class Actor(object):
                         print("obj_1[0:-1] + str(object_1_index): ", obj_1[0:-1] + str(object_1_index))
                         print('obj_2_near[0:-1] + str(object_2_index): ', obj_2_near[0:-1] + str(object_2_index))
                         root.add_child(PickAct(i, obj_1[0:-1] + str(object_1_index), obj_2_near[0:-1] + str(object_2_index), relation='Near'))
+                    elif i+1 in place_away:
+                        index_relative_object = place_away.index(i+1)
+                        obj_2_away = relative_object_away[index_relative_object]
+                        print("place_away: ", place_away)
+                        print("relative_object_away: ", relative_object_away)
+                        # print(obj_2_near)
+                        # object_1_index = num_dict[obj_1[0:-2]].index(int(obj_1[-1]))
+                        # object_2_index = num_dict[obj_2_away[0:-2]].index(int(obj_2_away[-1]))
+                        # print("obj_1[0:-1] + str(object_1_index): ", obj_1[0:-1] + str(object_1_index))
+                        # print('obj_2_away[0:-1] + str(object_2_index): ', obj_2_away[0:-1] + str(object_2_index))
+                        # root.add_child(PickAct(i, obj_1[0:-1] + str(object_1_index), obj_2_away[0:-1] + str(object_2_index), relation='Away'))
+                        root.add_child(PickAct(i, obj_1[0:-1] + str(object_1_index), obj_2, relation='Away'))
                     else:
                         print('relation!=Stacking')
                         print("obj_1[0:-1] + str(object_1_index): ", obj_1[0:-1] + str(object_1_index))

@@ -17,6 +17,8 @@ import random
 
 import numpy as np
 
+from gazebo_ros_link_attacher.srv import *
+
 from visualization_msgs.msg import MarkerArray, Marker
 from moveit_msgs.msg import PlanningScene, CollisionObject, PlanningSceneComponents
 from moveit_msgs.srv import GetPlanningScene
@@ -40,9 +42,10 @@ from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondB
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
 from behavior_manager.interfaces.sleep_behavior import *
 
-
-gripper_length = 0.150
-pre_grasp_offset = 0.1
+gripper_length = 0.15
+# gripper_length = 0.22
+pre_grasp_offset = 0.17
+# pre_grasp_offset = 0.07
 
 to_grasp_tf = TransformStamped()
 to_grasp_tf.header.frame_id = "gripper_link"
@@ -55,8 +58,10 @@ to_place_tf.transform.translation.x = pre_grasp_offset * 0.8
 to_place_tf.transform.rotation.w = 1.0
 
 up_tf_after_place = TransformStamped()
+# up_tf_after_place.header.frame_id = "gripper_link"
 up_tf_after_place.header.frame_id = "base_link"
 up_tf_after_place.transform.translation.z = 0.15
+# up_tf_after_place.transform.translation.x = -0.15
 up_tf_after_place.transform.rotation.w = 1
 
 up_tf = TransformStamped()
@@ -104,10 +109,16 @@ bb.size.z = 0.5
 py_trees.blackboard.Blackboard().set('crop_box', bb)
 
 
+grocery_box_offset = Vector3()
+grocery_box_offset.x = 0
+grocery_box_offset.y = 0.25
+grocery_box_offset.z = 0
+py_trees.blackboard.Blackboard().set('grocery_box_offset', grocery_box_offset)
+
 grocery_box_size = Vector3()
-grocery_box_size.x = 0.8
-grocery_box_size.y = 0.8
-grocery_box_size.z = 0.15
+grocery_box_size.x = 0.3048
+grocery_box_size.y = 0.6096
+grocery_box_size.z = 0.3048
 py_trees.blackboard.Blackboard().set('grocery_box_size', grocery_box_size)
 
 grocery_collision_box_name = []
@@ -524,9 +535,9 @@ class GetFakeDopeSnapshotAct(py_trees.behaviour.Behaviour):
         All_size.append(Vector3(0.068, 0.068, 0.102))
         All_size.append(Vector3(0.045, 0.097, 0.174))
         Table_size = []
-        Table_size.append(Vector3(0.85, 1, 0.55))
+        Table_size.append(Vector3(0.8, 1.5, 0.55))
         Table_size.append(Vector3(0.45, 0.5, 0.50))
-        table_size_z = 0.005
+        table_size_z = 0.01
         # Table_sizemod.append(Vector3(0.85, 1, 0.09))
         # Table_size.append(Vector3(0.45, 0.5, 0.09))
         All_name = []
@@ -544,11 +555,13 @@ class GetFakeDopeSnapshotAct(py_trees.behaviour.Behaviour):
         for name in self._model_state.name:
             if name == "ground_plane" or name == "fetch":
                 continue
-            elif name == "table":
+            elif name == "table" or name == "Table":
                 table_bbox = BoundingBox3D()
                 table_bbox.center = self._model_state.pose[self._model_state.name.index(name)]
                 table_bbox.size = Table_size[0]
-                table_bbox.center.position.z = table_bbox.center.position.z + table_bbox.size.z / 2
+                # table_bbox.center.position.z = table_bbox.center.position.z + table_bbox.size.z / 2
+                # specialized for table using now
+                table_bbox.center.position.z = table_bbox.center.position.z + table_bbox.size.z
                 table_bbox.size.z = table_size_z
                 plane_bboxes.append(table_bbox)
                 continue
@@ -559,6 +572,8 @@ class GetFakeDopeSnapshotAct(py_trees.behaviour.Behaviour):
                 table_bbox.center.position.z = table_bbox.center.position.z + table_bbox.size.z / 2
                 table_bbox.size.z = table_size_z
                 plane_bboxes.append(table_bbox)
+                continue
+            elif "box" in name:
                 continue
             else:
                 if name[-1] == 't':
@@ -685,6 +700,7 @@ class GetFakeDopeSnapshotAct(py_trees.behaviour.Behaviour):
         # self._set_model_state_pub.publish(self._set_model_state)
         # print("plane_bboxes: ", plane_bboxes)
         # blackboard.set(self._out_poses_key, offset_poses)
+        print("self._obj_bboxes: ", self._obj_bboxes)
         py_trees.blackboard.Blackboard().set('plane_bboxes', plane_bboxes)
         py_trees.blackboard.Blackboard().set('obj_bboxes', self._obj_bboxes)
         return py_trees.Status.SUCCESS
@@ -752,8 +768,8 @@ class TeleportObjectAct(py_trees.behaviour.Behaviour):
         # print("object_name_index: ", object_name_index)
         # pose_real = pose_ori * pose_rotated
 
-        print("pose_real: ", pose_real.as_quat())
-        print("pose_ori: ", pose_ori.as_quat())
+        # print("pose_real: ", pose_real.as_quat())
+        # print("pose_ori: ", pose_ori.as_quat())
 
         offset = pose_real.apply([All_offset[object_name_index].x, All_offset[object_name_index].y, All_offset[object_name_index].z])
         print("offset: ", offset)
@@ -769,6 +785,209 @@ class TeleportObjectAct(py_trees.behaviour.Behaviour):
         self._set_model_state.pose.position.y = self._set_model_state.pose.position.y - offset[1]
         self._set_model_state.pose.position.z = self._set_model_state.pose.position.z - offset[2]
 
+        self._set_model_state_pub.publish(self._set_model_state)
+
+        return py_trees.Status.SUCCESS
+
+
+        # 0 for normal stabilization, 1 for tilt, 2 for flat
+class StabilizeObjectAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, obj_name, model_state_key="model_state", free_space_poses_key="free_space_poses", relation_key='relation', mode=0):
+        super(StabilizeObjectAct, self).__init__(name)
+        self._model_state_key = model_state_key
+        self._model_state = None
+        self._set_model_state = None
+        self._set_model_state_pub = None
+        self._free_space_poses_key = free_space_poses_key
+        self._free_space_poses = None
+        self._obj_name = obj_name
+        self._obj_index = None
+        self._relation_key = relation_key
+        self._relation = None
+        self._mode = mode
+
+    def setup(self, timeout):
+        self._set_model_state_pub = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
+        return True
+
+
+    def update(self):
+        self._model_state = py_trees.blackboard.Blackboard().get(self._model_state_key)
+        test_grocery_box_size = py_trees.blackboard.Blackboard().get("grocery_box_size")
+        print("self._grocery_box_size: ", test_grocery_box_size)
+        # print("self._model_state: ", self._model_state)
+        self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
+        self._free_space_poses = py_trees.blackboard.Blackboard().get(self._free_space_poses_key)
+        if self._obj_name == 'table':
+            return py_trees.Status.SUCCESS
+        object_move_name = None
+        # print("self._obj_name: ", self._obj_name)
+        object_move_name = self._obj_name[0:-1] + 'test_' + str(int(self._obj_name[-1]) - 1)
+        if self._obj_name[-1] == '0':
+            object_move_name = object_move_name[0:-3]
+        # print("object_move_name: ", object_move_name)
+        # print("self._model_state.name: ", self._model_state.name)
+        self._obj_index = self._model_state.name.index(object_move_name)
+        # print("self._obj_index: ", self._obj_index)
+        # print("self._model_state[self._obj_index]: ", self._model_state.pose[self._obj_index])
+
+        # pose_first = self._free_space_poses[0]
+
+        orientation_initial = self._model_state.pose[self._obj_index].orientation
+
+        # print("orientation_initial: ", orientation_initial)
+
+        pose_rotated = R.from_quat([0.5, 0.5 ,0.5 ,0.5])
+
+        All_size = []
+        All_size.append(Vector3(0.0718, 0.164, 0.213))
+        All_size.append(Vector3(0.09, 0.097, 0.029))
+        All_size.append(Vector3(0.103, 0.057, 0.084))
+        All_size.append(Vector3(0.08, 0.06, 0.19))
+        All_size.append(Vector3(0.068, 0.068, 0.102))
+        All_size.append(Vector3(0.045, 0.097, 0.174))
+
+        All_offset = []
+        All_offset.append(Vector3(-0.014, -0.014, 0.1))
+        All_offset.append(Vector3(-0.023, -0.01, 0.0145))
+        All_offset.append(Vector3(-0.032, -0.026, 0.038))
+        All_offset.append(Vector3(-0.016, -0.025, 0.095))
+        All_offset.append(Vector3(-0.01, 0.084, 0.053))
+        All_offset.append(Vector3(-0.0095, -0.017, 0.088))
+
+        All_name = []
+        All_name.append("cracker")
+        All_name.append("gelatin")
+        All_name.append("meat")
+        All_name.append("mustard")
+        All_name.append("soup")
+        All_name.append("sugar")
+
+        pose_real = R.from_quat([
+                orientation_initial.x,
+                orientation_initial.y,
+                orientation_initial.z,
+                orientation_initial.w])
+
+        object_name_index = All_name.index(self._obj_name[0:-2])
+        # print("object_name_index: ", object_name_index)
+        # pose_real = pose_ori * pose_rotated
+
+        # print("pose_real: ", pose_real.as_quat())
+        # print("pose_ori: ", pose_ori.as_quat())
+
+        offset = pose_real.apply([All_offset[object_name_index].x, All_offset[object_name_index].y, All_offset[object_name_index].z])
+        # print("offset: ", offset)
+
+        if self._mode == 1 and 'Flat' in self._relation:
+            return py_trees.Status.SUCCESS
+
+        self._set_model_state = ModelState()
+        self._set_model_state.model_name = object_move_name
+        self._set_model_state.twist = self._model_state.twist[self._obj_index]
+        self._set_model_state.pose = self._model_state.pose[self._obj_index]
+
+        current_pose = self._model_state.pose[self._obj_index]
+
+        poses_3=[]
+        for i in range(17):
+            poses_3.append(Pose())
+            poses_3[i].position = current_pose.position
+        # poses_3.append(Pose())
+        # poses_3.append(Pose())
+        # poses_3[0].position = current_pose.position
+        # poses_3[1].position = current_pose.position
+        # poses_3[2].position = current_pose.position
+        poses_3[0].orientation = Quaternion(0, 0, 0, 1)
+        poses_3[1].orientation = Quaternion(0, 0, 0.7071, 0.7071)
+        poses_3[2].orientation = Quaternion(0.5, -0.5, 0.5, 0.5)
+        poses_3[3].orientation = Quaternion(0, 1, 0, 0)
+        poses_3[4].orientation = Quaternion(0.7071, 0, 0, 0.7071)
+        poses_3[5].orientation = Quaternion(-0.7071, 0, 0, 0.7071)
+        poses_3[6].orientation = Quaternion(0, 0, -0.7071, 0.7071)
+        poses_3[7].orientation = Quaternion(-0.5, -0.5, -0.5, 0.5)
+        poses_3[8].orientation = Quaternion(0.5, 0.5, -0.5, 0.5)
+        poses_3[9].orientation = Quaternion(0.5, 0.5, 0.5, -0.5)
+        poses_3[10].orientation = Quaternion(0, 0, 1, 0)
+        poses_3[11].orientation = Quaternion(-0.7071, 0, 0.7071, 0)
+        poses_3[12].orientation = Quaternion(-0.5, 0.5, 0.5, 0.5)
+        poses_3[13].orientation = Quaternion(0, 0, -1, 0)
+        poses_3[14].orientation = Quaternion(0, 0, 0.7071, -0.7071)
+        poses_3[15].orientation = Quaternion(0, -0.7071, 0, 0.7071)
+        poses_3[16].orientation = Quaternion(0.7071, 0, 0.7071, 0)
+
+        dist = [];
+        for i in range(len(poses_3)):
+            print("i: ", i)
+            print(poses_3[i])
+            dist.append(srp_md.pose_difference(poses_3[i], current_pose))
+        # print("dist: ", dist)
+        self._set_model_state.pose.orientation = poses_3[dist.index(min(dist))].orientation
+
+        # print("self._set_model_state.pose: ", self._set_model_state.pose)
+        # self._set_model_state.pose.orientation = Quaternion()
+        # self._set_model_state.pose.orientation.x = 0.0
+        # self._set_model_state.pose.orientation.y = 0.0
+        # self._set_model_state.pose.orientation.z = 0.7071
+        # self._set_model_state.pose.orientation.w = 0.7071
+        self._set_model_state.twist.linear = Vector3()
+        self._set_model_state.twist.angular = Vector3()
+
+        
+
+        if self._mode == 1 and 'Flat' in self._relation:
+            return py_trees.Status.SUCCESS
+            # self._set_model_state.pose.orientation.x = 0.2705981
+            # self._set_model_state.pose.orientation.y = -0.2705981
+            # self._set_model_state.pose.orientation.z = 0.6532815
+            # self._set_model_state.pose.orientation.w = 0.6532815
+            # self._set_model_state.pose.position = self._free_space_poses[0].position
+            # # self._set_model_state.pose.position.x = self._free_space_poses[0].position.x
+            # # self._set_model_state.pose.position.y = self._free_space_poses[0].position.y
+            # self._set_model_state.pose.position.y = self._set_model_state.pose.position.y + All_size[object_name_index].z / 2
+            # self._set_model_state.twist.angular.x = 0.11
+             # result.pose.orientation.x = 0.2705981
+             #    result.pose.orientation.y = 0.6532815
+             #    result.pose.orientation.z = 0.2705981
+             #    result.pose.orientation.w = 0.6532815
+            # -0.2705981, 0.2705981, 0.6532815, 0.6532815
+        if self._mode == 2 and 'Flat' in self._relation:
+            self._set_model_state.twist.linear = Vector3()
+            self._set_model_state.twist.angular = Vector3()
+            self._set_model_state.pose.orientation.x = 0.2705981
+            self._set_model_state.pose.orientation.y = -0.2705981
+            self._set_model_state.pose.orientation.z = 0.6532815
+            self._set_model_state.pose.orientation.w = 0.6532815
+            self._set_model_state.pose.orientation = self._model_state.pose[self._obj_index].orientation
+            # self._set_model_state.pose.position = self._free_space_poses[0].position
+            # self._set_model_state.pose.position.x = self._free_space_poses[0].position.x
+            # self._set_model_state.pose.position.y = self._free_space_poses[0].position.y
+            self._set_model_state.pose.position.y = self._free_space_poses[0].position.y + All_size[object_name_index].z / 4 * 3
+            # self._set_model_state.pose.position.z = self._set_model_state.pose.position.z - 0.1
+            self._set_model_state.twist.angular.x = 0.23
+             # result.pose.orientation.x = 0.2705981
+             #    result.pose.orientation.y = 0.6532815
+             #    result.pose.orientation.z = 0.2705981
+             #    result.pose.orientation.w = 0.6532815
+            # -0.2705981, 0.2705981, 0.6532815, 0.6532815
+        # self._set_model_state.pose.position = self._free_space_poses[0].position
+
+        # self._set_model_state.pose.position.x = self._set_model_state.pose.position.x - offset[0]
+        # self._set_model_state.pose.position.y = self._set_model_state.pose.position.y - offset[1]
+        # self._set_model_state.pose.position.z = self._set_model_state.pose.position.z - offset[2]
+        elif self._mode == 3:
+            self._set_model_state.twist = self._model_state.twist[self._obj_index]
+            self._set_model_state.pose = self._model_state.pose[self._obj_index]
+            # self._set_model_state.pose.position.y = self._free_space_poses[0].position.y + All_size[object_name_index].z / 4 * 3
+
+            self._set_model_state.twist.linear = Vector3()
+            self._set_model_state.twist.angular = Vector3()
+            self._set_model_state.pose.orientation.x = 0.5
+            self._set_model_state.pose.orientation.y = -0.5
+            self._set_model_state.pose.orientation.z = 0.5
+            self._set_model_state.pose.orientation.w = 0.5
+
+        # print('self._set_model_state.pose.position: ', self._set_model_state.pose.position)
         self._set_model_state_pub.publish(self._set_model_state)
 
         return py_trees.Status.SUCCESS
@@ -940,6 +1159,7 @@ def GrasplocPickAct(name, poses_key):
         OpenGripperAct('act_{}_open_gripper'.format(name)),
         MoveToRelativePoseAct('act_{}_move_pre_grasp'.format(name), pre_grasp),
         RemoveCollisionBoxAct('act_{}_remove_temp_wall', box_name='{}_temp_front_wall'.format(name)),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
         MoveToFirstPoseAct('act_{}_pick_grasploc'.format(name), poses_key=poses_key)
     ])
     return root
@@ -974,6 +1194,9 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
             self._distance = 0
         elif self._relation == 'Near':
             pass
+
+        print("self._object_index: ", self._object_index)
+        print("bboxes[self._object_index]: ", bboxes[self._object_index])
 
         blackboard.set(self._crop_box_key, bboxes[self._object_index])
         size_box = bboxes[self._object_index].size
@@ -1023,8 +1246,8 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         gripper_ori_relative.append(R.from_quat([-0.5,0.5,-0.5,0.5]))
         gripper_ori_relative.append(R.from_quat([-0.5,-0.5,0.5,0.5]))
 
-        gripper_ori_relative.append(R.from_quat([0,0.7071068,-0.7071068,0]))
-        gripper_ori_relative.append(R.from_quat([0,0.7071068,0.7071068,0]))
+        # gripper_ori_relative.append(R.from_quat([0,0.7071068,-0.7071068,0]))
+        # gripper_ori_relative.append(R.from_quat([0,0.7071068,0.7071068,0]))
 
         gripper_grasp_length = min(0.017, object_bbox.size.y / 4)
         gripper_offset = []
@@ -1036,8 +1259,8 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
         gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        # gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        # gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
 
         crack_ori = R.from_quat([
                 object_pose.orientation.x,
@@ -1102,8 +1325,8 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
             x_axises.append(x_axis_30)
             x_axises.append(x_axis_minus_30)
             print(x_axis_30)
-            test_gripper_poses.append(gripper_pose_30_offset)
-            test_gripper_poses.append(gripper_pose_minus_30_offset)
+            # test_gripper_poses.append(gripper_pose_30_offset)
+            # test_gripper_poses.append(gripper_pose_minus_30_offset)
         # print(x_axises)
 
         blackboard.set(self._grasp_points_key, test_gripper_poses)
@@ -1206,6 +1429,7 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         self._obj_dim_key = obj_dim_key
         self._relation_key = relation_key
         self._relation = None
+        self._object_dim = None
 
     def initialise(self):
         self._relative_object_bbox = py_trees.blackboard.Blackboard().get(self._relative_bbox_key)
@@ -1215,6 +1439,7 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         print("self.action_goal.bot_pose: ", self.action_goal.bot_pose)
         self.action_goal.bot_dim = self._relative_object_bbox.size
         self.action_goal.dim = py_trees.blackboard.Blackboard().get(self._obj_dim_key)
+        self._object_dim = self.action_goal.dim
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
 
     def update(self):
@@ -1230,18 +1455,29 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         if self.action_client.get_state() in [actionlib_msgs.GoalStatus.ABORTED,
                                               actionlib_msgs.GoalStatus.PREEMPTED]:
             return py_trees.Status.FAILURE
-        if not self._relation == 'Stacking':
+        if not 'Stacking' in self._relation:
             return py_trees.Status.SUCCESS
         result = self.action_client.get_result()
         if result:
-            result.pose.orientation.x = 0
-            result.pose.orientation.y = 0.7071068
-            result.pose.orientation.z = 0
-            result.pose.orientation.w = 0.7071068
+            if 'Flat' in self._relation:
+                result.pose.orientation.x = 0.2705981
+                result.pose.orientation.y = 0.6532815
+                result.pose.orientation.z = 0.2705981
+                result.pose.orientation.w = 0.6532815
+                result.pose.position.y = result.pose.position.y
+            if 'Flat' not in self._relation:
+                result.pose.orientation.x = 0
+                result.pose.orientation.y = 0.7071
+                result.pose.orientation.z = 0
+                result.pose.orientation.w = 0.7071
+                result.pose.position.y = result.pose.position.y
             result.pose.position.z = result.pose.position.z + self.action_goal.dim.y / 3.5
+            # result.pose.position.z = result.pose.position.z + self.action_goal.dim.y
             print("result.pose", result.pose)
             upper_poses = []
             upper_poses.append(result.pose)
+            # upper_poses[0].position.y = upper_poses[0].position.y - self._object_dim.y / 4
+            print("self._object_dim: ", self._object_dim)
             py_trees.blackboard.Blackboard().set('free_space_poses', upper_poses)
             return py_trees.Status.SUCCESS
         else:
@@ -1250,7 +1486,8 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
 
 class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
     def __init__(self, name, obj_bbox_key='crop_box', plane_bboxes_key = 'plane_bboxes', relative_bbox_key = 'relative_bbox',
-                 relation_key = 'relation', grocery_box_size_key='grocery_box_size', distance_key = 'distance', object_index=None, *argv, **kwargs):
+                 relation_key = 'relation', grocery_box_size_key='grocery_box_size', grocery_box_offset_key = 'grocery_box_offset',
+                 distance_key = 'distance', object_index=None, *argv, **kwargs):
         super(FreeSpaceFinderAct, self).__init__(
             name=name,
             action_spec=FreeSpaceFinderAction,
@@ -1272,8 +1509,8 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         self._grocery_box_size_key = grocery_box_size_key
         self._grocery_box_size = None
         self._plane_bbox = None
-        self._grocery_box_size_key = grocery_box_size_key
-        self._grocery_box_size = None
+        self._grocery_box_offset_key = grocery_box_offset_key
+        self._grocery_box_offset = None
         self._grocery_bbox = BoundingBox3D()
 
     def initialise(self):
@@ -1289,7 +1526,10 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         self._grasp_pose = grasp_poses[0]
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
         self._grocery_box_size = py_trees.blackboard.Blackboard().get(self._grocery_box_size_key)
+        self._grocery_box_offset = py_trees.blackboard.Blackboard().get(self._grocery_box_offset_key)
         
+        print("self._grocery_box_size: ", self._grocery_box_size)
+
         if self._obj_bbox is None:
             self.action_goal.obj_bbox = BoundingBox3D()
         else:
@@ -1297,8 +1537,8 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         self.action_goal.relation = 'test'
         # self.action_goal.relative_obj_bbox = BoundingBox3D()
         self._plane_bboxes = py_trees.blackboard.Blackboard().get(self._plane_bboxes_key)
-        self._grocery_box_size = py_trees.blackboard.Blackboard().get(self._grocery_box_size_key)
-        self._grocery_bbox.size = self._grocery_box_size
+        # self._grocery_box_size = py_trees.blackboard.Blackboard().get(self._grocery_box_size_key)
+        self._grocery_bbox.size = Vector3(self._grocery_box_size.x, self._grocery_box_size.y, self._grocery_box_size.z) 
 
         # plane_bboxes = py_trees.blackboard.Blackboard().get(self._plane_bboxes_key)
         if len(self._plane_bboxes) == 0:
@@ -1319,55 +1559,71 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                 self.action_goal.plane_bbox = self._plane_bboxes[0]
                 self._grocery_bbox.center = self._plane_bboxes[0].center
                 self._plane_bbox = self._plane_bboxes[0]
-                self._grocery_bbox.size.z = self._plane_bboxes[0].size.z
+
+                print("self._grocery_bbox.center.position.x: ", self._grocery_bbox.center.position.x)
+                print("self._plane_bbox.size.x / 2: ", self._plane_bbox.size.x / 2)
+                print("self._grocery_bbox.size.x: ", self._grocery_bbox.size.x)
+                self._grocery_bbox.center.position.x = self._grocery_bbox.center.position.x - self._plane_bbox.size.x / 2 + self._grocery_bbox.size.x / 2 + self._grocery_box_offset.x
+                self._grocery_bbox.center.position.y = self._grocery_bbox.center.position.y + self._grocery_box_offset.y
+                self._grocery_bbox.size.z = self._plane_bboxes[0].size.z        
                 self.action_goal.plane_bbox = self._grocery_bbox
         obj_bboxes = py_trees.blackboard.Blackboard().get('obj_bboxes')
-        print(obj_bboxes.values()[0])
-        print(obj_bboxes.values()[0].center.position.x)
-        print(type(obj_bboxes))
-        print(len(obj_bboxes))
-        obj_bboxes_value = obj_bboxes.values()
-        if self._relation == 'Away':
-            for rand_index in range(100):
-                x_rand = random.uniform(self.action_goal.plane_bbox.center.position.x - self.action_goal.plane_bbox.size.x / 2 * 0.9, self.action_goal.plane_bbox.center.position.x + self.action_goal.plane_bbox.size.x / 2 * 0.9)
-                y_rand = random.uniform(self.action_goal.plane_bbox.center.position.y - self.action_goal.plane_bbox.size.y / 2 * 0.9, self.action_goal.plane_bbox.center.position.y + self.action_goal.plane_bbox.size.y / 2 * 0.9)
-                add_if = True
-                for object_index in range(len(obj_bboxes)):
-                    print(object_index)
-                    if np.sqrt((obj_bboxes_value[object_index].center.position.x - x_rand) * (obj_bboxes_value[object_index].center.position.x - x_rand) + (obj_bboxes_value[object_index].center.position.y - y_rand) * (obj_bboxes_value[object_index].center.position.y - y_rand)) < 0.10:
-                        add_if = False
-                if add_if:
-                    print("x_rand: ", x_rand)
-                    print("y_rand: ", y_rand)
-                    self.action_goal.relative_obj_bbox.center.position.x = x_rand
-                    self.action_goal.relative_obj_bbox.center.position.y = y_rand
-                    break
 
-            # self.action_goal.plane_bbox = self._plane_bboxes[1]
-            # self.action_goal.plane_bbox.center.position.x = self.action_goal.plane_bbox.center.position.x +
-            #                                                 self.action_goal.plane_bbox.size.x - self._grocery_box_size.x / 2
-            # self.action_goal.plane_bbox.center.position.y = self.action_goal.plane_bbox.center.position.y +
-            #                                                 self.action_goal.plane_bbox.size.y - self._grocery_box_size.y / 2
-            # self.action_goal.plane_bbox.size.x = self._grocery_box_size.x
-            # self.action_goal.plane_bbox.size.y = self._grocery_box_size.y
+        # print(obj_bboxes.values()[0])
+        # print(obj_bboxes.values()[0].center.position.x)
+        # print(type(obj_bboxes))
+        # print(len(obj_bboxes))
+        # obj_bboxes_value = obj_bboxes.values()
+        # if self._relation == 'Away':
+        #     for rand_index in range(100):
+        #         x_rand = random.uniform(self.action_goal.plane_bbox.center.position.x - self.action_goal.plane_bbox.size.x / 2 * 0.9, self.action_goal.plane_bbox.center.position.x + self.action_goal.plane_bbox.size.x / 2 * 0.9)
+        #         y_rand = random.uniform(self.action_goal.plane_bbox.center.position.y - self.action_goal.plane_bbox.size.y / 2 * 0.9, self.action_goal.plane_bbox.center.position.y + self.action_goal.plane_bbox.size.y / 2 * 0.9)
+        #         add_if = True
+        #         for object_index in range(len(obj_bboxes)):
+        #             print(object_index)
+        #             if np.sqrt((obj_bboxes_value[object_index].center.position.x - x_rand) * (obj_bboxes_value[object_index].center.position.x - x_rand) + (obj_bboxes_value[object_index].center.position.y - y_rand) * (obj_bboxes_value[object_index].center.position.y - y_rand)) < 0.10:
+        #                 add_if = False
+        #         if add_if:
+        #             print("x_rand: ", x_rand)
+        #             print("y_rand: ", y_rand)
+        #             self.action_goal.relative_obj_bbox.center.position.x = x_rand
+        #             self.action_goal.relative_obj_bbox.center.position.y = y_rand
+        #             break
+
+            # self.action_goal.plane_bbox = self._plane_bboxes[0]
+
+
+        grocery_box_manual_deduction = Vector3(0.01, 0, 0)
+
+        # self.action_goal.plane_bbox.center.position.x = self.action_goal.plane_bbox.center.position.x - grocery_box_manual_deduction.x
+        print("self.action_goal.plane_bbox: ", self.action_goal.plane_bbox)                                           
+        self.action_goal.plane_bbox.center.position.x = self.action_goal.plane_bbox.center.position.x                              
+        self.action_goal.plane_bbox.center.position.y = self.action_goal.plane_bbox.center.position.y - grocery_box_manual_deduction.y
+        # print("self.action_goal.plane_bbox.center.position: ", self.action_goal.plane_bbox.center.position)                                                
+                                                        
+        self.action_goal.plane_bbox.size.x = self._grocery_box_size.x - grocery_box_manual_deduction.x * 2
+        self.action_goal.plane_bbox.size.y = self._grocery_box_size.y - grocery_box_manual_deduction.y * 2
+        print("self.action_goal.plane_bbox: ", self.action_goal.plane_bbox)
 
     def update(self):
         if not self.action_client:
             self.feedback_message = "no action client, did you call setup() on your tree?"
             return py_trees.Status.INVALID
         print('self._relation', self._relation)
-        if self._relation == 'Stacking':
+        if 'Stacking' in self._relation:
             print('relation is Stacking')
-        if not self._relation == 'Stacking':
+        if not 'Stacking' in self._relation:
             print('relation is not Stacking')
-        if self._relation == 'None':
+        if 'None' in self._relation or "Away" in self._relation:
             self.action_goal.distance = 0
-        if self._relation == 'Stacking':
+        if 'Stacking' in self._relation:
             return py_trees.Status.SUCCESS
         if not self.sent_goal:
             print("self.action_goal.plane_bbox: ", self.action_goal.plane_bbox)
             print(self.action_goal.relative_obj_bbox)
-            print("self.action_goal.obj_bbox: ", self.action_goal.obj_bbox)
+            # print("self.action_goal.obj_bbox: ", self.action_goal.obj_bbox)
+            print("self.action_goal.distance: ", self.action_goal.distance)
+            
             self.action_client.send_goal(self.action_goal)
             self.sent_goal = True
             self.feedback_message = "sent goal to the action server"
@@ -1377,9 +1633,19 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                                               actionlib_msgs.GoalStatus.PREEMPTED]:
             return py_trees.Status.FAILURE
         result = self.action_client.get_result()
+
+        print("len(result.pose): ", len(result.pose))
+
+        obj_bboxes = py_trees.blackboard.Blackboard().get('obj_bboxes')
+        Away_limit_dis = 0.05
+        distance_ori = []
+        poses_temp = []
+        ori_position = self._obj_bbox.center.position
+        obj_bboxes_value = obj_bboxes.values()
         if result:
             poses = []
-            for pose in result.pose:
+            for i in range(len(result.pose)/2):
+                pose = result.pose[i]
                 pose.orientation.x = 0
                 pose.orientation.y = 0.7071068
                 pose.orientation.z = 0
@@ -1387,9 +1653,44 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                 pose.position.z = self._grasp_pose.position.z
                 if pose.position.z -  self._plane_bbox.center.position.z > self._obj_bbox.size.y * 1.5:
                     pose.position.z = self._plane_bbox.center.position.z + self._obj_bbox.size.y * 1.1
-                poses.append(pose)
+                # poses.append(pose)
+                poses_temp.append(pose)
 
-            print('table pose: ', self._plane_bboxes)
+                distance_ori.append((pose.position.x - ori_position.x) * (pose.position.x - ori_position.x) + (pose.position.y - ori_position.y) * (pose.position.y - ori_position.y))
+            if 'Flat' in self._relation:
+                for pose in poses_temp:
+                    pose.orientation.x = 0.2705981
+                    pose.orientation.y = 0.6532815
+                    pose.orientation.z = 0.2705981
+                    pose.orientation.w = 0.6532815
+            # print('table pose: ', self._plane_bboxes)
+            # print("distance_ori: ", distance_ori)
+            if 'Away' in self._relation or 'Near' in self._relation:
+            # if 'Away' in self._relation:
+                print("relation is Away")
+                for i in range(len(poses_temp)):
+                    # if i > len(poses_temp):
+                    if i > len(poses_temp) / 5:
+                        pose_index = distance_ori.index(max(distance_ori))
+                        x_rand = poses_temp[pose_index].position.x
+                        y_rand = poses_temp[pose_index].position.y
+                        add_if = True
+                        for object_index in range(len(obj_bboxes)):
+                            print(object_index)
+                            distance = np.sqrt((obj_bboxes_value[object_index].center.position.x - x_rand) * (obj_bboxes_value[object_index].center.position.x - x_rand) + (obj_bboxes_value[object_index].center.position.y - y_rand) * (obj_bboxes_value[object_index].center.position.y - y_rand))
+                            print("distance: ", distance)
+                            if distance < Away_limit_dis:
+                                add_if = False
+                        if add_if:
+                            poses.append(poses_temp[distance_ori.index(max(distance_ori))])
+                    distance_ori[distance_ori.index(max(distance_ori))] = -1
+            else:
+                for i in range(len(poses_temp)):
+                    poses.append(poses_temp[distance_ori.index(min(distance_ori))])
+                    distance_ori[distance_ori.index(min(distance_ori))] = 1000
+            
+
+            print(distance_ori)
             py_trees.blackboard.Blackboard().set('free_space_poses', poses)
             return py_trees.Status.SUCCESS
         else:
@@ -1736,7 +2037,7 @@ class RemoveCollisionBoxAct(py_trees.behaviour.Behaviour):
 
 class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
     def __init__(self, name, frame_id='base_link', bbox_key='obj_bboxes', grocery_box_size_key='grocery_box_size',
-                 plane_bbox_key = 'plane_bboxes'):
+                 grocery_box_offset_key = 'grocery_box_offset', plane_bbox_key = 'plane_bboxes'):
         super(AddAllObjectCollisionBoxAct, self).__init__(name)
         self._pub = None
         self._bbox_key = bbox_key
@@ -1748,6 +2049,8 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
         self._grocery_box_size = None
         self._plane_bbox_key = plane_bbox_key
         self._plane_bboxes = None
+        self._grocery_box_offset_key = grocery_box_offset_key
+        self._grocery_box_offset = None
 
     def setup(self, timeout):
         self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
@@ -1756,8 +2059,17 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
     def update(self):
         # Make the box
         blackboard = py_trees.blackboard.Blackboard()
+
+        # grocery_box_size = Vector3()
+        # grocery_box_size.x = 0.5
+        # grocery_box_size.y = 0.7
+        # grocery_box_size.z = 0.10
+        # py_trees.blackboard.Blackboard().set('grocery_box_size', grocery_box_size)
+
         bboxes = blackboard.get(self._bbox_key)
         self._grocery_box_size = blackboard.get(self._grocery_box_size_key)
+        print("self._grocery_box_size: ", self._grocery_box_size)
+        self._grocery_box_offset = blackboard.get(self._grocery_box_offset_key)
         self._plane_bboxes = blackboard.get(self._plane_bbox_key)
         print(type(self._plane_bboxes))
         if len(self._plane_bboxes) > 1:
@@ -1769,6 +2081,8 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
             plane_bbox = self._plane_bboxes[0]
         # order of adding: left right front back
         print("plane_bbox: ", plane_bbox)
+        print("self._grocery_box_size: ", self._grocery_box_size)
+        print("self._grocery_box_offset: ", self._grocery_box_offset)
         grocery_collsion_box_bboxes = []
         grocery_collision_box_name = blackboard.get('grocery_collision_box_name')
         # bot_wall_pose = Pose()
@@ -1777,42 +2091,46 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
         left_bbox = BoundingBox3D()
         left_bbox.center = Pose()
         left_bbox.center.orientation.w = 1.0
-        left_bbox.center.position.z = plane_bbox.center.position.z + plane_bbox.size.z / 2
-        left_bbox.center.position.x = plane_bbox.center.position.x 
-        left_bbox.center.position.y = plane_bbox.center.position.y + self._grocery_box_size.y / 2
+        left_bbox.center.position.z = plane_bbox.center.position.z + plane_bbox.size.z / 2 + self._grocery_box_size.z / 2
+        left_bbox.center.position.x = plane_bbox.center.position.x - plane_bbox.size.x / 2 + self._grocery_box_size.x / 2
+        left_bbox.center.position.y = plane_bbox.center.position.y + self._grocery_box_size.y / 2 + self._grocery_box_offset.y
         left_bbox.size.x = self._grocery_box_size.x
         left_bbox.size.z = self._grocery_box_size.z
-        left_bbox.size.y = 0.01
+        left_bbox.size.y = 0.002
+        print("left_bbox.center.position: ", left_bbox.center.position)
 
         right_bbox = BoundingBox3D()
         right_bbox.center = Pose()
         right_bbox.center.orientation.w = 1.0
-        right_bbox.center.position.z = plane_bbox.center.position.z
-        right_bbox.center.position.x = plane_bbox.center.position.x
-        right_bbox.center.position.y = plane_bbox.center.position.y - self._grocery_box_size.y / 2
+        right_bbox.center.position.z = plane_bbox.center.position.z + plane_bbox.size.z / 2 + self._grocery_box_size.z / 2
+        right_bbox.center.position.x = plane_bbox.center.position.x - plane_bbox.size.x / 2 + self._grocery_box_size.x / 2
+        right_bbox.center.position.y = plane_bbox.center.position.y - self._grocery_box_size.y / 2 + self._grocery_box_offset.y
         right_bbox.size.x = self._grocery_box_size.x
         right_bbox.size.z = self._grocery_box_size.z
-        right_bbox.size.y = 0.01
+        right_bbox.size.y = 0.002
+        print("right_bbox.center.position: ", right_bbox.center.position)
 
         front_bbox = BoundingBox3D()
         front_bbox.center = Pose()
         front_bbox.center.orientation.w = 1.0
-        front_bbox.center.position.z = plane_bbox.center.position.z
-        front_bbox.center.position.x = plane_bbox.center.position.x - self._grocery_box_size.x / 2
-        front_bbox.center.position.y = plane_bbox.center.position.y
+        front_bbox.center.position.z = plane_bbox.center.position.z + plane_bbox.size.z / 2 + self._grocery_box_size.z / 2
+        front_bbox.center.position.x = plane_bbox.center.position.x - plane_bbox.size.x / 2
+        front_bbox.center.position.y = plane_bbox.center.position.y + self._grocery_box_offset.y
         front_bbox.size.y = self._grocery_box_size.y
         front_bbox.size.z = self._grocery_box_size.z
-        front_bbox.size.x = 0.01
+        front_bbox.size.x = 0.002
+        print("front_bbox.center.position: ", front_bbox.center.position)
 
         back_bbox = BoundingBox3D()
         back_bbox.center = Pose()
         back_bbox.center.orientation.w = 1.0
-        back_bbox.center.position.z = plane_bbox.center.position.z
-        back_bbox.center.position.x = plane_bbox.center.position.x + self._grocery_box_size.x / 2
-        back_bbox.center.position.y = plane_bbox.center.position.y
+        back_bbox.center.position.z = plane_bbox.center.position.z + plane_bbox.size.z / 2 + self._grocery_box_size.z / 2
+        back_bbox.center.position.x = plane_bbox.center.position.x + self._grocery_box_size.x - plane_bbox.size.x / 2
+        back_bbox.center.position.y = plane_bbox.center.position.y + self._grocery_box_offset.y
         back_bbox.size.y = self._grocery_box_size.y
         back_bbox.size.z = self._grocery_box_size.z
-        back_bbox.size.x = 0.01
+        back_bbox.size.x = 0.002
+        print("back_bbox.center.position: ", back_bbox.center.position)
 
         grocery_bbox = BoundingBox3D()
         grocery_bbox.center = plane_bbox.center
@@ -1850,6 +2168,7 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
             self._box_name = grocery_collision_box_name[i]
             self._box_pose = grocery_collsion_box_bboxes[i].center
             box_size = grocery_collsion_box_bboxes[i].size
+            print("box_size: ", box_size)
             self._box_size = [box_size.x + 0.01, box_size.y + 0.01, box_size.z + 0.01]
             box = SolidPrimitive()
             box.type = SolidPrimitive.BOX
@@ -2021,6 +2340,84 @@ class SetAllowGripperCollisionAct(py_trees.behaviour.Behaviour):
         self._pub.publish(planning_scene);
         return py_trees.Status.SUCCESS
 
+class LinkAttachingAct(py_trees.behaviour.Behaviour):
+    # def __init__(self, name, object_name, link_name, relative_object_name='fetch', relative_link_name='l_gripper_finger_link'):
+    def __init__(self, name, object_name, link_name, relative_object_name='fetch', relative_link_name='wrist_roll_link'):
+        super(LinkAttachingAct, self).__init__(name)
+        # self._pub = None
+        self._link_attacher_client = None
+        # self._allow = allow
+        self._object_name = object_name
+        self._link_name = link_name
+        self._relative_object_name = relative_object_name
+        self._relative_link_name = relative_link_name
+
+    def setup(self, timeout):
+        # self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        rospy.wait_for_service('/link_attacher_node/attach', timeout=timeout)
+        self._link_attacher_client = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
+
+        return True
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        object_move_name = None
+        # print("self._obj_name: ", self._obj_name)
+        object_move_name = self._object_name[0:-1] + 'test_' + str(int(self._object_name[-1]) - 1)
+        if self._object_name[-1] == '0':
+            object_move_name = object_move_name[0:-3]
+        req = AttachRequest()
+        # req.model_name_1 = self._object_name
+        req.model_name_1 = object_move_name
+        req.link_name_1 = self._link_name
+        req.model_name_2 = self._relative_object_name
+        # req.model_name_2 = object_move_name
+        req.link_name_2 = self._relative_link_name
+        self._link_attacher_client.call(req)
+        # allowed_collision_matrix = self._link_attacher_client(get_scene).scene.allowed_collision_matrix
+        return py_trees.Status.SUCCESS
+
+class LinkDettachingAct(py_trees.behaviour.Behaviour):
+    # def __init__(self, name, object_name, link_name, relative_object_name='fetch', relative_link_name='l_gripper_finger_link'):
+    def __init__(self, name, object_name, link_name, relative_object_name='fetch', relative_link_name='wrist_roll_link'):
+        super(LinkDettachingAct, self).__init__(name)
+        # self._pub = None
+        self._link_dettacher_client = None
+        # self._allow = allow
+        self._object_name = object_name
+        self._link_name = link_name
+        self._relative_object_name = relative_object_name
+        self._relative_link_name = relative_link_name
+
+    def setup(self, timeout):
+        # self._pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=1)
+        rospy.wait_for_service('/link_attacher_node/detach', timeout=timeout)
+        self._link_dettacher_client = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
+
+        return True
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        object_move_name = None
+        # print("self._obj_name: ", self._obj_name)
+        object_move_name = self._object_name[0:-1] + 'test_' + str(int(self._object_name[-1]) - 1)
+        if self._object_name[-1] == '0':
+            object_move_name = object_move_name[0:-3]
+        req = AttachRequest()
+        # req.model_name_1 = self._object_name
+        req.model_name_1 = object_move_name
+        req.link_name_1 = self._link_name
+        req.model_name_2 = self._relative_object_name
+        # req.model_name_2 = object_move_name
+        req.link_name_2 = self._relative_link_name
+        self._link_dettacher_client.call(req)
+        # allowed_collision_matrix = self._link_attacher_client(get_scene).scene.allowed_collision_matrix
+        return py_trees.Status.SUCCESS
+
 def AddAllCollisionBoxesAct(name):
     """
     Add all collision boxes
@@ -2114,13 +2511,24 @@ def PickAct(name, obj, surface, relation='None'):
     grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     grasploc_grasp_seq.add_children([
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
+        SleepBehavior('act_sleep_a_smidge', duration=1.5),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
+        LinkAttachingAct('LinkAttachAct',object_name=object_index, link_name='link_1'),
         CloseGripperAct('act_close_gripper'),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name=object_index),
         AddCollisionBoxAct('act_add_inhand_collision_object', box_bb_key='inhand_collision_object'),
-        SleepBehavior('act_sleep_a_smidge', duration=1),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        StabilizeObjectAct('StabilizeObjectAct', obj_name=obj),
+        # StabilizeObjectAct('StabilizeObjectAct', obj_name=relative_object_index),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
         AttachObjectAct('act_attach_object', object_name='inhand_collision_object', to_attach=True),
         RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
+        
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False)
     ])
     
@@ -2159,7 +2567,7 @@ def PickAct(name, obj, surface, relation='None'):
         CropPCAct('act_test_crop_pc', 'tfed_pc', 'crop_box', 'croped_pc'),
         PCPubAct('act_pub_croped_pc', 'croped_pc', 'croped_pc'),
 
-        # AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
+        AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
 
         # GetDopeSnapshotAct('act_get_dope_snapshot', object_name=object_index),
@@ -2179,9 +2587,9 @@ def PickAct(name, obj, surface, relation='None'):
         # GetTableAct('act_get_table'),
         FreeSpaceFinderAct('act_find_free_space', object_index = object_index),   
         GetStackPoseAct('act_get_stack_pose'),
-        # MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
+        MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
         
-        # grasploc_grasp_fall,
+        grasploc_grasp_fall,
     ])
     return root
 
@@ -2204,18 +2612,29 @@ def PlaceAct(name, obj, surface):
                     offset=[-(gripper_length + pre_grasp_offset), 0, 0],
                     in_poses_key='free_space_poses',
                     out_poses_key='offset_place_pose', debug=True),
-        # MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose', place_if=True, object_index=object_index),
-        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
-        # OpenGripperAct('act_open_gripper'),
-        TeleportObjectAct('TeleportObject', obj_name=object_index),
-        # AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
-        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
-        RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox'),
 
-        AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
+        MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose', place_if=True, object_index=object_index),
+        SleepBehavior('act_sleep_a_smidge', duration=1.5),
+        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
+        SleepBehavior('act_sleep_a_smidge', duration=1),
+        OpenGripperAct('act_open_gripper'),
+        LinkDettachingAct('LinkAttachAct', object_name=object_index, link_name='link_1'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        StabilizeObjectAct('StabilizeObjectAct', obj_name=obj),
+
+        # TeleportObjectAct('TeleportObject', obj_name=object_index),
+        AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
+        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
 
         SleepBehavior('act_sleep_a_smidge', duration=1),
-        # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
+        RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
+
+        StabilizeObjectAct('StabilizeObjectAct', obj_name=obj),
         place_act_fall,
         SleepBehavior('act_sleep_a_smidge', duration=1),
         RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox')

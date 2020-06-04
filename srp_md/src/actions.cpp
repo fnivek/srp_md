@@ -1002,7 +1002,7 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     sensor_msgs::PointCloud2::Ptr points_plane_filtered(new sensor_msgs::PointCloud2);
     sensor_msgs::PointCloud2::Ptr points_object_filtered(new sensor_msgs::PointCloud2);
     vision_msgs::BoundingBox3D plane_bbox_mod = plane_bbox;
-    float edge_deduction_ratio = 0.15;
+    float edge_deduction_ratio = 0.17;
     float plane_expansion_ratio = 2.0;
     float object_placing_offset = 0.05;
     int points_threshold = 0;
@@ -1067,7 +1067,7 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
     cout<<"testing2"<<endl<<endl;
     cout<<"obj_bbox.center.orientation: "<<obj_bbox.center.orientation<<endl;
     // Might want to cap this at limit 1000 or sth
-    for (int loop_times = 0; loop_times < 2500; loop_times++) {
+    for (int loop_times = 0; loop_times < 3000; loop_times++) {
 
         // Generate random pose on the table
         double x_random, y_random;
@@ -1114,7 +1114,7 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
         crop_box_filt_pc(points_plane_filtered, test_bbox, *points_object_filtered, false);
         int num_points = points_object_filtered->height * points_object_filtered->width;
         // test_bbox.center.position.x = test_bbox.center.position.x - x_axis_offset;
-        std::cout<<"point num in cropbox: "<<num_points<<std::endl;
+        // std::cout<<"point num in cropbox: "<<num_points<<std::endl;
         jsk_recognition_msgs::BoundingBox object_bbox_jsk;
 
         object_bbox_jsk.pose = test_bbox.center;
@@ -1128,24 +1128,31 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, co
         } else {
             // std::cout<<"push_back here"<<std::endl;
             // test_object_pose.position.x += 1;
-            pose.push_back(test_object_pose);
+            if (distance == 0) {
+                pose.push_back(test_object_pose);
+            }
             // std::cout<<"distance_actual: "<<distance_actual<<std::endl;
             dis_pose_map[distance_actual] = test_object_pose;
-            cout<<"num_points: "<<num_points<<endl;
+            // cout<<"num_points: "<<num_points<<endl;
             bool success = true;
-            if (pose.size() > 20) {
+            if (dis_pose_map.size() > 40 && distance != 0) {
 
-                std::cout<<dis_pose_map.size()<<std::endl;
-                std::cout<<"pose: "<<pose.size()<<std::endl;
+                // std::cout<<dis_pose_map.size()<<std::endl;
+                // std::cout<<"pose: "<<pose.size()<<std::endl;
+                break;
+            }
+            if (pose.size() > 40 && distance == 0) {
                 break;
             }
         }
     }
-    pose.clear();
-    for (std::map<double, geometry_msgs::Pose>::iterator iter_map = dis_pose_map.begin(); iter_map != dis_pose_map.end(); iter_map++) {
-        cout<<"iter_map.first: "<<iter_map->first<<endl;
-        pose.push_back(iter_map->second);
-        // cout<<"iter_map->second: "<<iter_map->second<<endl;
+    if (distance != 0) {
+        pose.clear();
+        for (std::map<double, geometry_msgs::Pose>::iterator iter_map = dis_pose_map.begin(); iter_map != dis_pose_map.end(); iter_map++) {
+            // cout<<"iter_map.first: "<<iter_map->first<<endl;
+            pose.push_back(iter_map->second);
+            // cout<<"iter_map->second: "<<iter_map->second<<endl;
+        }
     }
     // std::reverse(pose.begin(), pose.end());
     // cout<<"pose[0]: "<<pose[0]<<endl;

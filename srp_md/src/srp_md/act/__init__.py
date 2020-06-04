@@ -36,3 +36,6 @@ from .actions import GetDopeAndPoseAct
 from .actions import AttachObjectAct
 from .actions import InfiniteDopeAct
 from .actions import TeleportObjectAct
+from .actions import StabilizeObjectAct
+from .actions import LinkAttachingAct
+from .actions import LinkDettachingAct

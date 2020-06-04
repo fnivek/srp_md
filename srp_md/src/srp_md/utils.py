@@ -107,12 +107,11 @@ class ConfigMixin(object):
 
 
 def pose_difference(pose_1, pose_2):
-    position_diff = np.sqrt((pose_1.position.x - pose_2.position.x) ** 2 + (pose_1.position.y - pose_2.position.y) ** 2 +
-                            (pose_1.position.z - pose_2.position.z) ** 2)
-    # orientation_diff = 1 - (pose_1.orientation.x * pose_2.orientation.x + pose_1.orientation.y * pose_2.orientation.y +
-                            # pose_1.orientation.z * pose_2.orientation.z + pose_1.orientation.w * pose_2.orientation.w)
-    # return np.sqrt(position_diff ** 2 + orientation_diff ** 2)
-    return position_diff
+    position_diff = np.sqrt((pose_1.position.x - pose_2.position.x)**2 + (pose_1.position.y - pose_2.position.y)**2 +
+                            (pose_1.position.z - pose_2.position.z)**2)
+    orientation_diff = 1 - (pose_1.orientation.x * pose_2.orientation.x + pose_1.orientation.y * pose_2.orientation.y +
+                            pose_1.orientation.z * pose_2.orientation.z + pose_1.orientation.w * pose_2.orientation.w)
+    return np.sqrt(position_diff**2 + orientation_diff**2)
 
 
 class GlobalTimer(object):

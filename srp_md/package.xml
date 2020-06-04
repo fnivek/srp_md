@@ -9,6 +9,13 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <build_depend>message_generation</build_depend>
+  <build_depend>gazebo_ros</build_depend>
+  <build_depend>gazebo</build_depend>
+  <!-- The export tag contains other, unspecified, tags -->
+
   <depend>actionlib</depend>
   <depend>srp_md_msgs</depend>
   <depend>std_msgs</depend>
@@ -36,6 +43,7 @@
   <depend>libpcl-all</depend>
   <depend>cv_bridge</depend>
   <test_depend>unittest</test_depend>
+  <depend>gazebo_ros_link_attacher</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
