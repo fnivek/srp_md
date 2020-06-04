@@ -84,19 +84,20 @@
 #include <string>
 class Act;
 
-template<typename Goal>
-class BaseFunc {
-protected:
+template <typename Goal>
+class BaseFunc
+{
+  protected:
     Goal goal;
-    Act *act;
+    Act* act;
     std::atomic<bool> isPreempted;
     std::future<void> f1, f2;
     std::mutex preempt_mutex;
     std::condition_variable cond_var;
     void preempt_helper();
 
-public:
-    BaseFunc(Goal &g, Act *a);
+  public:
+    BaseFunc(Goal& g, Act* a);
     bool is_finished();
     bool preempt();
     void start();
@@ -104,18 +105,20 @@ public:
     virtual void func() = 0;
 };
 
-
-template<typename Goal>
-class TestFunc : public BaseFunc<Goal> {
-public:
-    TestFunc(Goal &goal, Act *a);
+template <typename Goal>
+class TestFunc : public BaseFunc<Goal>
+{
+  public:
+    TestFunc(Goal& goal, Act* a);
     void func() override;
 };
 
+class Act
+{
+    template <typename Goal>
+    friend class BaseFunc;
 
-class Act {
-    template<typename Goal> friend class BaseFunc;
-protected:
+  protected:
     ros::NodeHandle nh_;
     std::map<std::string, moveit::planning_interface::MoveGroupInterface::Plan> predefined_plan_map;
     std::map<std::string, std::map<std::string, double>> predefined_joint_angles_;
@@ -150,7 +153,7 @@ protected:
     ros::Publisher plane_bounding_box_;
     ros::Publisher object_bounding_box_;
 
-public:
+  public:
     // default constructor that starts all the action client
     Act(ros::NodeHandle& nh);
 
@@ -159,82 +162,79 @@ public:
 
     // wrapper function for "action_client.waitForServer()"
     template <typename Client>
-    void wait_for_server(Client &ac, const std::string &topic_name);
+    void wait_for_server(Client& ac, const std::string& topic_name);
 
     // include functions!
     bool generate_init_trajectory();
-    bool load_trajectory(moveit::planning_interface::MoveGroupInterface::Plan &plan,
-                         const std::string &trajectory_name);
+    bool load_trajectory(moveit::planning_interface::MoveGroupInterface::Plan& plan,
+                         const std::string& trajectory_name);
     bool record_trajectory(const moveit::planning_interface::MoveGroupInterface::Plan& plan, std::string name);
 
+    std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan> plan(const std::string& pose_name,
+                                                                               int max_try = 1);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    plan(const std::string &pose_name, int max_try = 1);
-    std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    plan(const std::map<std::string, double> &joint_angles, int max_try = 1);
-    std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    plan(const geometry_msgs::Pose &pose, int max_try = 1);
+    plan(const std::map<std::string, double>& joint_angles, int max_try = 1);
+    std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan> plan(const geometry_msgs::Pose& pose,
+                                                                               int max_try = 1);
 
-    bool boolean_interface(const std::string &action);
+    bool boolean_interface(const std::string& action);
 
     void crop_box_filt_pcl_pc(const pcl::PCLPointCloud2::Ptr pcl_in_pc, const vision_msgs::BoundingBox3D& crop_box,
                               pcl::PCLPointCloud2& pcl_out_pc, bool invert);
     // Point clouds
     void crop_box_filt_pc(const sensor_msgs::PointCloud2::Ptr in_pc, const vision_msgs::BoundingBox3D& crop_box,
                           sensor_msgs::PointCloud2& out_pc, bool invert);
-    void transform_pc(const sensor_msgs::PointCloud2& in_pc, std::string frame_id,
-                      sensor_msgs::PointCloud2& out_pc);
+    void transform_pc(const sensor_msgs::PointCloud2& in_pc, std::string frame_id, sensor_msgs::PointCloud2& out_pc);
 
-    bool cartesian_grasp(const std::vector<geometry_msgs::Pose> &waypoints, int max_try /* = 3 */);
+    bool cartesian_grasp(const std::vector<geometry_msgs::Pose>& waypoints, int max_try /* = 3 */);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    relative_cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg, int max_try = 3);
+    relative_cartesian_move(const geometry_msgs::TransformStamped& pose_diff_msg, int max_try = 3);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    cartesian_move(const geometry_msgs::TransformStamped &pose_diff_msg, int max_try = 3);
+    cartesian_move(const geometry_msgs::TransformStamped& pose_diff_msg, int max_try = 3);
     std::pair<bool, moveit::planning_interface::MoveGroupInterface::Plan>
-    cartesian_move(const std::vector<geometry_msgs::Pose> &waypoints, int max_try = 3);
-    std::pair<bool, moveit_msgs::RobotTrajectory>
-    cartesian_plan(const geometry_msgs::Pose &end_pose, int max_try = 1);
-    std::pair<bool, moveit_msgs::RobotTrajectory>
-    cartesian_plan(const std::vector<geometry_msgs::Pose> &waypoints, int max_try = 1);
+    cartesian_move(const std::vector<geometry_msgs::Pose>& waypoints, int max_try = 3);
+    std::pair<bool, moveit_msgs::RobotTrajectory> cartesian_plan(const geometry_msgs::Pose& end_pose, int max_try = 1);
+    std::pair<bool, moveit_msgs::RobotTrajectory> cartesian_plan(const std::vector<geometry_msgs::Pose>& waypoints,
+                                                                 int max_try = 1);
 
     bool control_gripper(double pos);
     bool open_gripper();
     bool close_gripper();
 
-    bool move(const std::string &pose_name, int max_try = 1);
-    bool move(const std::map<std::string, double> &joint_angles, int max_try = 1);
-    bool move(const geometry_msgs::Pose &pose, int max_try = 1);
+    bool move(const std::string& pose_name, int max_try = 1);
+    bool move(const std::map<std::string, double>& joint_angles, int max_try = 1);
+    bool move(const geometry_msgs::Pose& pose, int max_try = 1);
     bool move(moveit::planning_interface::MoveGroupInterface::Plan move_plan);
 
-    bool relative_move(const geometry_msgs::TransformStamped &pose_diff, int max_try = 1);
+    bool relative_move(const geometry_msgs::TransformStamped& pose_diff, int max_try = 1);
 
-    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points, std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
+    bool get_table(const sensor_msgs::PointCloud2::ConstPtr& points,
+                   std::vector<vision_msgs::BoundingBox3D>& plane_bboxes);
 
-    // bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
+    // bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D&
+    // plane_bbox,
     //                        const geometry_msgs::Vector3& obj_dim, geometry_msgs::Pose& pose);
-    bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points, const vision_msgs::BoundingBox3D& plane_bbox,
-                           const vision_msgs::BoundingBox3D& obj_bbox, const std::string& relation,
-                           const vision_msgs::BoundingBox3D& relative_obj_bbox, std::vector<geometry_msgs::Pose>& pose, 
-                           const float distance);
-    geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim, geometry_msgs::Vector3 dim);
-    void attach_object_to_gripper(const std::string &object_name);
+    bool free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points,
+                           const vision_msgs::BoundingBox3D& plane_bbox, const vision_msgs::BoundingBox3D& obj_bbox,
+                           const std::string& relation, const vision_msgs::BoundingBox3D& relative_obj_bbox,
+                           std::vector<geometry_msgs::Pose>& pose, const float distance);
+    geometry_msgs::Pose GetStackPose(geometry_msgs::Pose bot_pose, geometry_msgs::Vector3 bot_dim,
+                                     geometry_msgs::Vector3 dim);
+    void attach_object_to_gripper(const std::string& object_name);
 
     // detach object (not physically detach something, but just for moveit to plan)
     // It's a wrapper function for move_group.detachObject() and Util::print_attached_objects()
-    void detach_object(const std::string &object_name);
+    void detach_object(const std::string& object_name);
 };
 
-
-//template implementation==========================================================================
+// template implementation==========================================================================
 template <typename Client>
-void Act::wait_for_server(Client &ac, const std::string &topic_name)
+void Act::wait_for_server(Client& ac, const std::string& topic_name)
 {
     ROS_INFO("Waiting for \"%s\" action server...", topic_name.c_str());
     ac.waitForServer();
     ROS_INFO("Connected to \"%s\" action server!", topic_name.c_str());
 }
-
-
-
 
 // template<typename Goal>
 // std::unique_ptr<BaseFunc<Goal>> Act::test_func(Goal &goal)
@@ -243,12 +243,10 @@ void Act::wait_for_server(Client &ac, const std::string &topic_name)
 //     return ptr;
 // }
 
-
 // template<typename Goal>
 // BaseFunc<Goal>::BaseFunc(Goal &g, Act *a) : goal(g), act(u), isPreempted(false)
 // {
 // }
-
 
 // template<typename Goal>
 // void BaseFunc<Goal>::preempt_helper()
@@ -263,13 +261,11 @@ void Act::wait_for_server(Client &ac, const std::string &topic_name)
 //     }
 // }
 
-
 // template<typename Goal>
 // bool BaseFunc<Goal>::is_finished()
 // {
 //     return f1.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 // }
-
 
 // template<typename Goal>
 // bool BaseFunc<Goal>::preempt()
@@ -284,14 +280,12 @@ void Act::wait_for_server(Client &ac, const std::string &topic_name)
 //     return true;
 // }
 
-
 // template<typename Goal>
 // void BaseFunc<Goal>::start()
 // {
 //     f1 = std::async(std::launch::async, &BaseFunc::func, this);
 //     f2 = std::async(std::launch::async, &BaseFunc::preempt_helper, this);
 // }
-
 
 // template<typename Goal>
 // void BaseFunc<Goal>::wait_for_result() {
