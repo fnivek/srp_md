@@ -371,7 +371,7 @@ def parse_args():
     parser.add_argument('--factor_learner', help='Specify the factor learner', default='decision_tree', type=str,
                         choices=learn.FACTOR_LEARNERS.keys())
     parser.add_argument('--use_consistency', help='Choose to use consistency prior', default=True, type=str2bool)
-    parser.add_argument('--use_no_float', help='Choose to use no float prior', default=True, type=str2bool)
+    parser.add_argument('--use_no_float', help='Choose to use no float prior', default=False, type=str2bool)
     parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=True, type=str2bool)
     parser.add_argument('--demo_graphs_dir', type=str, help='Folder with all .sg files'
                         ' if not provided then demos will be manually typed in on command prompt')
@@ -418,6 +418,10 @@ def main():
     logger.info('Started the simulate_experiment node...')
     # init_folder = os.path.realpath(script_path + '/../../data/inits')
 
+    timer = srp_md.GlobalTimer()
+    timer.start('experiment')
+
+    timer.start('load_demos')
     if args.demo_graphs_dir is not None:
         demo_graphs = load_demos(args.demo_graphs_dir)
     else:
@@ -428,6 +432,7 @@ def main():
         # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num,
         #                                    [["cracker", "gelatin", "meat", "soup", "sugar"],
         #                                     ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
+    timer.stop('load_demos')
     logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
     # Setup SRP_MD object
@@ -447,11 +452,12 @@ def main():
 
     global_index = last_trial + 1
     logger.info('Previously completed {} trials, resuming at {}'.format(last_trial, global_index))
-    start_time = time.time()
     avg_time = 0
     num_trials = (args.max_num_test_objs - args.min_num_test_objs + 1) * args.num_test_scenes
     srp.set_scenes(demo_graphs, None)
+    timer.start('learn')
     srp.learn()
+    timer.stop('learn')
     logger.info('Learn')
     for trial_set, num_objs in enumerate(range(args.min_num_test_objs, args.max_num_test_objs + 1)):
         for test_scene in range(args.num_test_scenes):
@@ -459,8 +465,16 @@ def main():
             if current_trial <= last_trial:
                 continue
 
+            # Trial timer
+            trial_name = 'trial_{}'.format(global_index)
+            start_time = time.time()
+            timer.start(trial_name)
+
             # Simulate initial scenegraphs
+            init_scene_name = 'init_scene_{}'.format(global_index)
+            timer.start(init_scene_name)
             test_graphs, num_novel = generate_init_scenes(1, [num_objs], grocery_experiment_objs)
+            timer.stop(init_scene_name)
             logger.info('Generated {} initial scenes'.format(len(test_graphs)))
 
             srp.set_scenes(demo_graphs, test_graphs)
@@ -468,13 +482,21 @@ def main():
 
             # Generate goals from learned factors
             # try rospy.service.ServiceException
+            goal_name = 'goal_{}'.format(global_index)
+            timer.start(goal_name)
             srp.generate_goal()
+            timer.stop(goal_name)
             logger.info('Generated goals')
 
+            plan_name = 'plan_{}'.format(global_index)
+            timer.start(plan_name)
+            plans = srp.plan()
+            # plans = [None]
+            timer.stop(plan_name)
+
             # Timing info
-            now = time.time()
-            diff = now - start_time
-            start_time = now
+            timer.stop(trial_name)
+            diff = time.time() - start_time
 
             # Generate results.csv
             with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
@@ -485,13 +507,16 @@ def main():
                                                                  'succeded' if result else 'failed',
                                                                  'because ' + reason if not result else ''))
                     global_results_writer.writerow([index + global_index, len(demo_graphs), result, reason,
-                                                    test_graph.num_objs(), diff, num_novel])
-            global_index += len(srp._goal_instances)
+                                                    test_graph.num_objs(), num_novel, diff, timer.diff_times[trial_name],
+                                                    timer.diff_times[init_scene_name], timer.diff_times[goal_name],
+                                                    timer.diff_times['generate_goal'],
+                                                    timer.diff_times['generate_goal_request'],
+                                                    timer.diff_times['generate_goal_response'],
+                                                    timer.diff_times[plan_name]])
 
-            # plans = srp.plan()
-            plans = None
             save_all(demo_graphs, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
 
+            global_index += len(srp._goal_instances)
             avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
             print('----------------------')
             logger.info('avg_time: {}'.format(avg_time))
@@ -499,6 +524,8 @@ def main():
             logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index) * avg_time)))
             logger.info('Percent completed: {}%'.format(100.0 * (global_index) / num_trials))
             print('----------------------')
+
+    print(timer.diff_times)
 
 
 if __name__ == '__main__':

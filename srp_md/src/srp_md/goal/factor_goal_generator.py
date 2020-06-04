@@ -28,7 +28,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._goal_client_changed = True
         self.use_consistency = True
         self.use_commonsense = False
-        self.use_no_float = True
+        self.use_no_float = False
         self.use_cardinality = True
 
         FactorGraphGoalGenerator.prepare_logical_consistency()
@@ -63,6 +63,9 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('Took factors %s', factors.keys())
 
         # Fill in the request
+        timer = srp_md.GlobalTimer()
+        timer.start('generate_goal')
+        timer.start('generate_goal_request')
         req = GetGoalRequest()
         req.prior_knowledge = self.make_prior_knowledge_msg()
         req.objects = obs.get_obj_names()
@@ -94,8 +97,10 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
             req.factors.extend(self.make_logical_consistency_factors(obs))
 
         # self._logger.debug('Get goal request is:\n{}'.format(req))
+        timer.stop('generate_goal_request')
 
         # Get the response
+        timer.start('generate_goal_response')
         resp = None
         try:
             if self._goal_client_changed:
@@ -104,6 +109,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         except rospy.ServiceException as e:
             self._logger.error('Failed when calling /get_goal service: {}'.format(e))
             return None
+        timer.stop('generate_goal_response')
 
         # self._logger.debug('/get_goal response:\n{}'.format(resp))
 
@@ -119,6 +125,7 @@ class FactorGraphGoalGenerator(goal_generator.BaseGoalGenerator):
         self._logger.debug('What are relation values? %s', goal_graph.get_rel_values())
         # self._logger.debug('What are property values? %s', goal_graph.get_prop_values('color'))
         # self._logger.debug('Is this scene graph consistent? %s', goal_graph.check_consistency("block"))
+        timer.stop('generate_goal')
         return goal_graph
 
     def make_factor(self, obs, factor_type, factor):
