@@ -480,8 +480,8 @@ def main():
 
             plan_name = 'plan_{}'.format(global_index)
             timer.start(plan_name)
-            # plans = srp.plan()
-            plans = [None]
+            plans = srp.plan()
+            # plans = [None]
             timer.stop(plan_name)
 
             # Timing info
