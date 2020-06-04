@@ -129,7 +129,6 @@ class Act
     actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> ac_torso_ctrl_;
     actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> ac_head_pan_tilt_;
     actionlib::SimpleActionClient<control_msgs::PointHeadAction> ac_head_point_;
-    actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac_fetch_move_;
 
     // std::map<int, geometry_msgs::Pose> shelf_id_to_retrieve_pose_;
     ros::ServiceClient get_scene_client_;

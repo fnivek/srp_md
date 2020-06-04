@@ -27,7 +27,6 @@ Act::Act(ros::NodeHandle& nh)
     wait_for_server(ac_torso_ctrl_, "/torso_controller/follow_joint_trajectory");
     wait_for_server(ac_head_pan_tilt_, "/head_controller/follow_joint_trajectory");
     wait_for_server(ac_head_point_, "/head_controller/point_head");
-    wait_for_server(ac_fetch_move_, "/head_controller/point_head");
 
     move_group_.setPlannerId("RRTConnectkConfigDefault");
     get_scene_client_ = nh_.serviceClient<moveit_msgs::GetPlanningScene>("/get_planning_scene");
