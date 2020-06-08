@@ -158,7 +158,8 @@ def build_tree(srp):
                                                                   relation_value='disjoint')])
 
     root.add_children([
-        srp_md.act.actions.GenerateGoalAct(name='generate_goal_act', srp=srp, init_scene_key='srp_init_scene')
+        srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
+        srp_md.act.actions.PlanAct(name='act_plan', srp=srp)
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
