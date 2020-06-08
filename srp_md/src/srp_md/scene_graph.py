@@ -1,11 +1,12 @@
 # Python
 from __future__ import absolute_import
-from builtins import str
+# from builtins import str
 import itertools
 import logging
 import copy
 from collections import OrderedDict
 import os
+import random
 
 # Project
 import srp_md
@@ -246,6 +247,38 @@ class SceneGraph(srp_md.FactorGraph):
                 sg.get_ordered_rel_by_obj_names(obj1, obj2).value = value
 
         return sg
+
+    @classmethod
+    def random_sg(cls, num_objs, feature_space, relation_value='random'):
+        """!
+        @brief      Generate a random scene graph
+
+        @param      cls             The class
+        @param      num_objs        Number of objects to sample from possible_objs
+        @param      feature_space   The feature space
+        @param      relation_value  How to assign the relations, random will randomly assign otherwise all relations
+                                    will be relation
+
+        @return     A random scene graph
+        """
+        # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
+        objs = [srp_md.Object(name='table', id_num=0, uuid=0, assignment=feature_space['table'])]
+        possible_objs = feature_space.keys()
+        possible_objs.remove('table')
+        obj_names = [random.choice(possible_objs) for _ in range(num_objs)]
+        objs.extend([srp_md.Object(name=name + "_" + str(uuid+1), id_num=uuid+1, uuid=uuid+1,
+                     assignment=feature_space[name]) for uuid, name in enumerate(obj_names)])
+        # Build scene graph
+        scene_graph = cls(objs)
+        # Make all relations disjoint
+        for relation in scene_graph.relations:
+            relation.value = random.choice(Relation.RELATION_STRS) if relation_value == 'random' else relation_value
+            # Everything is on or supported by the table
+            if relation.obj1.name == 'table':
+                relation.value = 'support'
+            elif relation.obj2.name == 'table':
+                relation.value = 'on'
+        return scene_graph
 
     def check_consistency(self, world=None):
         # If no world specified, just return True
