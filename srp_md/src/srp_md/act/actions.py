@@ -12,6 +12,7 @@ import py_trees
 import py_trees_ros
 import message_filters
 import time
+import threading
 
 import random
 
@@ -3597,3 +3598,42 @@ class InfiniteDopeAct(py_trees_ros.actions.ActionClient):
         else:
             self.feedback_message = self.override_feedback_message_on_running
             return py_trees.Status.RUNNING
+
+
+class GenerateGoalAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, srp, init_scene_key=None):
+        """!
+        @brief      Constructs a new instance.
+
+        @param      name            The name displayed in the behavior tree visualizer
+        @param      srp             A shared srp_md instance
+        @param      init_scene_key  The blackboard key for the initial scene, if None then it is assumed that the srp_md
+                                    object has an initial scene already
+        """
+        super(GenerateGoalAct, self).__init__(name)
+        self._srp = srp
+        self._thread = None
+        self._init_scene_key = init_scene_key
+
+    def setup(self, timeout):
+        return True
+
+    def initialise(self):
+        # Get an initial scene form the blackboard
+        if self._init_scene_key is not None:
+            blackboard = py_trees.blackboard.Blackboard()
+            self._srp.set_scenes(None, blackboard.get(self._init_scene_key))
+
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._srp.generate_goal)
+            self._thread.start()
+
+    def update(self):
+        # Wait until goal is generated
+        if self._thread.is_alive():
+            return py_trees.common.Status.RUNNING
+        # Goal generated (or failure)
+        self._thread = None
+        if None in self._srp._goal_instances or len(self._srp._goal_instances) == 0:
+            return py_trees.common.Status.FAILURE
+        return py_trees.common.Status.SUCCESS
