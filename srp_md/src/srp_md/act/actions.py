@@ -3637,3 +3637,40 @@ class GenerateGoalAct(py_trees.behaviour.Behaviour):
         if None in self._srp._goal_instances or len(self._srp._goal_instances) == 0:
             return py_trees.common.Status.FAILURE
         return py_trees.common.Status.SUCCESS
+
+
+class PlanAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, srp, plan_key='plan'):
+        """!
+        @brief      Constructs a new instance.
+
+        @param      name            The name displayed in the behavior tree visualizer
+        @param      srp             A shared srp_md instance
+        @param      plan_key        The blackboard key to store the plan at
+
+        """
+        super(PlanAct, self).__init__(name)
+        self._srp = srp
+        self._thread = None
+        self._plan_key = plan_key
+
+    def setup(self, timeout):
+        return True
+
+    def initialise(self):
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._srp.plan)
+            self._thread.start()
+
+    def update(self):
+        # Wait until goal is generated
+        if self._thread.is_alive():
+            return py_trees.common.Status.RUNNING
+        # Goal generated (or failure)
+        self._thread = None
+        # Check for faliure
+        if None in self._srp._plans or len(self._srp._plans) == 0:
+            return py_trees.common.Status.FAILURE
+        # Write plan to blackboard and return success
+        py_trees.blackboard.Blackboard().set(self._plan_key, self._srp._plans)
+        return py_trees.common.Status.SUCCESS
