@@ -67,6 +67,7 @@ class SrpMd(object):
         self._goal_instances = []
         self._new_image = None
         self._new_pcd = None
+        self._plans = [None]
 
         script_path = os.path.dirname(os.path.realpath(__file__))
         self._data_folder = os.path.realpath(script_path + '/../../../data')
@@ -478,12 +479,13 @@ class SrpMd(object):
 
     def plan(self):
         if len(self._initial_graphs) == 0 and len(self._goal_instances) == 0:
-            self._logger.warning('No initial graphs or no goal instances, using example files to plan instead')
-            return [self._planner.plan()]
+            self._logger.warning('No initial graphs or no goal instances to plan on')
+            self._plans = [None]
         else:
             # For this to work properly, generate goal must be run before hands!
-            return [self._planner.plan(init_graph, goal_graph) for
-                    init_graph, goal_graph in zip(self._initial_graphs, self._goal_instances)]
+            self._plans = [self._planner.plan(init_graph, goal_graph) for
+                          init_graph, goal_graph in zip(self._initial_graphs, self._goal_instances)]
+        return self._plans
 
     def act(self):
         if self._solution_filename is None:
