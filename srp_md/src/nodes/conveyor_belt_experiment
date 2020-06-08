@@ -4,6 +4,7 @@ import functools
 import sys
 import os
 import argparse
+import yaml
 
 import rospy
 
@@ -42,6 +43,8 @@ demo_folder = os.path.realpath(script_path + '/../../data/demos')
 logger = logging.getLogger('srp_md')
 logger.setLevel(logging.DEBUG)
 
+feature_space = yaml.load(open(os.path.realpath(script_path + '/../../config/feature_space.yaml'), 'r'))
+
 
 def load_demos(dirname):
     file_names = [os.path.join(dirname, file) for file in os.listdir(dirname)
@@ -52,7 +55,7 @@ def load_demos(dirname):
     return demo_graphs
 
 
-def build_tree():
+def build_tree(srp):
     root = py_trees.composites.Sequence(name='seq_conveyor_belt_root')
 
     test_pose = Pose()
@@ -148,10 +151,14 @@ def build_tree():
     table_crop_box.size.x = 20
     table_crop_box.size.y = 20
     table_crop_box.size.z = 4
-    py_trees.blackboard.Blackboard().set('table_crop_box', table_crop_box)
+    blackboard.set('table_crop_box', table_crop_box)
+
+    # Testing
+    blackboard.set('srp_init_scene', [srp_md.SceneGraph.random_sg(num_objs=3, feature_space=feature_space,
+                                                                  relation_value='disjoint')])
 
     root.add_children([
-        py_trees.behaviours.Success(name='act_success')
+        srp_md.act.actions.GenerateGoalAct(name='generate_goal_act', srp=srp, init_scene_key='srp_init_scene')
     ])
     return py_trees_ros.trees.BehaviourTree(root)
 
@@ -235,7 +242,7 @@ def main():
     timer.stop('learn')
 
     # Build a tree
-    tree = build_tree()
+    tree = build_tree(srp)
 
     # Make sure the tree gets shutdown when ros does
     rospy.on_shutdown(functools.partial(shutdown, tree))
