@@ -146,6 +146,7 @@ def generate_demo_scenes_from_list(objs_list):
     return scene_graphs
 
 
+# TODO(Kevin): Use the new random scene graph generator from scene_graph.py
 def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
     """
     Hardcode Examples
