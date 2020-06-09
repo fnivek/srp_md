@@ -3672,5 +3672,66 @@ class PlanAct(py_trees.behaviour.Behaviour):
         if None in self._srp._plans or len(self._srp._plans) == 0:
             return py_trees.common.Status.FAILURE
         # Write plan to blackboard and return success
-        py_trees.blackboard.Blackboard().set(self._plan_key, self._srp._plans)
+        py_trees.blackboard.Blackboard().set(self._plan_key, self._srp._plans[0])
         return py_trees.common.Status.SUCCESS
+
+
+class _ExecutePlanAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, tree, plan_root_id, plan_key='plan', timeout=1):
+        super(_ExecutePlanAct, self).__init__(name)
+        self._tree = tree
+        self._plan_root_id = plan_root_id
+        self._plan_key = plan_key
+        self._thread = None
+        self._timeout = timeout
+        self._plan_root = None
+
+    def setup(self, timeout):
+        self._timeout = timeout
+        return True
+
+    def _build_tree(self, plan):
+        # No plan means failure
+        if plan is None:
+            self._plan_root = None
+            return
+
+        # Construct the plan as a behavior tree
+        # TODO(Kevin): Convert plan to bt
+        self._plan_root =py_trees.composites.Sequence('seq_{}_plan_root'.format(self.name))
+        self._plan_root.add_children([
+            py_trees.behaviours.Success('act_success')
+        ])
+        # If failed to setup then fail
+        if not self._plan_root.setup(self._timeout):
+            self._plan_root = None
+
+    def initialise(self):
+        if self._thread is None:
+            self._thread = threading.Thread(
+                target=self._build_tree, args=(py_trees.blackboard.Blackboard().get(self._plan_key),))
+            self._thread.start()
+
+    def update(self):
+        # Wait until tree generated
+        if self._thread.is_alive():
+            return py_trees.common.Status.RUNNING
+        # Plan converted (or failure)
+        self._thread = None
+        # Check for failure
+        if self._plan_root is None:
+            return py_trees.common.Status.FAILURE
+        # Update the tree with the new plan
+        self._tree.replace_subtree(self._plan_root_id, self._plan_root)
+        self._plan_root_id = self._plan_root.id
+        return py_trees.common.Status.SUCCESS
+
+
+def ExecutePlanAct(name, tree, timeout=1):
+    root =py_trees.composites.Sequence('seq_{}_root'.format(name))
+    dummy =py_trees.composites.Sequence('seq_{}_dummy_node'.format(name))
+    root.add_children([
+        _ExecutePlanAct(name, tree, dummy.id),
+        dummy
+    ])
+    return root
