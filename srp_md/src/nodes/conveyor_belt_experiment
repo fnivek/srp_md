@@ -157,11 +157,13 @@ def build_tree(srp):
     blackboard.set('srp_init_scene', [srp_md.SceneGraph.random_sg(num_objs=3, feature_space=feature_space,
                                                                   relation_value='disjoint')])
 
+    tree = py_trees_ros.trees.BehaviourTree(root)
     root.add_children([
         srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
-        srp_md.act.actions.PlanAct(name='act_plan', srp=srp)
+        srp_md.act.actions.PlanAct(name='act_plan', srp=srp),
+        srp_md.act.actions.ExecutePlanAct(name='act_execute_plan', tree=tree)
     ])
-    return py_trees_ros.trees.BehaviourTree(root)
+    return tree
 
 
 def shutdown(tree):
