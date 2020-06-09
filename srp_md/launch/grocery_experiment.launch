@@ -1,0 +1,29 @@
+<launch>
+  <arg name="robot" default="fetch"/>
+  <arg name="debug" default="false"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+
+  <!-- Start Gazebo with a blank world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="headless" value="$(arg headless)"/>
+    <arg name="world_name" value="$(find srp_md)/config/grocery.world"/>
+  </include>
+
+  <!-- Oh, you wanted a robot? -->
+  <include file="$(find fetch_gazebo)/launch/include/$(arg robot).launch.xml"/>
+
+  <include file="$(find fetch_moveit_config)/launch/move_group.launch"/>
+  <include file="$(find fetch_manipulation_pipeline/launch/fetch_manipulation_pipeline.launch"/>
+  <include file="$(find fetch_navigation)/launch/fetch_nav.launch">
+    <arg name="map_file" value="$(find srp_md)config/grocery_map.yaml"/>
+  </include>
+
+<!--   <node pkg="srp_md" name="conveyor_belt_experiment" type="conveyor_belt_experiment" output="screen"/>
+  <node pkg="srp_md" name="factor_graph_node" type="factor_graph_node" output="screen"/>
+  <include file="$(find gazebo_ros)/launch/simulation.launch"/>-->
+</launch>

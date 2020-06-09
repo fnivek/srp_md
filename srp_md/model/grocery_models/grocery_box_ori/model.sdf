@@ -1,0 +1,49 @@
+<?xml version='1.0'?>
+<sdf version='1.6'>
+  <model name='grocery_box_ori'>
+    <link name='link_1'>
+    <static>false</static>
+      <inertial>
+        <mass>0.01</mass>
+        <inertia>
+          <ixx>0.166667</ixx>
+          <ixy>0.01</ixy>
+          <ixz>0.01</ixz>
+          <iyy>0.166667</iyy>
+          <iyz>0.01</iyz>
+          <izz>0.166667</izz>
+        </inertia>
+      </inertial>
+      <pose frame=''>0.161925 -0.314325 0 0 -0 1.57</pose>
+      <visual name='visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/grocery_box/meshes/Grocery Box.dae</uri>
+            <scale>1 1 1</scale>
+          </mesh>
+        </geometry>
+        <transparency>0</transparency>
+        <cast_shadows>1</cast_shadows>
+      </visual>
+      <collision name="collision_1">
+        <pose>0.01905 0.161925 0.015 0 0 1.57</pose>
+        <geometry>
+          <box>
+            <size>0.3048 0.01 0.03</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="collision_2">
+        <pose>0.62865 0.161925 0.015 0 0 1.57</pose>
+        <geometry>
+          <box>
+            <size>0.3048 0.01 0.03</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <static>0</static>
+    <allow_auto_disable>1</allow_auto_disable>
+  </model>
+</sdf>
