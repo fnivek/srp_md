@@ -8,20 +8,22 @@ import py_trees
 import py_trees_ros
 
 from gazebo_msgs.srv import SpawnModel
-from geometry_msgs.msg import Pose, Transform, TransformStamped
+from geometry_msgs.msg import Pose, Transform, TransformStamped, Point, Quaternion
 from sensor_msgs.msg import PointCloud2
 from vision_msgs.msg import BoundingBox3D
 from behavior_manager.interfaces.sleep_behavior import *
 from gazebo_msgs.msg import *
 import move_base_msgs.msg as move_base_msgs
 
-from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct, ObjectTestInitializationAct,
+from srp_md.act import (ResetAct, GripperAct, OpenGripperAct, CloseGripperAct, MoveToPoseAct, MoveToRelativePoseAct,
                         # GetDopeSnapshotAct, 
-                        SpawnModelAct,
+                        ChooseGroceryBoxPush, PushBoxPoseGeneration, RelativeCartesianMoveBlackboardAct,
+                        SpawnStaticModelAct, SetValueToBlackBoardAct, ChooseGroceryBoxGrab, GrabBoxPlacePoseGeneration,
+                        FetchMoveAct, SpawnRandomModelAct, DeleteModelAct, RemoveAllCollisionBoxAct, PushPoseGeneration,
                         # FetchInitializationAct,
                         ObjectTranslationAct, ObjectInitializationAct, PushBoxAct, GrabBoxAct, AddAllObjectCollisionBoxAct,
                         GetFakeDopeSnapshotAct, TeleportObjectAct, StabilizeObjectAct, 
-                        # LinkAttachingAct, LinkDettachingAct,
+                        LinkAttachingAct, LinkDettachingAct,
                         PickWithPoseAct, PlaceWithPoseAct, GetTableAct, CropPCAct, TFPCAct, PCPubAct,GroceryBoxInitializationAct,
                         ChooseGrasplocObjAct, GrasplocAct, FilterGrasplocPoints, AddCollisionBoxAct, MoveToFirstPoseAct,
                         FreeSpaceFinderAct, GrasplocPickAct, RemoveCollisionBoxAct, OffsetPoses, GetStackPoseAct, PickAct,MoveToStartAct,
@@ -152,12 +154,19 @@ def build_tree():
     test_move_base.target_pose.header.seq = 2
     test_move_base.target_pose.header.frame_id = "map"
     test_move_base.target_pose.pose.orientation.w = 1
-    test_move_base.target_pose.pose.position.y = -3
-    test_move_base.target_pose.pose.position.x = 3
+    test_move_base.target_pose.pose.position.y = -1
+    test_move_base.target_pose.pose.position.x = 0
 
+    pre_grasp = TransformStamped()
+    pre_grasp.header.frame_id = 'base_link'
+    pre_grasp.transform.translation.x = 0.4
+    pre_grasp.transform.translation.y = -0.2
+    pre_grasp.transform.translation.z = 0.45
+    pre_grasp.transform.rotation.x = 0.0
+    pre_grasp.transform.rotation.y = 1.0
+    pre_grasp.transform.rotation.z = 0.0
+    pre_grasp.transform.rotation.w = 0.0
 
-    f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/table_1/model.sdf','r')
-    sdff = f.read()
     # grasploc_grasp_fall = py_trees.composites.Selector('grasploc_grasp_fall')
     # grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     # grasploc_grasp_seq.add_children([
@@ -176,6 +185,12 @@ def build_tree():
     # ])
 
     root.add_children([
+        SetValueToBlackBoardAct('SetValueToBlackBoardAct'),
+        FullyExtendTorso('act_please_extend_torso'),
+        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
+        OpenGripperAct('act_open_gripper'),
+        TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
+        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
         # LinkDettachingAct('LinkDettachAct', object_name='meat_0', link_name='link_1'),
         # PushBoxAct('PushBoxAct'),
         # py_trees_ros.subscribers.ToBlackboard(
@@ -186,28 +201,91 @@ def build_tree():
         #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         # StabilizeObjectAct('StabilizeObjectAct', obj_name='cracker_0'),
         # LinkDettachingAct('LinkDettachAct', object_name='mustard_0', link_name='link_1'),
-        SpawnModelAct('SpawnModelAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        SpawnStaticModelAct('SpawnStaticModelAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # GroceryBoxInitializationAct('GroceryBoxInitializationAct', grocery_box_num=1),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        AddAllObjectCollisionBoxAct('AddAllObjectCollisionBoxAct'),
+        SleepBehavior('act_sleep_a_smidge', duration=1),
+        RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
+        PushBoxAct('PushBoxAct'),
+        # GrabBoxPlacePoseGeneration('GrabBoxPlacePoseGeneration'),
+        # ChooseGroceryBoxPush('ChooseGroceryBoxPush'),
+        # PushBoxPoseGeneration('PushBoxPoseGeneration'),
+        # MoveToRelativePoseAct('act_move_pre_grasp', pre_grasp),
+        # RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
+        # OffsetPoses('act_offset_place_poses',
+        #             offset=[-(gripper_length + pre_grasp_offset), 0, 0],
+        #             in_poses_key='grab_pose',
+        #             out_poses_key='offset_place_pose', debug=True),
+        # py_trees_ros.actions.ActionClient(
+        # name="Move Out",
+        # action_namespace="/move_base",
+        # action_spec=move_base_msgs.MoveBaseAction,
+        # action_goal=test_move_base
+        # ),
+        # TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
+        # FetchMoveAct('FetchMoveAct', position=Point(-1,-1,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        # MoveToRelativePoseAct('act_move_pre_grasp', pre_grasp),
+        
+        # FetchMoveAct('FetchMoveAct', position=Point(0,0.4,0), orientation=Quaternion(0, 0, 0.707, 0.707), frame_id='map'),
+        # FetchMoveAct('FetchMoveAct', position=Point(0.27,-0.75,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        # FetchMoveAct('FetchMoveAct', position=Point(0,0.5,0), orientation=Quaternion(0, 0, 0.707, 0.707), frame_id='map'),
         # TuckBehavior('TuckBehavior'),
         # GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
-        # py_trees_ros.subscribers.ToBlackboard(
-        #     name='act_get_groundtruth',
-        #     topic_name='/gazebo/model_states',
-        #     topic_type=ModelStates,
-        #     blackboard_variables={'model_state': None},
-        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # FetchMoveAct('FetchMoveAct', position=Point(0,0.4,0), orientation=Quaternion(0, 0, 0.707, 0.707), frame_id='map'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # DeleteModelAct('DeleteModelAct'),
+        # ChooseGroceryBoxGrab('ChooseGroceryBoxGrab'),
+        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
+        # GrabBoxAct('GrabBoxAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # SpawnRandomModelAct('SpawnRandomModelAct'),
         # SleepBehavior('act_sleep_a_smidge', duration=0.5),
         # GroceryBoxInitializationAct('GroceryBoxInitializationAct'),
-        # ObjectTestInitializationAct('ObjectTestInitializationAct'),
         # ObjectInitializationAct('ObjectInitializationAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        # GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
 
-
-        # py_trees_ros.subscribers.ToBlackboard(
-        #     name='act_get_groundtruth',
-        #     topic_name='/gazebo/model_states',
-        #     topic_type=ModelStates,
-        #     blackboard_variables={'model_state': None},
-        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
         # ObjectTranslationAct('ObjectTranslationAct'),
 
         # AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
@@ -224,14 +302,8 @@ def build_tree():
         # AddCollisionBoxAct('act_add_bot_wall', box_name='bot_wall', box_pose=bot_wall_pose, box_size=[0.5, 0.5, 0.01]),
         # py_trees.meta.oneshot(ResetAct)('reset'),
         # py_trees.meta.oneshot(FullyExtendTorso)('act_please_extend_torso'),
-        FullyExtendTorso('act_please_extend_torso'),
-        SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
-        # FullyCollapseTorso('act_please_collapse_torso'),
-        # GetDopeSnapshotAct('act_get_dope_snapshot'),
-        # PickAct('pick_1', 'grasp_pose'),
-        OpenGripperAct('act_open_gripper'),
-        TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
-        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
+        
+        
         # TuckWithCondBehavior('act_tuck_arm', tuck_pose='tuck'),
         # # # PlaceWithPoseAct('place_1', 'grasp_pose'),
         # # MsurfaceoveToPoseAct('move_to_test_pose', pose=test_pose),
@@ -257,12 +329,12 @@ def build_tree():
             topic_type=PointCloud2,
             blackboard_variables={'depth_pc': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        # py_trees_ros.subscribers.ToBlackboard(
-        #     name='act_get_groundtruth',
-        #     topic_name='/gazebo/model_states',
-        #     topic_type=ModelStates,
-        #     blackboard_variables={'model_state': None},
-        #     clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         # FetchInitializationAct('FetchInitializationAct'),
 
         # SleepBehavior('act_sleep_a_smidge', duration=1),
