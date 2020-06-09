@@ -7,6 +7,7 @@ Define the actions used in srp_md.
 from copy import deepcopy
 
 import rospy
+import rospkg
 import actionlib
 import tf
 import py_trees
@@ -45,6 +46,9 @@ from behavior_manager.interfaces.manipulation_behavior_new import (TuckWithCondB
                                                                    FullyCollapseTorso, FullyExtendTorso)
 from behavior_manager.interfaces.fetch_manipulation_behavior import *
 from behavior_manager.interfaces.sleep_behavior import *
+
+rospack = rospkg.RosPack()
+srp_md_path = rospack.get_path('srp_md')
 
 gripper_length = 0.15
 # gripper_length = 0.22
@@ -1294,7 +1298,7 @@ class GroceryBoxInitializationAct(py_trees.behaviour.Behaviour):
 
         req = SpawnModelRequest()
         req.model_name = 'grocery_box'
-        f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/grocery_box/model.sdf','r')
+        f = open(srp_md_path + '/model/grocery_models/grocery_box/model.sdf','r')
         req.model_xml = f.read()
         req.initial_pose.orientation = Quaternion(0,0,0.707,0.707)
         req.initial_pose.position.x = self._lower_table_pose.position.x
@@ -1308,7 +1312,7 @@ class GroceryBoxInitializationAct(py_trees.behaviour.Behaviour):
             for i in range(self._grocery_box_num - 1):
                 req = SpawnModelRequest()
                 req.model_name = 'grocery_box' + '_' + str(i)
-                f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/grocery_box/model.sdf','r')
+                f = open(srp_md_path + '/model/grocery_models/grocery_box/model.sdf','r')
                 req.model_xml = f.read()
                 req.initial_pose.orientation = Quaternion(0,0,0.707,0.707)
                 req.initial_pose.position.x = self._lower_table_pose.position.x
@@ -3418,12 +3422,12 @@ class SpawnRandomModelAct(py_trees.behaviour.Behaviour):
                     elif int(name[len(object_name) + self._object_name_compensate_num:]) + 2 >= object_num[object_name]:
                         object_num[object_name] = int(name[len(object_name) + self._object_name_compensate_num:]) + 2
         All_object_file = []
-        All_object_file.append('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/cracker_test/model.sdf')
-        All_object_file.append('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/gelatin_test/model.sdf')
-        All_object_file.append('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/meat_test/model.sdf')
-        All_object_file.append('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/mustard_test/model.sdf')
-        All_object_file.append('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/soup_test/model.sdf')
-        All_object_file.append('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/sugar_test/model.sdf')
+        All_object_file.append(srp_md_path + '/model/grocery_models/cracker_test/model.sdf')
+        All_object_file.append(srp_md_path + '/model/grocery_models/gelatin_test/model.sdf')
+        All_object_file.append(srp_md_path + '/model/grocery_models/meat_test/model.sdf')
+        All_object_file.append(srp_md_path + '/model/grocery_models/mustard_test/model.sdf')
+        All_object_file.append(srp_md_path + '/model/grocery_models/soup_test/model.sdf')
+        All_object_file.append(srp_md_path + '/model/grocery_models/sugar_test/model.sdf')
         dis_to_edge_x = {'cracker': 0.152, 'gelatin': 0.09,'meat': 0.092,'mustard': 0.08,'soup': 0.034, 'sugar': 0.097}
         dis_to_edge_y = {'cracker': 0.207, 'gelatin': 0.097,'meat': 0.05,'mustard': 0.06,'soup': 0.034, 'sugar': 0.174}
         object_radius = {'cracker': 0.2644 / 2, 'gelatin': 0.135 - 0.013, 'meat': 0.108 + 0.15, 'mustard': 0.2147 / 2 + 0.005,'soup': 0.113 + 0.02, 'sugar': 0.204 / 2}
@@ -3533,7 +3537,7 @@ class SpawnStaticModelAct(py_trees.behaviour.Behaviour):
 
         req = SpawnModelRequest()
         req.model_name = 'table'
-        f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/table_1/model.sdf','r')
+        f = open(srp_md_path + '/model/grocery_models/table_1/model.sdf','r')
         req.model_xml = f.read()
         req.initial_pose.orientation.w = 1
         req.initial_pose.position.x = 1
@@ -3543,7 +3547,7 @@ class SpawnStaticModelAct(py_trees.behaviour.Behaviour):
 
         req = SpawnModelRequest()
         req.model_name = 'lower_table'
-        f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/table_2/model.sdf','r')
+        f = open(srp_md_path + '/model/grocery_models/table_2/model.sdf','r')
         req.model_xml = f.read()
         req.initial_pose.orientation.w = 1
         req.initial_pose.position.y = 1
@@ -3553,7 +3557,7 @@ class SpawnStaticModelAct(py_trees.behaviour.Behaviour):
 
         req = SpawnModelRequest()
         req.model_name = 'conveyor_belt'
-        f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/conveyor_belt/model.sdf','r')
+        f = open(srp_md_path + '/model/grocery_models/conveyor_belt/model.sdf','r')
         req.model_xml = f.read()
         req.initial_pose.orientation.w = 1
         req.initial_pose.position.x = 1
@@ -3564,7 +3568,7 @@ class SpawnStaticModelAct(py_trees.behaviour.Behaviour):
 
         req = SpawnModelRequest()
         req.model_name = 'wall'
-        f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/wall/model.sdf','r')
+        f = open(srp_md_path + '/model/grocery_models/wall/model.sdf','r')
         req.model_xml = f.read()
         req.initial_pose.orientation.w = 1
         req.initial_pose.position.x = 0
@@ -3575,7 +3579,7 @@ class SpawnStaticModelAct(py_trees.behaviour.Behaviour):
 
         # req = SpawnModelRequest()
         # req.model_name = 'cracker_test_1'
-        # f = open('/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/cracker_test/model.sdf','r')
+        # f = open(srp_md_path + '/model/grocery_models/cracker_test/model.sdf','r')
         # req.model_xml = f.read()
         # req.initial_pose.orientation = Quaternion(0.5, -0.5, 0.5, 0.5)
         # # req.initial_pose.orientation.w = 1
