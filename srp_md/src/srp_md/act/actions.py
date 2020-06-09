@@ -3698,10 +3698,34 @@ class _ExecutePlanAct(py_trees.behaviour.Behaviour):
 
         # Construct the plan as a behavior tree
         # TODO(Kevin): Convert plan to bt
-        self._plan_root =py_trees.composites.Sequence('seq_{}_plan_root'.format(self.name))
-        self._plan_root.add_children([
-            py_trees.behaviours.Success('act_success')
-        ])
+        self._plan_root = py_trees.composites.Sequence('seq_{}_plan_root'.format(self.name))
+        for action in plan:
+            if action[0] == 'pick_from_surface':
+                obj = action[1]
+                self._plan_root.add_child(py_trees.behaviours.Success('act_pick_from_surface_{}'.format(obj)))
+            elif action[0] == 'place_on_surface':
+                obj = action[1]
+                self._plan_root.add_child(py_trees.behaviours.Success('act_place_on_surface_{}'.format(obj)))
+            elif action[0] == 'place_on_stack':
+                obj = action[1]
+                to_obj = action[2]
+                self._plan_root.add_child(py_trees.behaviours.Success('act_place_on_stack_{}_{}'.format(obj, to_obj)))
+            elif action[0] == 'pick_from_stack':
+                obj = action[1]
+                from_obj = action[2]
+                self._plan_root.add_child(py_trees.behaviours.Success(
+                    'act_pick_from_stack_{}_{}'.format(obj, from_obj)))
+            elif action[0] == 'place_on_surf_proximity_to':
+                obj = action[1]
+                other_obj = action[2]
+                self._plan_root.add_child(py_trees.behaviours.Success(
+                    'act_place_on_surf_proximity_to_{}_{}'.format(obj, other_obj)))
+            elif action[0] == 'place_on_obj_proximity_to':
+                obj = action[1]
+                other_obj = action[2]
+                bot_obj = action[3]
+                self._plan_root.add_child(py_trees.behaviours.Success(
+                    'act_place_on_obj_proximity_to_{}_{}_{}'.format(obj, other_obj, bot_obj)))
         # If failed to setup then fail
         if not self._plan_root.setup(self._timeout):
             self._plan_root = None
