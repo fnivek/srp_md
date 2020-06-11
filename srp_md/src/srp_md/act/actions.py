@@ -2289,7 +2289,7 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
     def update(self):
         grasp_poses = deepcopy(py_trees.blackboard.Blackboard().get('filtered_grasploc'))
         pose_index_parformed = deepcopy(py_trees.blackboard.Blackboard().get('pose_index_parformed'))
-        
+
         if not self.action_client:
             self.feedback_message = "no action client, did you call setup() on your tree?"
             return py_trees.Status.INVALID
@@ -4280,16 +4280,6 @@ class PlanAct(py_trees.behaviour.Behaviour):
         if None in self._srp._plans or len(self._srp._plans) == 0:
             return py_trees.common.Status.FAILURE
         # Write plan to blackboard and return success
-        # self._srp._plans[0] = []
-        # plan_temp = []
-        # plan_temp.append('pick_from_surface')
-        # plan_temp.append('meat_0')
-        # self._srp._plans[0].append(deepcopy(plan_temp))
-        # plan_temp = []
-        # plan_temp.append('place_on_surf_proximity_to')
-        # plan_temp.append('meat_0')
-        # plan_temp.append('cracker_1')
-        self._srp._plans[0].append(deepcopy(plan_temp))
         py_trees.blackboard.Blackboard().set(self._plan_key, self._srp._plans[0])
         return py_trees.common.Status.SUCCESS
 
