@@ -4351,3 +4351,73 @@ def ExecutePlanAct(name, tree, timeout=1):
         dummy
     ])
     return root
+
+
+def GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, feature_space):
+    root = py_trees.composites.Sequence('seq_{}_root'.format(name))
+    root.add_children([
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        _GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, feature_space)
+    ])
+    return root
+
+
+class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, init_scene_key, max_num_objs, min_y, feature_space):
+        super(_GenerateInitSceneAct, self).__init__(name)
+        self._init_scene_key = init_scene_key
+        self._feature_space = feature_space
+        self._max_num_objs = max_num_objs
+        self._min_y = min_y
+
+    def update(self):
+        # Get the pose and name of all gazebo models
+        bb = py_trees.blackboard.Blackboard()
+        model_states = bb.get('model_state')
+        model_states = zip(model_states.name, model_states.pose)
+        print(model_states)
+        # Filter all objects not in feature space
+        model_states = filter(lambda (name, pose): any([key in name for key in self._feature_space.keys()]),
+                              model_states)
+        print(model_states)
+        # Filter tables
+        model_states = filter(lambda (name, pose): 'table' not in name, model_states)
+        print(model_states)
+        # Sort by y value and take only max_num_objs
+        model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
+        print(model_states)
+        # Filter out objects to far from robotstates that are to far from the robot
+        model_states = filter(lambda (name, pose): pose.position.y > self._min_y, model_states)
+        print(model_states)
+        # Drop poses
+        model_names = [name for name, pose in model_states]
+        print(model_names)
+
+        # Construct scene graph
+        # TODO(Kevin): Get feature space key from name e.g. cracker from cracker_test_1
+        objs = [srp_md.Object(name='table', id_num=0, uuid=0, assignment=self._feature_space['table'])]
+        for uuid, name in enumerate(model_names):
+            assignment = None
+            for key, value in self._feature_space.iteritems():
+                if key in name:
+                    assignment = value
+                    break
+            objs.append(srp_md.Object(name=name, id_num=uuid+1, uuid=uuid+1, assignment=assignment))
+        # Build scene graph
+        init_sg = srp_md.scene_graph.SceneGraph(objs)
+        # Make all relations disjoint
+        for relation in init_sg.relations:
+            relation.value = 'disjoint'
+            # Everything is on or supported by the table
+            if relation.obj1.name == 'table':
+                relation.value = 'support'
+            elif relation.obj2.name == 'table':
+                relation.value = 'on'
+
+        bb.set(self._init_scene_key, [init_sg])
+        return py_trees.common.Status.SUCCESS
