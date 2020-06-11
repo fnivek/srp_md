@@ -19,7 +19,7 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/grocery_box/meshes/Grocery Box.dae</uri>
+            <uri>/home/user/catkin_ws/src/mobile_manipulation/srp-md/srp_md/model/grocery_models/grocery_box/meshes/Grocery Box.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>

@@ -20,7 +20,7 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/user/catkin_ws/src/mobile_manipulation/srp-md/data/gazebo_test/gelatin_test/meshes/textured.dae</uri>
+            <uri>/home/user/catkin_ws/src/mobile_manipulation/srp-md/srp_md/model/grocery_models/gelatin_test/meshes/textured.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
