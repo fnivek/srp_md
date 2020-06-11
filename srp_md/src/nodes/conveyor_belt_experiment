@@ -208,7 +208,7 @@ def parse_args():
                         choices=learn.FACTOR_LEARNERS.keys())
     parser.add_argument('--use_consistency', help='Choose to use consistency prior', default=True, type=srp_md.str2bool)
     parser.add_argument('--use_no_float', help='Choose to use no float prior', default=False, type=srp_md.str2bool)
-    parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=True,
+    parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=False,
                         type=srp_md.str2bool)
     parser.add_argument('--max_num_objs', type=int, default=4, help='Maximum number of objects allowed in object set')
     parser.add_argument('--min_num_test_objs', type=int, default=3, help='Minimum number of objects in object set')
