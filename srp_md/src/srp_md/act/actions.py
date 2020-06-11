@@ -4344,8 +4344,8 @@ class _ExecutePlanAct(py_trees.behaviour.Behaviour):
 
 
 def ExecutePlanAct(name, tree, timeout=1):
-    root =py_trees.composites.Sequence('seq_{}_root'.format(name))
-    dummy =py_trees.composites.Sequence('seq_{}_dummy_node'.format(name))
+    root = py_trees.composites.Sequence('seq_{}_root'.format(name))
+    dummy = py_trees.composites.Sequence('seq_{}_dummy_node'.format(name))
     root.add_children([
         _ExecutePlanAct(name, tree, dummy.id),
         dummy
