@@ -56,7 +56,11 @@ def load_demos(dirname):
 
 
 def build_tree(srp):
-    root = py_trees.composites.Sequence(name='seq_conveyor_belt_root')
+    root = py_trees.composites.Parallel(
+        name='pal_conveyor_belt_root',
+        policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL,
+        synchronize=False,
+        allow_failure=True)
 
     test_pose = Pose()
     test_pose.position.x = 0.75
@@ -158,10 +162,32 @@ def build_tree(srp):
                                                                   relation_value='disjoint')])
 
     tree = py_trees_ros.trees.BehaviourTree(root)
-    root.add_children([
+    main = py_trees.composites.Sequence('seq_main')
+    main.add_children([
+        srp_md.act.actions.SetValueToBlackBoardAct(name='act_set_blackboard'),
+        srp_md.act.actions.SpawnStaticModelAct(name='act_spawn_static_objects'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        srp_md.act.actions.SpawnRandomModelAct(name='act_add_groceries'),
+        srp_md.act.actions.ObjectTranslationAct(name="act_translate_objs"),
+        srp_md.act.actions.GenerateInitSceneAct(name='act_gen_init_scene', init_scene_key='srp_init_scene',
+                                                max_num_objs=6, min_y=-1.25, feature_space=feature_space),
         srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
         srp_md.act.actions.PlanAct(name='act_plan', srp=srp),
         srp_md.act.actions.ExecutePlanAct(name='act_execute_plan', tree=tree)
+    ])
+    root.add_children([
+        main,
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE)
     ])
     return tree
 
