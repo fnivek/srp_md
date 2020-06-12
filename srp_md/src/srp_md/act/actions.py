@@ -1641,19 +1641,40 @@ class ChooseGrasplocObjAct(py_trees.behaviour.Behaviour):
         self._inhand_collision_object_key = inhand_collision_object_key
         self._name = name
         self._obj_dim_key = obj_dim_key
+        self._All_object_name_key = 'All_object_name'
+        self._object_name_compensate_num = 6
 
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
         bboxes = blackboard.get(self._bbox_key)
+        All_name = deepcopy(blackboard.get(self._All_object_name_key))
         if bboxes is None or len(bboxes) == 0:
             return py_trees.Status.FAILURE
+        object_name = None
 
-        blackboard.set(self._crop_box_key, bboxes[self._object_index])
-        size_box = bboxes[self._object_index].size
-        collision_box_list = ['inhand_collision_object', bboxes[self._object_index].center, [size_box.x, size_box.y, size_box.z]]
+        if 'test' not in self._object_index:
+            object_name = self._object_index
+        else:
+            if 'test_' in self._object_index:
+                self._object_name_compensate_num = 6
+            elif 'test' in self._object_index:
+                self._object_name_compensate_num = 4
+            else:
+                self._object_name_compensate_num = 0
+            for name_index in range(len(All_name)):
+                if All_name[name_index] in self._object_index:
+                    if All_name[name_index] + '_test' == self._object_index or All_name[name_index] == self._object_index:
+                        object_name = All_name[name_index] + '_0'
+                    else:
+                        object_name = All_name[name_index] + '_' + str(int(self._object_index[len(All_name[name_index]) + self._object_name_compensate_num:]) + 1)
+
+        blackboard.set(self._crop_box_key, bboxes[object_name])
+        size_box = bboxes[object_name].size
+
+        collision_box_list = ['inhand_collision_object', bboxes[object_name].center, [size_box.x, size_box.y, size_box.z]]
 
         blackboard.set(self._inhand_collision_object_key, collision_box_list)
-        blackboard.set(self._obj_dim_key, bboxes[self._object_index].size)
+        blackboard.set(self._obj_dim_key, bboxes[object_name].size)
         return py_trees.Status.SUCCESS
 
 
@@ -3671,6 +3692,8 @@ class LinkAttachingAct(py_trees.behaviour.Behaviour):
         self._link_name = link_name
         self._relative_object_name = relative_object_name
         self._relative_link_name = relative_link_name
+        self._All_object_name_key = 'All_object_name'
+        self._object_name_compensate_num = 1
 
     def setup(self, timeout):
         rospy.wait_for_service('/link_attacher_node/attach', timeout=timeout)
@@ -3682,10 +3705,17 @@ class LinkAttachingAct(py_trees.behaviour.Behaviour):
         pass
 
     def update(self):
+        All_name = deepcopy(py_trees.blackboard.Blackboard().get(self._All_object_name_key))
         object_move_name = None
-        object_move_name = self._object_name[0:-1] + 'test_' + str(int(self._object_name[-1]) - 1)
-        if self._object_name[-1] == '0':
-            object_move_name = object_move_name[0:-3]
+        if 'test' in self._object_name:
+            object_move_name = self._object_name
+        else:
+            for name_index in range(len(All_name)):
+                if All_name[name_index] in self._object_name:
+                    if All_name[name_index] + '_0' == self._object_name:
+                        object_move_name = All_name[name_index] + '_test'
+                    else:
+                        object_move_name = All_name[name_index] + '_test_' + str(int(self._object_name[len(All_name[name_index]) + self._object_name_compensate_num:]) - 1)
         req = AttachRequest()
         req.model_name_1 = object_move_name
         req.link_name_1 = self._link_name
@@ -3693,6 +3723,7 @@ class LinkAttachingAct(py_trees.behaviour.Behaviour):
         req.link_name_2 = self._relative_link_name
         self._link_attacher_client.call(req)
         return py_trees.Status.SUCCESS
+
 
 class LinkDettachingAct(py_trees.behaviour.Behaviour):
     def __init__(self, name, object_name, link_name, relative_object_name='fetch', relative_link_name='wrist_roll_link'):
@@ -3704,6 +3735,8 @@ class LinkDettachingAct(py_trees.behaviour.Behaviour):
         self._link_name = link_name
         self._relative_object_name = relative_object_name
         self._relative_link_name = relative_link_name
+        self._All_object_name_key = 'All_object_name'
+        self._object_name_compensate_num = 1
 
     def setup(self, timeout):
         rospy.wait_for_service('/link_attacher_node/detach', timeout=timeout)
@@ -3715,10 +3748,17 @@ class LinkDettachingAct(py_trees.behaviour.Behaviour):
         pass
 
     def update(self):
+        All_name = deepcopy(py_trees.blackboard.Blackboard().get(self._All_object_name_key))
         object_move_name = None
-        object_move_name = self._object_name[0:-1] + 'test_' + str(int(self._object_name[-1]) - 1)
-        if self._object_name[-1] == '0':
-            object_move_name = object_move_name[0:-3]
+        if 'test' in self._object_name:
+            object_move_name = self._object_name
+        else:
+            for name_index in range(len(All_name)):
+                if All_name[name_index] in self._object_name:
+                    if All_name[name_index] + '_0' == self._object_name:
+                        object_move_name = All_name[name_index] + '_test'
+                    else:
+                        object_move_name = All_name[name_index] + '_test_' + str(int(self._object_name[len(All_name[name_index]) + self._object_name_compensate_num:]) - 1)
         req = AttachRequest()
         req.model_name_1 = object_move_name
         req.link_name_1 = self._link_name
@@ -4011,6 +4051,24 @@ def PickAct(name, obj):
     # Add steps to execute pick action
 
     object_index = obj
+    All_object_name = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar"]
+    object_name = None
+    object_name_compensate_num = 6
+    if 'test' not in object_index:
+        object_name = object_index
+    else:
+        if 'test_' in object_index:
+            object_name_compensate_num = 6
+        elif 'test' in object_index:
+            object_name_compensate_num = 4
+        else:
+            object_name_compensate_num = 0
+        for name_index in range(len(All_object_name)):
+            if All_object_name[name_index] in object_index:
+                if All_object_name[name_index] + '_test' == object_index or All_object_name[name_index] == object_index:
+                    object_name = All_object_name[name_index] + '_0'
+                else:
+                    object_name = All_object_name[name_index] + '_' + str(int(object_index[len(All_object_name[name_index]) + object_name_compensate_num:]) + 1)
 
     grasploc_grasp_fall = py_trees.composites.Selector('grasploc_grasp_fall')
     grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
@@ -4018,9 +4076,9 @@ def PickAct(name, obj):
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
         SleepBehavior('act_sleep_a_smidge', duration=1.5),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
-        LinkAttachingAct('LinkAttachAct', object_name=object_index, link_name='link_1'),
+        LinkAttachingAct('LinkAttachAct', object_name=object_name, link_name='link_1'),
         CloseGripperAct('act_close_gripper'),
-        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name=object_index),
+        RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name=object_name),
         AddCollisionBoxAct('act_add_inhand_collision_object', box_bb_key='inhand_collision_object'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
@@ -4073,7 +4131,7 @@ def PickAct(name, obj):
         # GetTableAct('act_get_table'),
 
 
-        ChooseGrasplocObjAct('act_choose_grasploc_obj', object_index=object_index),
+        ChooseGrasplocObjAct('act_choose_grasploc_obj', object_index=object_name),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         GraspPoseGeneration('generate_gripper_pose'),
         FilterGrasplocPoints('act_filt_grasploc'),
@@ -4101,13 +4159,48 @@ def PlaceAct(name, obj, surface, relation='None'):
         children=None)
     object_index = obj
     relative_object_index = surface
+    All_object_name = ["cracker", "gelatin", "meat", "mustard", "soup", "sugar"]
+    object_name = None
+    relative_object_name = None
+    object_name_compensate_num = 6
+    if 'test' not in object_index:
+        object_name = object_index
+    else:
+        if 'test_' in object_index:
+            object_name_compensate_num = 6
+        elif 'test' in object_index:
+            object_name_compensate_num = 4
+        else:
+            object_name_compensate_num = 0
+        for name_index in range(len(All_object_name)):
+            if All_object_name[name_index] in object_index:
+                if All_object_name[name_index] + '_test' == object_index or All_object_name[name_index] == object_index:
+                    object_name = All_object_name[name_index] + '_0'
+                else:
+                    object_name = All_object_name[name_index] + '_' + str(int(object_index[len(All_object_name[name_index]) + object_name_compensate_num:]) + 1)
+
+    if 'test' not in relative_object_index:
+        relative_object_name = relative_object_index
+    else:
+        if 'test_' in relative_object_index:
+            object_name_compensate_num = 6
+        elif 'test' in relative_object_index:
+            object_name_compensate_num = 4
+        else:
+            object_name_compensate_num = 0
+        for name_index in range(len(All_object_name)):
+            if All_object_name[name_index] in relative_object_index:
+                if All_object_name[name_index] + '_test' == relative_object_index or All_object_name[name_index] == relative_object_index:
+                    relative_object_name = All_object_name[name_index] + '_0'
+                else:
+                    relative_object_name = All_object_name[name_index] + '_' + str(int(relative_object_index[len(All_object_name[name_index]) + object_name_compensate_num:]) + 1)
 
     place_act_fall = py_trees.composites.Selector('place_act_fall')
     place_act_seq = py_trees.composites.Sequence('place_act_seq')
     place_act_seq.add_children([
-        SetPlanValueAct('SetPlanValueAct', relation=relation, relative_object_index=relative_object_index),
+        SetPlanValueAct('SetPlanValueAct', relation=relation, relative_object_index=relative_object_name),
         # PCPubAct('act_pub_croped_pc', 'depth_downsampled', 'depth_downsampled'),
-        FreeSpaceFinderAct('act_find_free_space', object_index=object_index),
+        FreeSpaceFinderAct('act_find_free_space', object_index=object_name),
         PCPubAct('act_pub_croped_pc', 'depth_downsampled', 'depth_downsampled'),
         GetStackPoseAct('act_get_stack_pose'),
         OffsetPoses('act_offset_place_poses',
@@ -4115,12 +4208,12 @@ def PlaceAct(name, obj, surface, relation='None'):
                     in_poses_key='free_space_poses',
                     out_poses_key='offset_place_pose', debug=True),
 
-        MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose', place_if=True, object_index=object_index),
+        MoveToFirstPoseAct('act_pick_grasploc', poses_key='offset_place_pose', place_if=True, object_index=object_name),
         SleepBehavior('act_sleep_a_smidge', duration=1.5),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_place_tf),
         SleepBehavior('act_sleep_a_smidge', duration=1),
         OpenGripperAct('act_open_gripper'),
-        LinkDettachingAct('LinkAttachAct', object_name=object_index, link_name='link_1'),
+        LinkDettachingAct('LinkAttachAct', object_name=object_name, link_name='link_1'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
@@ -4129,7 +4222,7 @@ def PlaceAct(name, obj, surface, relation='None'):
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         StabilizeObjectAct('StabilizeObjectAct', obj_name=obj),
 
-        # TeleportObjectAct('TeleportObject', obj_name=object_index),
+        # TeleportObjectAct('TeleportObject', obj_name=object_name),
 
         AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
@@ -4289,7 +4382,7 @@ class PlanAct(py_trees.behaviour.Behaviour):
         # plan_temp.append('place_on_surf_proximity_to')
         # plan_temp.append('meat_0')
         # plan_temp.append('cracker_1')
-        self._srp._plans[0].append(deepcopy(plan_temp))
+        # self._srp._plans[0].append(deepcopy(plan_temp))
         py_trees.blackboard.Blackboard().set(self._plan_key, self._srp._plans[0])
         return py_trees.common.Status.SUCCESS
 
