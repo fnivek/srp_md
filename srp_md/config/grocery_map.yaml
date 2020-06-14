@@ -1,6 +1,6 @@
 image: /home/user/catkin_ws/src/mobile_manipulation/srp-md/srp_md/config/grocery_map.pgm
 resolution: 0.050000
-origin: [-1.990002, -6.962472, 0.000000]
+origin: [-1.990483, -7.015839, 0.000000]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196
