@@ -953,10 +953,9 @@ class TeleportObjectAct(py_trees.behaviour.Behaviour):
 
         return py_trees.Status.SUCCESS
 
-
         # 0 for normal stabilization, 1 for tilt, 2 for flat
 class StabilizeObjectAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, obj_name, model_state_key="model_state", free_space_poses_key="free_space_poses", relation_key='relation', mode=0):
+    def __init__(self, name, obj_name=None, model_state_key="model_state", free_space_poses_key="free_space_poses", relation_key='relation'):
         super(StabilizeObjectAct, self).__init__(name)
         self._model_state_key = model_state_key
         self._model_state = None
@@ -968,7 +967,6 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
         self._obj_index = None
         self._relation_key = relation_key
         self._relation = None
-        self._mode = mode
         self._All_object_offset_key = 'All_object_offset'
         self._All_object_name_key = 'All_object_name'
         self._All_object_size_key = 'All_object_size'
@@ -985,6 +983,28 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
         self._free_space_poses = py_trees.blackboard.Blackboard().get(self._free_space_poses_key)
         if self._obj_name == 'table':
+            return py_trees.Status.SUCCESS
+
+        for name in self._model_state.name:
+            if 'grocery' in name:
+                box_index = self._model_state.name.index(name)
+                set_box_state = ModelState()
+                set_box_state.model_name = name
+                set_box_state.twist = self._model_state.twist[box_index]
+                set_box_state.pose = self._model_state.pose[box_index]
+                dist_temp = []
+                box_position = deepcopy(set_box_state.pose.position)
+                poses_3_temp = []
+                poses_3_temp.append(Pose(box_position, Quaternion(0, 0, 0.707, 0.707)))
+                poses_3_temp.append(Pose(box_position, Quaternion(0, 0, 0, 1)))
+                poses_3_temp.append(Pose(box_position, Quaternion(0, 0, 0, -1)))
+                for i in range(len(poses_3_temp)):
+                    dist_temp.append(srp_md.pose_difference(poses_3_temp[i], set_box_state.pose))
+                set_box_state.pose.orientation = poses_3_temp[dist_temp.index(min(dist_temp))].orientation
+                self._set_model_state_pub.publish(set_box_state)
+                time.sleep(0.02)
+
+        if self._obj_name is None:
             return py_trees.Status.SUCCESS
 
         All_name = deepcopy(py_trees.blackboard.Blackboard().get(self._All_object_name_key))
@@ -1018,12 +1038,7 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                 orientation_initial.z,
                 orientation_initial.w])
 
-        # object_name_index = All_name.index(self._obj_name[0:-2])
-
         offset = pose_real.apply([All_offset[object_name_index].x, All_offset[object_name_index].y, All_offset[object_name_index].z])
-
-        if self._mode == 1 and 'Flat' in self._relation:
-            return py_trees.Status.SUCCESS
 
         self._set_model_state = ModelState()
         self._set_model_state.model_name = object_move_name
@@ -1064,63 +1079,8 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
 
         self._set_model_state.twist.linear = Vector3()
         self._set_model_state.twist.angular = Vector3()
-
-        if self._mode == 1 and 'Flat' in self._relation:
-            return py_trees.Status.SUCCESS
-
-        if self._mode == 2 and 'Flat' in self._relation:
-            self._set_model_state.twist.linear = Vector3()
-            self._set_model_state.twist.angular = Vector3()
-            self._set_model_state.pose.orientation.x = 0.2705981
-            self._set_model_state.pose.orientation.y = -0.2705981
-            self._set_model_state.pose.orientation.z = 0.6532815
-            self._set_model_state.pose.orientation.w = 0.6532815
-            self._set_model_state.pose.orientation = self._model_state.pose[self._obj_index].orientation
-            self._set_model_state.pose.position.y = self._free_space_poses[0].position.y + All_size[object_name_index].z / 4 * 3
-            self._set_model_state.twist.angular.x = 0.23
-
-        elif self._mode == 3:
-            self._set_model_state.twist = self._model_state.twist[self._obj_index]
-            self._set_model_state.pose = self._model_state.pose[self._obj_index]
-
-            self._set_model_state.twist.linear = Vector3()
-            self._set_model_state.twist.angular = Vector3()
-            self._set_model_state.pose.orientation.x = 0.5
-            self._set_model_state.pose.orientation.y = -0.5
-            self._set_model_state.pose.orientation.z = 0.5
-            self._set_model_state.pose.orientation.w = 0.5
-
         self._set_model_state_pub.publish(self._set_model_state)
         time.sleep(0.05)
-
-        for name in self._model_state.name:
-            if 'grocery' in name:
-                box_index = self._model_state.name.index(name)
-                set_box_state = ModelState()
-                set_box_state.model_name = name
-                set_box_state.twist = self._model_state.twist[box_index]
-                set_box_state.pose = self._model_state.pose[box_index]
-                # print('set_box_state: ', set_box_state)
-                dist_temp = []
-                # poses_3_temp = deepcopy(poses_3)
-                box_position = deepcopy(set_box_state.pose.position)
-                poses_3_temp = []
-                poses_3_temp.append(Pose(box_position, Quaternion(0, 0, 0.707, 0.707)))
-                poses_3_temp.append(Pose(box_position, Quaternion(0, 0, 0, 1)))
-                poses_3_temp.append(Pose(box_position, Quaternion(0, 0, 0, -1)))
-                # print('poses_3_temp: ', poses_3_temp)
-                for i in range(len(poses_3_temp)):
-                    # poses_3_temp[i].position = set_box_state.pose.position
-
-                    dist_temp.append(srp_md.pose_difference(poses_3_temp[i], set_box_state.pose))
-                set_box_state.pose.orientation = poses_3_temp[dist_temp.index(min(dist_temp))].orientation
-                # print('dist_temp: ', dist_temp)
-                # set_box_state.pose.orientation.x = 0
-                # set_box_state.pose.orientation.y = 0
-                # set_box_state.pose.orientation.z = 0
-                # set_box_state.pose.orientation.w = 1
-                self._set_model_state_pub.publish(set_box_state)
-                time.sleep(0.02)
 
         return py_trees.Status.SUCCESS
 
@@ -1136,7 +1096,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
         self._obj_index = None
         self._moving_step = 0.006
         self._sleep_time = 0.001
-        self._distance_limit = 0.60
+        self._distance_limit = 0.56
         self._y_limit = -0.30
         self._conveyor_belt_size_key = 'conveyor_belt_size'
         self._All_object_name_key = 'All_object_name'
@@ -1171,11 +1131,13 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
         moving_object_name = []
 
         lateral_move_x_limit = {}
+        lateral_move_y_limit = {}
 
         dis = []
         y_value = []
         x_value = []
         x_initial_value = []
+        y_initial_value = []
         fetch_index = self._obj_name.index('fetch')
         fetch_position = self._model_state.pose[fetch_index].position
         for i in range(len(self._obj_name)):
@@ -1185,14 +1147,16 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                 obj_position = deepcopy(self._model_state.pose[i].position)
                 dis_temp = np.sqrt((fetch_position.x - obj_position.x) ** 2 + (fetch_position.y - obj_position.y) ** 2)
                 if obj_position.x <= conveyor_belt_maxx and obj_position.x >= conveyor_belt_minx and obj_position.y <= conveyor_belt_maxy and obj_position.y >= conveyor_belt_miny:
-                    lateral_move_x_limit[self._obj_name[i]] = conveyor_belt_minx
+                    lateral_move_x_limit[self._obj_name[i]] = deepcopy(conveyor_belt_minx)
+                    lateral_move_y_limit[self._obj_name[i]] = deepcopy(conveyor_belt_maxy)
+
                     moving_object_name.append(self._obj_name[i])
                     dis.append(dis_temp)
-                    y_value.append(deepcopy(obj_position.y))
                     x_initial_value.append(deepcopy(obj_position.x))
+                    y_initial_value.append(deepcopy(obj_position.y))
 
         # specialized for all objects on convoyer belt have identity orientation 
-        
+        y_value = deepcopy(y_initial_value)
         x_value = deepcopy(x_initial_value)
 
         for useless_index in range(len(moving_object_name)):
@@ -1210,7 +1174,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                     else:
                         current_object_size_x_y.append(All_size[All_name.index(name)].x)
                         current_object_size_x_y.append(All_size[All_name.index(name)].y)
-                    break   
+                    break
             # lateral_move_x_limit.append(conveyor_belt_minx + current_object_size_x_y[0] / 2)
             lateral_move_x_limit[moving_object_name[name_index]] = lateral_move_x_limit[moving_object_name[name_index]] + current_object_size_x_y[0] / 2
             current_object_y_range.append(current_object_pose.position.y - current_object_size_x_y[1] / 2)
@@ -1243,23 +1207,84 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                         lateral_move_x_limit[moving_object_name[name_index]] = x_limit_temp
             # print('--------------------')
 
+        for useless_index in range(len(moving_object_name)):
+            name_index = y_initial_value.index(max(y_initial_value))
+            y_initial_value[name_index] = -1000
+            model_state_index = self._obj_name.index(moving_object_name[name_index])
+            current_object_pose = deepcopy(self._model_state.pose[model_state_index])
+            current_object_size_x_y = []
+            current_object_x_range = []
+            for name in All_name:
+                if name in moving_object_name[name_index]:
+                    if 'cracker' in name or 'sugar' in name:
+                        current_object_size_x_y.append(All_size[All_name.index(name)].y)
+                        current_object_size_x_y.append(All_size[All_name.index(name)].z)
+                    else:
+                        current_object_size_x_y.append(All_size[All_name.index(name)].x)
+                        current_object_size_x_y.append(All_size[All_name.index(name)].y)
+                    break
+            # lateral_move_x_limit.append(conveyor_belt_minx + current_object_size_x_y[0] / 2)
+            lateral_move_y_limit[moving_object_name[name_index]] = lateral_move_y_limit[moving_object_name[name_index]] - current_object_size_x_y[1] / 2 - 0.03
+            current_object_x_range.append(lateral_move_x_limit[moving_object_name[name_index]] - current_object_size_x_y[0] / 2)
+            current_object_x_range.append(lateral_move_x_limit[moving_object_name[name_index]] + current_object_size_x_y[0] / 2)
+            # print('current_object_x_range: ', current_object_x_range)
+            for relative_name_index in range(len(moving_object_name)):
+                collision_in_y_axis = False
+                relative_object_x_range = []
+                relative_object_size_x_y = []
+                relative_model_state_index = self._obj_name.index(moving_object_name[relative_name_index])
+                relative_object_pose = deepcopy(self._model_state.pose[relative_model_state_index])
+                dis_temp = np.sqrt((lateral_move_x_limit[moving_object_name[relative_name_index]] - lateral_move_x_limit[moving_object_name[name_index]]) ** 2
+                                   + (relative_object_pose.position.y - current_object_pose.position.y) ** 2)
+                if name_index == relative_name_index or dis_temp > 1.5 or current_object_pose.position.y > relative_object_pose.position.y:
+                    continue
+                for name in All_name:
+                    if name in moving_object_name[relative_name_index]:
+                        if 'cracker' in name or 'sugar' in name:
+                            relative_object_size_x_y.append(All_size[All_name.index(name)].y)
+                            relative_object_size_x_y.append(All_size[All_name.index(name)].z)
+                        else:
+                            relative_object_size_x_y.append(All_size[All_name.index(name)].x)
+                            relative_object_size_x_y.append(All_size[All_name.index(name)].y)
+                        break
+                # print('moving_object_name[relative_name_index]: ', moving_object_name[relative_name_index])
+                relative_object_x_range.append(lateral_move_x_limit[moving_object_name[relative_name_index]] - relative_object_size_x_y[0] / 2)
+                relative_object_x_range.append(lateral_move_x_limit[moving_object_name[relative_name_index]] + relative_object_size_x_y[0] / 2)
+                collision_in_y_axis = collision_in_1D(relative_object_x_range, current_object_x_range)
+                if collision_in_y_axis:
+                    y_limit_temp = lateral_move_y_limit[moving_object_name[relative_name_index]] - relative_object_size_x_y[1] / 2 - current_object_size_x_y[1] / 2 - 0.03
+                    if y_limit_temp < lateral_move_y_limit[moving_object_name[name_index]]:
+                        lateral_move_y_limit[moving_object_name[name_index]] = y_limit_temp
+            # print('--------------------')
+
+        move_complete = [True]*len(moving_object_name)
+
         if (len(dis) == 0):
             return py_trees.Status.SUCCESS
-        while (min(dis) > self._distance_limit and max(y_value) < self._y_limit):
+        # while (min(dis) > self._distance_limit and max(y_value) < self._y_limit):
+        while(True in move_complete):
             for name in moving_object_name:
+                move_if = False
                 object_index = self._obj_name.index(name)
                 dis_index = moving_object_name.index(name)
                 self._set_model_state = ModelState()
                 self._set_model_state.model_name = self._obj_name[object_index]
                 self._set_model_state.twist = self._model_state.twist[object_index]
                 self._set_model_state.pose = self._model_state.pose[object_index]
-                self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
+                # self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
+                if y_value[dis_index] < lateral_move_y_limit[self._obj_name[object_index]]:
+                    self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
+                    y_value[dis_index] = y_value[dis_index] + self._moving_step
+                    move_if = True
                 if x_value[dis_index] > lateral_move_x_limit[self._obj_name[object_index]]:
                     self._set_model_state.pose.position.x = deepcopy(x_value[dis_index]) - self._moving_step / 5
                     x_value[dis_index] = x_value[dis_index] - self._moving_step / 5
+                    move_if = True
+                if not move_if:
+                    move_complete[dis_index] = False
                 obj_position = self._model_state.pose[object_index].position
                 dis[dis_index] = np.sqrt((fetch_position.x - obj_position.x) ** 2 + (fetch_position.y - obj_position.y) ** 2)
-                y_value[dis_index] = y_value[dis_index] + self._moving_step
+                # y_value[dis_index] = y_value[dis_index] + self._moving_step
                 self._set_model_state_pub.publish(self._set_model_state)
                 # time.sleep(self._sleep_time)
             time.sleep(self._sleep_time * 8)
@@ -4164,7 +4189,9 @@ def GrabBoxAct(name):
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         # SleepBehavior('act_sleep_a_smidge', duration=0.5),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        StabilizeObjectAct('StabilizeObjectAct'),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
         RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
