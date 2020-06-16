@@ -59,3 +59,4 @@ from .actions import PushPoseGeneration
 from .actions import ChooseGroceryBoxPush
 from .actions import PushBoxPoseGeneration
 from .actions import RelativeCartesianMoveBlackboardAct
+from .actions import FetchOrientationCorrectionAct
