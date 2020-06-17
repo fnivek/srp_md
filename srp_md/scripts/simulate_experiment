@@ -284,7 +284,7 @@ def evaluate_goal(scene):
         for other_obj in filter(lambda obj: not (obj == table or obj == complex_obj), scene.objs):
             rel = scene.get_rel_by_objs(complex_obj, other_obj)
             # Proximity or disjoint to other complex object
-            if obj.assignment["shape"] == "complex":
+            if other_obj.assignment["shape"] == "complex":
                 if rel.value != 'proximity' and rel.value != 'disjoint':
                     return (False, 'complex object not proximity or disjoint with other complex object')
             elif rel.value != 'disjoint':
