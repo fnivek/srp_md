@@ -31,7 +31,7 @@ from control_msgs.msg import GripperCommandGoal, GripperCommandAction
 import move_base_msgs.msg as move_base_msgs
 from srp_md_msgs.msg import *
 from dope_msgs.msg import DopeAction, DopeGoal, DopeResult
-from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped, Vector3, Point, Quaternion
+from geometry_msgs.msg import Pose, PoseStamped, Transform, PoseArray, TransformStamped, Vector3, Point, Quaternion, PoseWithCovarianceStamped, PoseWithCovariance
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 from vision_msgs.msg import BoundingBox3D, Detection3D, ObjectHypothesisWithPose
 from gazebo_msgs.msg import *
@@ -899,6 +899,36 @@ class GetFakeDopeSnapshotAct(py_trees.behaviour.Behaviour):
         return py_trees.Status.SUCCESS
 
 
+class PubOdomPose(py_trees.behaviour.Behaviour):
+    def __init__(self, name, model_state_key="model_state"):
+        super(PubOdomPose, self).__init__(name)
+        self._model_state_key = model_state_key
+        self._model_state = None
+        self._PoseWithCovarianceStamped = None
+        self._set_model_state_pub = None
+        self._fetch_pose = None
+
+    def setup(self, timeout):
+        self._set_initial_pose_pub = rospy.Publisher('/initialpose', PoseWithCovarianceStamped, queue_size=10)
+        return True
+
+    def update(self):
+        self._model_state = py_trees.blackboard.Blackboard().get(self._model_state_key)
+        self._fetch_pose = self._model_state.pose[self._model_state.name.index('fetch')]
+
+        self._PoseWithCovarianceStamped = PoseWithCovarianceStamped()
+        self._PoseWithCovarianceStamped.header.frame_id = 'map'
+        self._PoseWithCovarianceStamped.header.seq = 1
+        self._PoseWithCovarianceStamped.header.stamp = rospy.Time.now()
+        self._PoseWithCovarianceStamped.pose.pose = self._fetch_pose
+        self._PoseWithCovarianceStamped.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853892326654787]
+        # print('self._PoseWithCovarianceStamped: ', self._PoseWithCovarianceStamped)
+        self._set_initial_pose_pub.publish(self._PoseWithCovarianceStamped)
+
+        return py_trees.Status.SUCCESS
+
+
 class TeleportObjectAct(py_trees.behaviour.Behaviour):
     def __init__(self, name, obj_name, model_state_key="model_state", free_space_poses_key="free_space_poses"):
         super(TeleportObjectAct, self).__init__(name)
@@ -1004,6 +1034,50 @@ class FetchOrientationCorrectionAct(py_trees.behaviour.Behaviour):
 
         return py_trees.Status.SUCCESS
 
+
+class FetchPositionCorrectionAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, obj_name=None, model_state_key="model_state", free_space_poses_key="free_space_poses", relation_key='relation'):
+        super(FetchPositionCorrectionAct, self).__init__(name)
+        self._model_state_key = model_state_key
+        self._model_state = None
+        self._set_model_state = None
+        self._set_model_state_pub = None
+        self._fetch_goal_pose_key = 'fetch_goal_pose'
+
+    def setup(self, timeout):
+        self._set_model_state_pub = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
+        return True
+
+    def update(self):
+        self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
+        fetch_index = self._model_state.name.index('fetch')
+        fetch_initial_position = deepcopy(self._model_state.pose[fetch_index]).position
+        goal_fetch_position = deepcopy(py_trees.blackboard.Blackboard().get(self._fetch_goal_pose_key)).position
+        # initial_position = R.from_quat([fetch_initial_orientation.x, fetch_initial_orientation.y, fetch_initial_orientation.z, fetch_initial_orientation.w])
+        # goal_position = R.from_quat([goal_fetch_orientation.x, goal_fetch_orientation.y, goal_fetch_orientation.z, goal_fetch_orientation.w])
+        initial_position_x = fetch_initial_position.x
+        goal_position_x = goal_fetch_position.x
+        # goal_position_x = -0.25
+        # print('initial_pose: ', initial_pose.as_euler('zyx', degrees=True))
+        # print('goal_pose: ', goal_pose.as_euler('zyx', degrees=True))
+        error = (goal_position_x - initial_position_x)
+        for i in range(100):
+            self._set_model_state = ModelState()
+            self._set_model_state.model_name = 'fetch'
+            self._set_model_state.twist = self._model_state.twist[fetch_index]
+            self._set_model_state.pose = deepcopy(self._model_state.pose[fetch_index])
+
+            self._set_model_state.pose.position.x = initial_position_x + error * i / 100
+            # temp_orientation = R.from_euler('z', initial_euler_z + error * i / 100, degrees=True)
+            # temp_orientation_quat = temp_orientation.as_quat()
+            # self._set_model_state.pose.orientation = Quaternion(temp_orientation_quat[0], temp_orientation_quat[1], temp_orientation_quat[2], temp_orientation_quat[3])
+
+            self._set_model_state.twist.linear = Vector3()
+            self._set_model_state.twist.angular = Vector3()
+            self._set_model_state_pub.publish(self._set_model_state)
+            time.sleep(0.05)
+
+        return py_trees.Status.SUCCESS
 
         # 0 for normal stabilization, 1 for tilt, 2 for flat
 class StabilizeObjectAct(py_trees.behaviour.Behaviour):
@@ -1255,7 +1329,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                 relative_object_y_range.append(relative_object_pose.position.y + relative_object_size_x_y[1] / 2)
                 collision_in_x_axis = collision_in_1D(relative_object_y_range,  current_object_y_range)
                 if collision_in_x_axis:
-                    x_limit_temp = lateral_move_x_limit[moving_object_name[relative_name_index]] + relative_object_size_x_y[0] / 2 + current_object_size_x_y[0] / 2 + 0.03
+                    x_limit_temp = lateral_move_x_limit[moving_object_name[relative_name_index]] + relative_object_size_x_y[0] / 2 + current_object_size_x_y[0] / 2 + 0.02
                     if x_limit_temp > lateral_move_x_limit[moving_object_name[name_index]]:
                         lateral_move_x_limit[moving_object_name[name_index]] = x_limit_temp
             # print('--------------------')
@@ -1277,7 +1351,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                         current_object_size_x_y.append(All_size[All_name.index(name)].y)
                     break
             # lateral_move_x_limit.append(conveyor_belt_minx + current_object_size_x_y[0] / 2)
-            lateral_move_y_limit[moving_object_name[name_index]] = lateral_move_y_limit[moving_object_name[name_index]] - current_object_size_x_y[1] / 2 - 0.03
+            lateral_move_y_limit[moving_object_name[name_index]] = lateral_move_y_limit[moving_object_name[name_index]] - current_object_size_x_y[1] / 2 - 0.02
             current_object_x_range.append(lateral_move_x_limit[moving_object_name[name_index]] - current_object_size_x_y[0] / 2)
             current_object_x_range.append(lateral_move_x_limit[moving_object_name[name_index]] + current_object_size_x_y[0] / 2)
             # print('current_object_x_range: ', current_object_x_range)
@@ -1326,14 +1400,42 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                 self._set_model_state.twist = self._model_state.twist[object_index]
                 self._set_model_state.pose = self._model_state.pose[object_index]
                 # self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
+                # if y_value[dis_index] < lateral_move_y_limit[self._obj_name[object_index]]:
+                #     self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
+                #     y_value[dis_index] = y_value[dis_index] + self._moving_step
+                #     move_if = True
+                if x_value[dis_index] > lateral_move_x_limit[self._obj_name[object_index]]:
+                    self._set_model_state.pose.position.x = deepcopy(x_value[dis_index]) - self._moving_step / 3
+                    x_value[dis_index] = x_value[dis_index] - self._moving_step / 3
+                    move_if = True
+                if not move_if:
+                    move_complete[dis_index] = False
+                obj_position = self._model_state.pose[object_index].position
+                dis[dis_index] = np.sqrt((fetch_position.x - obj_position.x) ** 2 + (fetch_position.y - obj_position.y) ** 2)
+                # y_value[dis_index] = y_value[dis_index] + self._moving_step
+                self._set_model_state_pub.publish(self._set_model_state)
+                # time.sleep(self._sleep_time)
+            time.sleep(self._sleep_time * 8)
+
+        move_complete = [True]*len(moving_object_name)
+        while(True in move_complete):
+            for name in moving_object_name:
+                move_if = False
+                object_index = self._obj_name.index(name)
+                dis_index = moving_object_name.index(name)
+                self._set_model_state = ModelState()
+                self._set_model_state.model_name = self._obj_name[object_index]
+                self._set_model_state.twist = self._model_state.twist[object_index]
+                self._set_model_state.pose = self._model_state.pose[object_index]
+                # self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
                 if y_value[dis_index] < lateral_move_y_limit[self._obj_name[object_index]]:
                     self._set_model_state.pose.position.y = y_value[dis_index] + self._moving_step
                     y_value[dis_index] = y_value[dis_index] + self._moving_step
                     move_if = True
-                if x_value[dis_index] > lateral_move_x_limit[self._obj_name[object_index]]:
-                    self._set_model_state.pose.position.x = deepcopy(x_value[dis_index]) - self._moving_step / 5
-                    x_value[dis_index] = x_value[dis_index] - self._moving_step / 5
-                    move_if = True
+                # if x_value[dis_index] > lateral_move_x_limit[self._obj_name[object_index]]:
+                #     self._set_model_state.pose.position.x = deepcopy(x_value[dis_index]) - self._moving_step / 5
+                #     x_value[dis_index] = x_value[dis_index] - self._moving_step / 5
+                #     move_if = True
                 if not move_if:
                     move_complete[dis_index] = False
                 obj_position = self._model_state.pose[object_index].position
@@ -2117,7 +2219,7 @@ class PushBoxPoseGeneration(py_trees.behaviour.Behaviour):
         # gripper_ori_relative = R.from_quat([0, 0.707, 0, 0.707])
         # gripper_ori_relative = R.from_quat([0.5, 0.5, -0.5, 0.5])
         gripper_ori_relative = R.from_quat([0, 0, 0, 1])
-        offset = tf.apply([- self._grocery_bbox.size.x / 2,  self._grocery_bbox.size.y / 2 - 0.11, 0])
+        offset = tf.apply([- self._grocery_bbox.size.x / 2 - gripper_length + 0.04,  self._grocery_bbox.size.y / 2 - 0.11, 0])
         # offset = tf.apply([self._grocery_bbox.size.x / 2, self._grocery_bbox.size.y / 2 - 0.05, 0])
         gripper_ori = (tf * gripper_ori_relative).as_quat()
 
@@ -2134,7 +2236,7 @@ class PushBoxPoseGeneration(py_trees.behaviour.Behaviour):
 
         blackboard.set(self._push_pose_key, test_gripper_poses)
 
-        relative_cartesian_move_dis = 0.4
+        relative_cartesian_move_dis = 0.3
         tf_1 = R.from_quat([
                 self._fetch_pose.orientation.x,
                 self._fetch_pose.orientation.y,
@@ -2696,7 +2798,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
 
                 distance_ori.append((pose.position.x - ori_position.x) * (pose.position.x - ori_position.x)
                                     + (pose.position.y - ori_position.y) * (pose.position.y - ori_position.y))
-            if 'Away' in self._relation:
+            if 'Away' in self._relation or 'mustard' in self._object_index:
                 # if 'Away' in self._relation:
                 print("relation is Away")
                 for i in range(len(poses_temp)):
@@ -2712,7 +2814,8 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                     if add_if:
                         poses.append(poses_temp[distance_ori.index(max(distance_ori))])
                     distance_ori[distance_ori.index(max(distance_ori))] = -1
-            elif 'proximity' in self._relation and 'meat' in self._object_index:
+            # elif 'proximity' in self._relation and 'meat' in self._object_index:
+            elif 'proximity' in self._relation or  'meat' in self._object_index or 'soup' in self._object_index:
                 for i in range(len(poses_temp)):
                     if i > len(poses_temp) / 3:
                         pose_index = distance_ori.index(max(distance_ori))
@@ -3632,7 +3735,7 @@ class GroceryLinkAttachingAct(py_trees.behaviour.Behaviour):
 
 
 class SpawnRandomModelAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, model_state_key='model_state', spawn_range_y=1, range_use=True):
+    def __init__(self, name, model_state_key='model_state', spawn_range_y=0.8, range_use=True):
         super(SpawnRandomModelAct, self).__init__(name)
         self._model_state_key = model_state_key
         self._model_state = None
@@ -4135,14 +4238,22 @@ def PushBoxAct(name):
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         ChooseGroceryBoxPush('ChooseGroceryBoxPush'),
 
-        FetchMoveAct('FetchMoveAct', position=Point(-1,-1,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        FetchMoveAct('FetchMoveAct', position=Point(0.15,0,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        FetchMoveAct('FetchMoveAct', position=Point(-0.5,0,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        FetchMoveAct('FetchMoveAct', position=Point(0.12,-0.2,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
             topic_type=ModelStates,
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        FetchOrientationCorrectionAct('FetchOrientationCorrectionAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        FetchPositionCorrectionAct('FetchPositionCorrectionAct'),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
@@ -4168,6 +4279,8 @@ def PushBoxAct(name):
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
         # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_push_tf),
+        RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
         RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         GroceryLinkDettachingAct('GroceryLinkDettachingAct'),
@@ -4258,8 +4371,8 @@ def GrabBoxAct(name):
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_move_away_tf_2),
         RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
         # FetchMoveAct('FetchMoveAct', position=Point(-0.5,-1,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        FetchMoveAct('FetchMoveAct', position=Point(-1, -1, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        FetchMoveAct('FetchMoveAct', position=Point(0.25, -0.75, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        FetchMoveAct('FetchMoveAct', position=Point(0, 0, 0), orientation=Quaternion(0, 0, 0.707, -0.707), frame_id='map'),
+        FetchMoveAct('FetchMoveAct', position=Point(0.20, -0.78, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
@@ -4267,18 +4380,18 @@ def GrabBoxAct(name):
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         FetchOrientationCorrectionAct('FetchOrientationCorrectionAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
 
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/link_states',
             topic_type=ModelStates,
             blackboard_variables={'link_states': None},
-            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        py_trees_ros.subscribers.ToBlackboard(
-            name='act_get_groundtruth',
-            topic_name='/gazebo/model_states',
-            topic_type=ModelStates,
-            blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
@@ -4317,9 +4430,9 @@ def GrabBoxAct(name):
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         StabilizeObjectAct('StabilizeObjectAct'),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
-
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
+        FetchPositionCorrectionAct('FetchPositionCorrectionAct'),
         RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
     ])
     return root

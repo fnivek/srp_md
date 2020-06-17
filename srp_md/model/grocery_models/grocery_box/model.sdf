@@ -30,7 +30,7 @@
         <pose>0.01524 0.1457 0.015 0 0 1.57</pose>
         <geometry>
           <box>
-            <size>0.27432 0.01 0.03</size>
+            <size>0.27432 0.003 0.03</size>
           </box>
         </geometry>
 	<surface>
@@ -46,7 +46,7 @@
         <pose>0.5029 0.1457 0.015 0 0 1.57</pose>
         <geometry>
           <box>
-            <size>0.27432 0.01 0.03</size>
+            <size>0.27432 0.003 0.03</size>
           </box>
         </geometry>
 	<surface>
