@@ -267,7 +267,8 @@ def main():
 
     # Init srp_md
     demo_graphs = load_demos(args.demo_graphs_dir)
-    srp = srp_md.SrpMd(sensor="dope_sensor",
+    srp = srp_md.SrpMd(feature_space=feature_space,
+                       sensor="dope_sensor",
                        learner="factor_graph_learner",
                        goal_generator="factor_graph_goal_generator")
     srp.update_learner_config(factor_learner=args.factor_learner)

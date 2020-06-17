@@ -41,7 +41,7 @@ FEATURES = yaml.load(open(os.path.realpath(script_path + '/../config/feature_spa
 # Objects used in experiments
 grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar", "gelatin", "apple", "chips", "coffee", "tuna"]
 novel_objs = ["apple", "chips", "coffee", "tuna"]
-size_dict = {"small": 1, "medium": 2, "large": 3}
+size_dict = {"s_small": 1, "s_medium": 2, "s_large": 3}
 
 # Grocery experiment list
 grocery_experiment_demo_objs = [
@@ -427,7 +427,8 @@ def main():
     logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
     # Setup SRP_MD object
-    srp = srp_md.SrpMd(sensor="dope_sensor",
+    srp = srp_md.SrpMd(feature_space=FEATURES,
+                       sensor="dope_sensor",
                        learner="factor_graph_learner",
                        goal_generator="factor_graph_goal_generator")
     srp.update_learner_config(factor_learner=args.factor_learner)

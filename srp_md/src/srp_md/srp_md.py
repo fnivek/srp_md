@@ -31,7 +31,8 @@ import cv_bridge as bridge
 import cv2
 import numpy as np
 import math
-import py_trees, py_trees_ros
+import py_trees
+import py_trees_ros
 from sensor_msgs.msg import CameraInfo, Image as ImageSensor_msg, PointCloud2
 import sensor_msgs.point_cloud2 as pc2
 from geometry_msgs.msg import PoseStamped, Pose, Vector3
@@ -42,6 +43,7 @@ from copy import deepcopy
 import random
 import sys
 
+
 class SrpMd(object):
     """ Semantic Robot Programing Multiple Demonstrations.
 
@@ -51,12 +53,13 @@ class SrpMd(object):
 
     """
     # TODO(Kevin): Set defaults when they exist
-    def __init__(self, learner='factor_graph_learner', sensor='dope_sensor',
-        goal_generator='factor_graph_goal_generator', goal_evaluator='adapt_goal_evaluator'):
+    def __init__(self, feature_space, learner='factor_graph_learner', sensor='dope_sensor',
+                 goal_generator='factor_graph_goal_generator', goal_evaluator='adapt_goal_evaluator'):
         # Logging
         self._logger = log.getLogger(__name__)
 
         # Vars
+        self._feature_space = feature_space
         self._raw_images = []
         self._current_image = None
         self._demo_graphs = []
@@ -145,7 +148,7 @@ class SrpMd(object):
             if None in self._demo_graphs or len(self._demo_graphs) == 0:
                 self._logger.warning('No processed data to be learned from!')
             elif self.get_learner() == 'factor_graph_learner':
-                self._factors = self._learner.learn(self._demo_graphs, self._sensor.properties)
+                self._factors = self._learner.learn(self._demo_graphs, self._feature_space)
                 self._logger.debug('Factors learned: %s', self._factors.keys())
             else:
                 self._goal = self._learner.learn(self._demo_graphs)

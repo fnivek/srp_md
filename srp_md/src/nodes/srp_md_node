@@ -12,6 +12,8 @@ import logging
 import argparse
 import sys
 import signal
+import yaml
+import os
 
 # Qt
 from PyQt5.QtWidgets import QApplication
@@ -19,6 +21,9 @@ from PyQt5.QtCore import QTimer
 
 # Get a logger
 loger = logging.getLogger('srp_md')
+
+script_path = os.path.dirname(os.path.realpath(__file__))
+feature_space = yaml.load(open(os.path.realpath(script_path + '/../../config/feature_space.yaml'), 'r'))
 
 
 def sigint_handler(*args):
@@ -44,7 +49,7 @@ def main():
     rospy.init_node('srp_md')
 
     # Define the srp
-    srp = srp_md.SrpMd()
+    srp = srp_md.SrpMd(feature_space=feature_space)
 
     # Define user interface
     ctrl = ui.Controller(srp)

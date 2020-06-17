@@ -2,71 +2,71 @@ table:
   class: table
   shape: table
   color: table
-  size: table
-  weight: table
+  size: s_table
+  weight: w_table
 cracker:
   class: cracker
   shape: box
   color: red
-  size: large
-  weight: light
+  size: s_large
+  weight: w_light
 meat:
   class: meat
   shape: cylinder
   color: blue
-  size: small
-  weight: medium
+  size: s_small
+  weight: w_medium
 mustard:
   class: mustard
   shape: complex
   color: yellow
-  size: medium
-  weight: heavy
+  size: s_medium
+  weight: w_heavy
 soup:
   class: soup
   shape: cylinder
   color: red
-  size: small
-  weight: medium
+  size: s_small
+  weight: w_medium
 sugar:
   class: sugar
   shape: box
   color: white
-  size: medium
-  weight: heavy
+  size: s_medium
+  weight: w_heavy
 bleach:
   class: bleach
   shape: complex
   color: white
-  size: large
-  weight: heavy
+  size: s_large
+  weight: w_heavy
 gelatin:
   class: gelatin
   shape: box
   color: red
-  size: small
-  weight: light
+  size: s_small
+  weight: w_light
 apple:
   class: apple
   shape: complex
   color: red
-  size: small
-  weight: light
+  size: s_small
+  weight: w_light
 chips:
   class: chips
   shape: cylinder
   color: red
-  size: large
-  weight: medium
+  size: s_large
+  weight: w_medium
 coffee:
   class: coffee
   shape: cylinder
   color: blue
-  size: large
-  weight: heavy
+  size: s_large
+  weight: w_heavy
 tuna:
   class: tuna
   shape: cylinder
   color: blue
-  size: small
-  weight: medium
+  size: s_small
+  weight: w_medium
