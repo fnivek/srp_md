@@ -146,6 +146,58 @@ def generate_demo_scenes_from_list(objs_list):
     return scene_graphs
 
 
+def generate_random_demo_scene(num_objs, objs_list):
+    # Add the table
+    table = srp_md.Object(name='table', id_num=0, uuid=0, assignment=FEATURES["table"])
+    objs = [table]
+    # Make num_objs random objs
+    for uuid in range(1, num_objs+1):
+        # Select a random object from objs_list
+        new_class = random.choice(objs_list)
+        objs.append(srp_md.Object(
+            name='{}_{}'.format(new_class, uuid), id_num=uuid, uuid=uuid, assignment=FEATURES[new_class]))
+    # Construct scene graph
+    sg = srp_md.SceneGraph(objs)
+    # Initialise all relations to disjoint
+    for rel in sg.relations:
+        rel.value = 'disjoint'
+    # Assign the relations
+    # Put everything on the table
+    for rel in sg.relations:
+        if rel.obj1 == table:
+            rel.value = 'support'
+        elif rel.obj2 == table:
+            rel.value = 'on'
+    # Stack the boxes by size
+    boxes = [obj for obj in sg.objs if obj.assignment["shape"] == "box"]
+    # Sort from smallest to largest (so top to bottom)
+    boxes.sort(key=lambda obj: size_dict[obj.assignment["size"]])
+    for i, box1 in enumerate(boxes):
+        for box2 in boxes[i+1:]:
+            rel = sg.get_rel_by_objs(box1, box2)
+            if box1 == rel.obj1:
+                rel.value = 'on'
+            else:
+                rel.value = 'support'
+    # Put cans next to bottom box
+    try:
+        bot_box = boxes[-1]
+        for can in filter(lambda obj: obj.assignment["shape"] == "cylinder", sg.objs):
+            rel = sg.get_rel_by_objs(bot_box, can)
+            rel.value = 'proximity'
+    except IndexError:
+        pass
+    # Make sure complex objects are disjoint
+    for complex_obj in filter(lambda obj: obj.assignment["shape"] == "complex", sg.objs):
+        for obj in filter(lambda obj: not (obj == table or obj == complex_obj), sg.objs):
+            rel = sg.get_rel_by_objs(complex_obj, obj)
+            if obj.assignment["shape"] == 'complex':
+                rel.value = random.choice(['proximity', 'disjoint'])
+            # else:
+            #     print('{} - {} - {}'.format(complex_obj.name, obj.name, rel.value))
+    return sg
+
+
 # TODO(Kevin): Use the new random scene graph generator from scene_graph.py
 def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
     """
@@ -197,7 +249,8 @@ def save_graphs(graphs, pickle_name, file_prefix, current_trial, dirname):
 
 
 def save_all(demo_graphs, test_graphs, generated_graphs, plans, current_trial, dirname):
-    save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname)
+    if demo_graphs is not None:
+        save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname)
     save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname)
     save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname)
     if plans is not None:
@@ -414,7 +467,10 @@ def main():
 
     timer.start('load_demos')
     if args.demo_graphs_dir is not None:
-        demo_graphs = load_demos(args.demo_graphs_dir)
+        demo_graphs = (
+            load_demos(args.demo_graphs_dir) +
+            [generate_random_demo_scene((num_objs % 10) + 2,
+             filter(lambda x: x != 'table', FEATURES.keys())) for num_objs in range(0)])
     else:
         # Simulate goal scenegraphs
         # demo_num, demo_objs_nums, noise_num = 20, [6], 0
@@ -423,6 +479,7 @@ def main():
         # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num,
         #                                    [["cracker", "gelatin", "meat", "soup", "sugar"],
         #                                     ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
+    save_graphs(demo_graphs, 'data.pickle', 'demo', 0, args.output_dir)
     timer.stop('load_demos')
     logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
 
@@ -506,7 +563,7 @@ def main():
                                                     timer.diff_times['generate_goal_response'],
                                                     timer.diff_times[plan_name]])
 
-            save_all(demo_graphs, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
+            save_all(None, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
 
             global_index += len(srp._goal_instances)
             avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
