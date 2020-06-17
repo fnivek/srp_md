@@ -42,10 +42,19 @@ class FactorGraphLearner(learn.BaseLearner):
                     num_objs, pow(6, srp_md.ncr(num_objs, 2))))
         self._factors_to_learn = factors
 
-    def prop_to_cats(self, properties, num_objs):
-        return [properties[key] for key in properties.keys()] * num_objs
+    def feature_space_to_category(self, feature_space, num_objs):
+        classes = feature_space.keys() * num_objs
+        categories = {'class': set(feature_space.keys())}
+        for cls, attributes in feature_space.iteritems():
+            for attribute, value in attributes.iteritems():
+                try:
+                    categories[attribute] |= set([value])
+                except KeyError:
+                    categories[attribute] = set([value])
+        categories = [list(s) for s in categories.values()] * num_objs
+        return categories
 
-    def learn(self, obs, properties):
+    def learn(self, obs, feature_space):
         """ Learn.
 
         Transforms a set of scene graphs into learned factors that can be used to build scene graphs. Each factor in the
@@ -77,8 +86,8 @@ class FactorGraphLearner(learn.BaseLearner):
                 if index not in factors:
                     self._logger.debug('Learning a new factor of type {}'.format(index))
                     if issubclass(self._factor_learner, SklearnFactorLearner):
-                        category = self.prop_to_cats(properties, len(factor.objs))
-                        factors[index] = FactorHandler(self._factor_learner(category=category))
+                        factors[index] = FactorHandler(self._factor_learner(
+                            category=self.feature_space_to_category(feature_space, len(factor.objs))))
                     else:
                         factors[index] = FactorHandler(self._factor_learner())
 
@@ -92,7 +101,7 @@ class FactorGraphLearner(learn.BaseLearner):
                 for rel_value in ['on', 'support', 'in', 'contain', 'proximity']:
                     # Count all relations with obj as the first object
                     count = sum(1 for rel in graph.relations if ((rel.obj1 is obj) and (rel.value == rel_value)) or
-                        ((rel.obj2 is obj) and (rel.value == srp_md.Relation.REV_RELATION_DICT[rel_value])))
+                                ((rel.obj2 is obj) and (rel.value == srp_md.Relation.REV_RELATION_DICT[rel_value])))
                     key = (obj.assignment['class'], rel_value)
                     try:
                         factors[key].update_factor({key: {'count': count}})

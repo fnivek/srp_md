@@ -33,8 +33,8 @@ class DopeSensor(sense.BaseSensor):
         self.properties = {"class": ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar', 'bleach', 'apple', 'chips', 'coffee', 'tuna', 'table'],
                            "shape": ['box', 'cylinder', 'complex', 'table'],
                            "color": ['red', 'yellow', 'blue', 'white', 'table'],
-                           "size": ['small', 'medium', 'large', 'table'],
-                           "weight": ['light', 'medium', 'heavy', 'table']}
+                           "size": ['s_small', 's_medium', 's_large', 's_table'],
+                           "weight": ['w_light', 'w_medium', 'w_heavy', 'w_table']}
 
         # Action clients
         self._dope_goal = None

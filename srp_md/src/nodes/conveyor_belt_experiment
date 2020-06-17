@@ -195,7 +195,7 @@ def build_tree(srp):
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         srp_md.act.actions.ObjectTranslationAct(name="act_translate_objs"),
         srp_md.act.actions.GenerateInitSceneAct(name='act_gen_init_scene', init_scene_key='srp_init_scene',
-                                                max_num_objs=6, min_y=-1.25, feature_space=feature_space),
+                                                max_num_objs=6, min_y=-1.25, max_y=-0.75, feature_space=feature_space),
         srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
         srp_md.act.actions.PlanAct(name='act_plan', srp=srp),
         srp_md.act.actions.GrabBoxAct('GrabBoxAct'),
@@ -295,7 +295,8 @@ def main():
 
     # Init srp_md
     demo_graphs = load_demos(args.demo_graphs_dir)
-    srp = srp_md.SrpMd(sensor="dope_sensor",
+    srp = srp_md.SrpMd(feature_space=feature_space,
+                       sensor="dope_sensor",
                        learner="factor_graph_learner",
                        goal_generator="factor_graph_goal_generator")
     srp.update_learner_config(factor_learner=args.factor_learner)
