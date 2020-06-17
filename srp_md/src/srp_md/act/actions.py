@@ -1281,7 +1281,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                     x_initial_value.append(deepcopy(obj_position.x))
                     y_initial_value.append(deepcopy(obj_position.y))
 
-        # specialized for all objects on convoyer belt have identity orientation 
+        # specialized for all objects on convoyer belt have identity orientation
         print('moving_object_name: ', moving_object_name)
         y_value = deepcopy(y_initial_value)
         x_value = deepcopy(x_initial_value)
@@ -4865,7 +4865,7 @@ def ExecutePlanAct(name, tree, timeout=1):
     return root
 
 
-def GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, feature_space):
+def GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, max_y, feature_space):
     root = py_trees.composites.Sequence('seq_{}_root'.format(name))
     root.add_children([
         py_trees_ros.subscribers.ToBlackboard(
@@ -4874,18 +4874,19 @@ def GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, feature_spac
             topic_type=ModelStates,
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        _GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, feature_space)
+        _GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, max_y, feature_space)
     ])
     return root
 
 
 class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, init_scene_key, max_num_objs, min_y, feature_space):
+    def __init__(self, name, init_scene_key, max_num_objs, min_y, max_y, feature_space):
         super(_GenerateInitSceneAct, self).__init__(name)
         self._init_scene_key = init_scene_key
         self._feature_space = feature_space
         self._max_num_objs = max_num_objs
         self._min_y = min_y
+        self._max_y = max_y
 
     def update(self):
         # Get the pose and name of all gazebo models
@@ -4903,8 +4904,9 @@ class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
         # Sort by y value and take only max_num_objs
         model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
         print(model_states)
-        # Filter out objects to far from robotstates that are to far from the robot
-        model_states = filter(lambda (name, pose): pose.position.y > self._min_y, model_states)
+        # Filter out objects to far from states that are to far from the robot and items already manipulated
+        model_states = filter(lambda (name, pose): (pose.position.y > self._min_y) and (pose.position.y < self._max_y),
+                              model_states)
         print(model_states)
         # Drop poses
         model_names = [name for name, pose in model_states]
