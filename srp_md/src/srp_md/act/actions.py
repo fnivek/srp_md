@@ -67,7 +67,7 @@ to_grasp_full_tf.transform.rotation.w = 1.0
 
 to_y_grasp_full_tf = TransformStamped()
 to_y_grasp_full_tf.header.frame_id = "gripper_link"
-to_y_grasp_full_tf.transform.translation.y = (pre_grasp_offset) * 0.95
+to_y_grasp_full_tf.transform.translation.y = (pre_grasp_offset) * 0.95 / 2
 to_y_grasp_full_tf.transform.rotation.w = 1.0
 
 to_y_grasp_full_back_tf = TransformStamped()
@@ -1351,7 +1351,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                         current_object_size_x_y.append(All_size[All_name.index(name)].y)
                     break
             # lateral_move_x_limit.append(conveyor_belt_minx + current_object_size_x_y[0] / 2)
-            lateral_move_y_limit[moving_object_name[name_index]] = lateral_move_y_limit[moving_object_name[name_index]] - current_object_size_x_y[1] / 2 - 0.02
+            lateral_move_y_limit[moving_object_name[name_index]] = lateral_move_y_limit[moving_object_name[name_index]] - current_object_size_x_y[1] / 2 - 0.05
             current_object_x_range.append(lateral_move_x_limit[moving_object_name[name_index]] - current_object_size_x_y[0] / 2)
             current_object_x_range.append(lateral_move_x_limit[moving_object_name[name_index]] + current_object_size_x_y[0] / 2)
             # print('current_object_x_range: ', current_object_x_range)
@@ -2236,7 +2236,7 @@ class PushBoxPoseGeneration(py_trees.behaviour.Behaviour):
 
         blackboard.set(self._push_pose_key, test_gripper_poses)
 
-        relative_cartesian_move_dis = 0.3
+        relative_cartesian_move_dis = 0.2
         tf_1 = R.from_quat([
                 self._fetch_pose.orientation.x,
                 self._fetch_pose.orientation.y,
@@ -3637,7 +3637,7 @@ class GroceryLinkDettachingAct(py_trees.behaviour.Behaviour):
             grocery_box_name = 'grocery_box'
 
         grocery_box_name = self._grocery_bbox_names[self._grocery_box_index]
-
+        grocery_box_pose = self._model_state.pose[self._model_state.name.index(grocery_box_name)]
         req = AttachRequest()
         # req.model_name_1 = self._object_name
         req.model_name_1 = grocery_box_name
@@ -3647,10 +3647,10 @@ class GroceryLinkDettachingAct(py_trees.behaviour.Behaviour):
         req.link_name_2 = self._relative_link_name
         self._link_dettacher_client.call(req)
 
-        x_min = grocery_bbox.center.position.x - grocery_bbox.size.x / 2
-        x_max = grocery_bbox.center.position.x + grocery_bbox.size.x / 2
-        y_min = grocery_bbox.center.position.y - grocery_bbox.size.y / 2
-        y_max = grocery_bbox.center.position.y + grocery_bbox.size.y / 2
+        x_min = grocery_box_pose.position.x - grocery_bbox.size.x / 2
+        x_max = grocery_box_pose.position.x + grocery_bbox.size.x / 2
+        y_min = grocery_box_pose.position.y - grocery_bbox.size.y / 2
+        y_max = grocery_box_pose.position.y + grocery_bbox.size.y / 2
 
         for i in range(len(self._model_state.name)):
             if 'test' in self._model_state.name[i] and self._model_state.pose[i].position.x > x_min\
@@ -3660,6 +3660,8 @@ class GroceryLinkDettachingAct(py_trees.behaviour.Behaviour):
                 req_object.link_name_1 = self._link_name
                 req_object.model_name_2 = grocery_box_name
                 req_object.link_name_2 = 'link_1'
+                print('req_object.model_name_1: ', req_object.model_name_1)
+                print('req_object.model_name_2: ', req_object.model_name_2)
                 # req_object.model_name_2 = self._relative_object_name
                 # req_object.link_name_2 = self._relative_link_name
                 self._link_dettacher_client.call(req_object)
@@ -3706,7 +3708,7 @@ class GroceryLinkAttachingAct(py_trees.behaviour.Behaviour):
             grocery_box_name = 'grocery_box'
 
         grocery_box_name = self._grocery_bbox_names[self._grocery_box_index]
-
+        grocery_box_pose = self._model_state.pose[self._model_state.name.index(grocery_box_name)]
         req = AttachRequest()
         req.model_name_1 = grocery_box_name
         req.link_name_1 = self._link_name
@@ -3715,18 +3717,25 @@ class GroceryLinkAttachingAct(py_trees.behaviour.Behaviour):
 
         self._link_attacher_client.call(req)
 
-        x_min = grocery_bbox.center.position.x - grocery_bbox.size.x / 2
-        x_max = grocery_bbox.center.position.x + grocery_bbox.size.x / 2
-        y_min = grocery_bbox.center.position.y - grocery_bbox.size.y / 2
-        y_max = grocery_bbox.center.position.y + grocery_bbox.size.y / 2
-
+        x_min = grocery_box_pose.position.x - grocery_bbox.size.x / 2
+        x_max = grocery_box_pose.position.x + grocery_bbox.size.x / 2
+        y_min = grocery_box_pose.position.y - grocery_bbox.size.y / 2
+        y_max = grocery_box_pose.position.y + grocery_bbox.size.y / 2
+        print('grocery_bbox.center.position: ', grocery_bbox.center.position)
+        print('x_min: ', x_min)
+        print('x_max: ', x_max)
+        print('y_min: ', y_min)
+        print('y_max: ', y_max)
         for i in range(len(self._model_state.name)):
             if 'test' in self._model_state.name[i] and self._model_state.pose[i].position.x > x_min and self._model_state.pose[i].position.x < x_max\
             and self._model_state.pose[i].position.y > y_min and self._model_state.pose[i].position.y < y_max:
                 req_object = AttachRequest()
                 req_object.model_name_1 = self._model_state.name[i]
+                print('req_object.model_name_1: ', req_object.model_name_1)
                 req_object.link_name_1 = self._link_name
+
                 req_object.model_name_2 = grocery_box_name
+                print('req_object.model_name_2: ', req_object.model_name_2)
                 req_object.link_name_2 = 'link_1'
                 self._link_attacher_client.call(req_object)
                 time.sleep(0.05)
@@ -4128,6 +4137,7 @@ class LinkDettachingAct(py_trees.behaviour.Behaviour):
         self._link_dettacher_client.call(req)
         return py_trees.Status.SUCCESS
 
+
 def AddAllCollisionBoxesAct(name):
     """
     Add all collision boxes
@@ -4173,6 +4183,7 @@ def AddAllCollisionBoxesAct(name):
     ])
 
     return root
+
 
 def GetDopeAndPoseAct(name):
     root = py_trees.composites.Sequence(
@@ -4275,6 +4286,8 @@ def PushBoxAct(name):
         # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_full_tf),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_tf),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_tf),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
         GroceryLinkAttachingAct('GroceryLinkAttachingAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
@@ -4282,6 +4295,16 @@ def PushBoxAct(name):
         RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         GroceryLinkDettachingAct('GroceryLinkDettachingAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
@@ -4294,9 +4317,10 @@ def PushBoxAct(name):
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_back_tf),
-        GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
+        RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
     ])
     return root
 
