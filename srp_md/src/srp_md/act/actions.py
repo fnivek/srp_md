@@ -15,6 +15,7 @@ import py_trees_ros
 import message_filters
 import time
 import threading
+import logging
 
 import random
 
@@ -4882,6 +4883,7 @@ def GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, max_y, featu
 class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
     def __init__(self, name, init_scene_key, max_num_objs, min_y, max_y, feature_space):
         super(_GenerateInitSceneAct, self).__init__(name)
+        self._logger = logging.getLogger(__name__)
         self._init_scene_key = init_scene_key
         self._feature_space = feature_space
         self._max_num_objs = max_num_objs
@@ -4893,24 +4895,19 @@ class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
         bb = py_trees.blackboard.Blackboard()
         model_states = bb.get('model_state')
         model_states = zip(model_states.name, model_states.pose)
-        print(model_states)
         # Filter all objects not in feature space
         model_states = filter(lambda (name, pose): any([key in name for key in self._feature_space.keys()]),
                               model_states)
-        print(model_states)
         # Filter tables
         model_states = filter(lambda (name, pose): 'table' not in name, model_states)
-        print(model_states)
-        # Sort by y value and take only max_num_objs
-        model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
-        print(model_states)
         # Filter out objects to far from states that are to far from the robot and items already manipulated
         model_states = filter(lambda (name, pose): (pose.position.y > self._min_y) and (pose.position.y < self._max_y),
                               model_states)
-        print(model_states)
+        # Sort by y value and take only max_num_objs
+        model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
         # Drop poses
         model_names = [name for name, pose in model_states]
-        print(model_names)
+        self._logger.debug('Making an initial scene graph from {}'.format(' '.join(model_names)))
 
         # Construct scene graph
         # TODO(Kevin): Get feature space key from name e.g. cracker from cracker_test_1
