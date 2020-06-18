@@ -2815,7 +2815,13 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                         poses.append(poses_temp[distance_ori.index(max(distance_ori))])
                     distance_ori[distance_ori.index(max(distance_ori))] = -1
             # elif 'proximity' in self._relation and 'meat' in self._object_index:
-            elif 'proximity' in self._relation or  'meat' in self._object_index or 'soup' in self._object_index:
+            elif 'proximity' in self._relation and 'meat' in self._object_index:
+                for i in range(len(poses_temp)):
+                    if i > len(poses_temp) / 3:
+                        pose_index = distance_ori.index(max(distance_ori))
+                        poses.append(poses_temp[pose_index])
+                        distance_ori[pose_index] = -1
+            elif 'proximity' in self._relation and 'soup' in self._object_index:
                 for i in range(len(poses_temp)):
                     if i > len(poses_temp) / 3:
                         pose_index = distance_ori.index(max(distance_ori))
@@ -4497,7 +4503,7 @@ def PickAct(name, obj):
     grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     grasploc_grasp_seq.add_children([
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
-        SleepBehavior('act_sleep_a_smidge', duration=1.5),
+        SleepBehavior('act_sleep_a_smidge', duration=2.0),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
         LinkAttachingAct('LinkAttachAct', object_name=object_name, link_name='link_1'),
         CloseGripperAct('act_close_gripper'),
@@ -4917,24 +4923,27 @@ class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
         bb = py_trees.blackboard.Blackboard()
         model_states = bb.get('model_state')
         model_states = zip(model_states.name, model_states.pose)
-        print(model_states)
+        # print(model_states)
         # Filter all objects not in feature space
         model_states = filter(lambda (name, pose): any([key in name for key in self._feature_space.keys()]),
                               model_states)
-        print(model_states)
+        # print('before: ', model_states)
+        # print('----------------------------------')
         # Filter tables
         model_states = filter(lambda (name, pose): 'table' not in name, model_states)
         print(model_states)
+        print('----------------------------------')
         # Sort by y value and take only max_num_objs
         model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
         print(model_states)
+        print('----------------------------------')
         # Filter out objects to far from states that are to far from the robot and items already manipulated
         model_states = filter(lambda (name, pose): (pose.position.y > self._min_y) and (pose.position.y < self._max_y),
                               model_states)
-        print(model_states)
+        print('after: ', model_states)
         # Drop poses
         model_names = [name for name, pose in model_states]
-        print(model_names)
+        # print(model_names)
 
         # Construct scene graph
         # TODO(Kevin): Get feature space key from name e.g. cracker from cracker_test_1

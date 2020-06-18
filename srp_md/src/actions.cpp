@@ -336,6 +336,7 @@ void Act::crop_box_filt_pc(const sensor_msgs::PointCloud2::Ptr in_pc, const visi
 
 void Act::transform_pc(const sensor_msgs::PointCloud2& in_pc, std::string frame_id, sensor_msgs::PointCloud2& out_pc)
 {
+    tf_listener_.waitForTransform("/base_link", in_pc.header.frame_id, in_pc.header.stamp, ros::Duration(10.0));
     pcl_ros::transformPointCloud(frame_id, in_pc, out_pc, tf_listener_);
 }
 
@@ -1016,17 +1017,19 @@ bool Act::free_space_finder(const sensor_msgs::PointCloud2::ConstPtr& points,
     vision_msgs::BoundingBox3D plane_bbox_mod = plane_bbox;
     float edge_deduction_ratio = 0.17;
     float plane_expansion_ratio = 2.0;
-    float object_placing_offset = 0.05;
+    float object_placing_offset = 0.03;
     int points_threshold = 0;
 
     // Transform the pointcloud to base frame
     transform_pc(*points, "base_link", *points_tf);
-    cout << "testing1" << endl << endl;
+    cout << "points.header.frame_id"<< points->header.frame_id << endl << endl;
     // Crop out the plane
     plane_bbox_mod.size.z = (1 + plane_expansion_ratio) * plane_bbox.size.z;
     cout << "plane_bbox.size.z: " << plane_bbox.size.z << endl;
+    cout << "plane_bbox_mod: " <<plane_bbox_mod<<endl;
     // crop_box_filt_pc(points_tf, plane_bbox_mod, *points_plane_filtered, true);
     crop_box_filt_pc(points_tf, plane_bbox_mod, *points_plane_filtered, true);
+    // plane_cropped_.publish(points_plane_filtered);
     plane_cropped_.publish(points_plane_filtered);
     jsk_recognition_msgs::BoundingBox plane_bbox_jsk;
     plane_bbox_jsk.pose = plane_bbox_mod.center;
