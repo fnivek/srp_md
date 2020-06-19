@@ -151,7 +151,7 @@ def generate_demo_scenes_from_list(objs_list):
     return scene_graphs
 
 
-def generate_random_demo_scene(num_objs, objs_list):
+def generate_random_demo_scene(num_objs, objs_list, use_noise=False, obj_noise_level=0, rel_noise_level=0):
     # Add the table
     table = srp_md.Object(name='table', id_num=0, uuid=0, assignment=FEATURES["table"])
     objs = [table]
@@ -200,7 +200,26 @@ def generate_random_demo_scene(num_objs, objs_list):
                 rel.value = random.choice(['proximity', 'disjoint'])
             # else:
             #     print('{} - {} - {}'.format(complex_obj.name, obj.name, rel.value))
-    return sg
+    # Add noise
+    num_noisy_objs = 0
+    num_noisy_rels = 0
+    if use_noise:
+        for obj in sg.objs:
+            if random.random() < obj_noise_level:
+                num_noisy_objs += 1
+                new_class = obj.assignment['class']
+                while new_class == obj.assignment['class']:
+                    new_class = random.choice(all_classes)
+                obj.assignment = FEATURES[new_class]
+                obj.name = 'noise_{}_{}'.format(new_class, obj.uuid)
+        for rel in sg.relations:
+            if random.random() < rel_noise_level:
+                num_noisy_rels += 1
+                new_rel = rel.value
+                while new_rel == rel.value:
+                    new_rel = random.choice(srp_md.scene_graph.Relation.RELATION_STRS)
+                rel.value = new_rel
+    return sg, num_noisy_objs, num_noisy_rels
 
 
 # TODO(Kevin): Use the new random scene graph generator from scene_graph.py
@@ -443,6 +462,12 @@ def parse_args():
                         'many random sets')
     parser.add_argument('--plan', type=srp_md.str2bool, default=True, help='True plan, false don\'t plan')
     parser.add_argument('--num_threads', type=int, default=4, help='Number of threads to use')
+    parser.add_argument('--use_noise', type=srp_md.str2bool, default=False, help='If true apply noise in object and '
+                        'relation detection')
+    parser.add_argument('--obj_noise_level', type=float, default=0.0, help='Percentage chance of detecting object '
+                        'as noise')
+    parser.add_argument('--rel_noise_level', type=float, default=0.0, help='Percentage chance of false relation '
+                        'detection')
     parser.add_argument('output_dir', type=str,
                         help='To write the demo, test, and generated .sg files and results.csv',
                         default='{}/graphs'.format(data_folder))
@@ -495,7 +520,8 @@ def num_trials(num_train_sets, max_num_demos, min_num_demos, num_samples, **kwar
 
 def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo_graphs, num_test_scenes,
             max_test_size, min_test_size, use_novel_classes, training_classes, test_classes, trial_min_index,
-            trial_start_index, goal_client, num_demos, min_demo_size, max_demo_size, plan, output_dir):
+            trial_start_index, goal_client, num_demos, min_demo_size, max_demo_size, plan, use_noise, obj_noise_level,
+            rel_noise_level, output_dir):
     # Name trials
     trials_name = 'trials_{}-{}'.format(
         trial_min_index,
@@ -520,14 +546,22 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
 
     # Use provided or generate demos
     timer.start(trials_name + '_demos')
+    num_noisy_objs = 0
+    num_noisy_rels = 0
     if demo_graphs is None:
         # Generate
         demo_graphs = []
         for _ in range(num_demos):
             num_objs = random.randint(min_demo_size, max_demo_size)
-            demo_graphs.append(generate_random_demo_scene(num_objs, training_classes))
+            sg, noisy_objs, noisy_rels = generate_random_demo_scene(
+                num_objs, training_classes, use_noise, obj_noise_level, rel_noise_level)
+            num_noisy_objs += noisy_objs
+            num_noisy_rels += noisy_rels
+            demo_graphs.append(sg)
     srp.set_demo_graphs(demo_graphs)
     timer.stop(trials_name + '_demos')
+    num_objs_in_demo = sum([len(sg.objs) for sg in demo_graphs])
+    num_rels_in_demo = sum([len(sg.relations) for sg in demo_graphs])
 
     # Learn
     timer.start(trials_name + '_learn')
@@ -609,6 +643,8 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                                                     test_graph.num_objs(), num_novel,
                                                     len(training_classes), '-'.join(sorted(training_classes)),
                                                     len(test_classes), '-'.join(sorted(test_classes)),
+                                                    num_objs_in_demo, num_rels_in_demo,
+                                                    num_noisy_objs, num_noisy_rels,
                                                     timer.diff_times[trials_name + '_demos'],
                                                     timer.diff_times[trials_name + '_learn'],
                                                     timer.diff_times[trial_name],
@@ -700,6 +736,9 @@ def experiment_generator(args, demo_graphs, completed):
         'min_demo_size': args.min_demo_size,
         'max_demo_size': args.max_demo_size,
         'plan': args.plan,
+        'use_noise': args.use_noise,
+        'obj_noise_level': args.obj_noise_level,
+        'rel_noise_level': args.obj_noise_level,
         'output_dir': args.output_dir
     }
 
@@ -755,9 +794,9 @@ def main():
     demo_graphs = None
     if args.demo_graphs_dir is not None:
         demo_graphs = (
-            load_demos(args.demo_graphs_dir) +
-            [generate_random_demo_scene((num_objs % 10) + 2,
-             filter(lambda x: x != 'table', training_classes)) for num_objs in range(100)])
+            load_demos(args.demo_graphs_dir))  # +
+        #    [generate_random_demo_scene((num_objs % 10) + 2,
+        #     filter(lambda x: x != 'table', training_classes)) for num_objs in range(100)])
     timer.stop('load_demos')
 
     # Pickup where you left off
