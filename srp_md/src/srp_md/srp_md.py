@@ -120,6 +120,12 @@ class SrpMd(object):
         self._demo_graphs = demo_graphs
         self._initial_graphs = init_graphs
 
+    def set_demo_graphs(self, demo_graphs):
+        self._demo_graphs = demo_graphs
+
+    def set_init_graphs(self, init_graphs):
+        self._initial_graphs = init_graphs
+
     """ Learner.
 
     Functions to interact with the learner.
