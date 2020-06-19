@@ -252,7 +252,7 @@ class Planner(object):
         if stdout.find('search exit code: 0') != -1:
             self._logger.info('Plan correct')
         else:
-            self._logger.warn('Failed to plan')
+            self._logger.info('Failed to plan')
             return None
 
         lines = []

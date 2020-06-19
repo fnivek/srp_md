@@ -603,9 +603,10 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                     gen_goal_resp = timer.diff_times['generate_goal_response']
                 except KeyError:
                     pass
+                plan_success = (plans is not None) and None not in plans
                 with open(output_dir + '/results.csv', 'a+') as global_results_file:
                     global_results_writer = csv.writer(global_results_file)
-                    global_results_writer.writerow([trial_num, len(demo_graphs), result, reason,
+                    global_results_writer.writerow([trial_num, len(demo_graphs), result, reason, plan_success,
                                                     test_graph.num_objs(), num_novel,
                                                     len(training_classes), '-'.join(sorted(training_classes)),
                                                     len(test_classes), '-'.join(sorted(test_classes)),
