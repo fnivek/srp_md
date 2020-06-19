@@ -98,7 +98,7 @@ class FactorGraphLearner(learn.BaseLearner):
 
             # Generate the relation counting factors
             for obj in graph.objs:
-                for rel_value in ['on', 'support', 'in', 'contain', 'proximity']:
+                for rel_value in ['on', 'support', 'proximity']:
                     # Count all relations with obj as the first object
                     count = sum(1 for rel in graph.relations if ((rel.obj1 is obj) and (rel.value == rel_value)) or
                                 ((rel.obj2 is obj) and (rel.value == srp_md.Relation.REV_RELATION_DICT[rel_value])))

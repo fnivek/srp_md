@@ -510,14 +510,12 @@ class Object(srp_md.Var):
 
 class Relation(srp_md.Var):
     # Class constants
-    RELATION_STRS = ['disjoint', 'in', 'on', 'contain', 'support', 'proximity']
+    RELATION_STRS = ['disjoint', 'on', 'support', 'proximity']
     REV_RELATION_DICT = {
         "disjoint": "disjoint",
         "proximity": "proximity",
         "on": "support",
         "support": "on",
-        "in": "contain",
-        "contain": "in"
     }
 
     def __init__(self, objs, uuid=0, value=None):
