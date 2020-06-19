@@ -486,14 +486,14 @@ class SrpMd(object):
             # nx.draw_networkx_edges(G, pos, edgelist=black_edges, arrows=False)
             # plt.show()
 
-    def plan(self):
+    def plan(self, problem_file=None, soln_file=None):
         if len(self._initial_graphs) == 0 and len(self._goal_instances) == 0:
             self._logger.warning('No initial graphs or no goal instances to plan on')
             self._plans = [None]
         else:
             # For this to work properly, generate goal must be run before hands!
-            self._plans = [self._planner.plan(init_graph, goal_graph) for
-                          init_graph, goal_graph in zip(self._initial_graphs, self._goal_instances)]
+            self._plans = [self._planner.plan(init_graph, goal_graph, problem_file=problem_file, soln_file=soln_file)
+                           for init_graph, goal_graph in zip(self._initial_graphs, self._goal_instances)]
         return self._plans
 
     def act(self):

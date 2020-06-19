@@ -76,7 +76,7 @@ class Planner(object):
 
         self._default_planner = 'ff-astar'
 
-    def plan(self, init_graph=None, goal_graph=None):
+    def plan(self, init_graph=None, goal_graph=None, problem_file=None, soln_file=None):
         self._logger.debug('Starting to plan')
 
         # If graphs are not inputs, just use default auto_gen_problem for debugging
@@ -86,7 +86,9 @@ class Planner(object):
         # Make the PDDL file from input graphs
         else:
             # Change the name of problem file here
-            self._problem_file = os.path.abspath(self._problem_dir + '/input_gen_problem.pddl')
+            self._problem_file = problem_file
+            if self._problem_file is None:
+                self._problem_file = os.path.abspath(self._problem_dir + '/input_gen_problem.pddl')
 
             # If the problem file already exists, delete the file
             if os.path.exists(self._problem_file):
@@ -192,10 +194,13 @@ class Planner(object):
                             write_above(obj_name)
                     # Handle proximity
                     for rel in graph.relations:
-                        if (rel.value == 'proximity' and
-                           directly_on_dict[rel.obj1.name] == directly_on_dict[rel.obj2.name]):
-                            self._logger.debug('proximity {} {}'.format(rel.obj1.name, rel.obj2.name))
-                            write('(proximity {} {})\n'.format(rel.obj1.name, rel.obj2.name))
+                        if (rel.value == 'proximity'):
+                            try:
+                                if directly_on_dict[rel.obj1.name] == directly_on_dict[rel.obj2.name]:
+                                    self._logger.debug('proximity {} {}'.format(rel.obj1.name, rel.obj2.name))
+                                    write('(proximity {} {})\n'.format(rel.obj1.name, rel.obj2.name))
+                            except KeyError:
+                                pass
 
                     # Start with empty gripper hand
                     write("(free fetch_gripper)\n")
@@ -227,7 +232,9 @@ class Planner(object):
                 write(")\n")
 
         # Plan from the generated PDDL file
-        self._soln_file = os.path.abspath(self._problem_file + '.soln')
+        self._soln_file = soln_file
+        if self._soln_file is None:
+            self._soln_file = os.path.abspath(self._problem_file + '.soln')
         self._plan_cmd = [
             self._planner_executable,
             # '--validate',

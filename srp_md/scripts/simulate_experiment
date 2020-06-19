@@ -561,7 +561,8 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
             timer.start(trial_name + '_plan')
             plans = None
             if plan:
-                plans = srp.plan()
+                plans = srp.plan(problem_file=output_dir + '/plans/prob_{}.pddl'.format(trial_num),
+                                 soln_file=output_dir + '/plans/prob_{}.soln'.format(trial_num))
             timer.stop(trial_name + '_plan')
 
             # End trial timer
