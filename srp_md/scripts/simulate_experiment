@@ -466,6 +466,22 @@ def parse_args():
     if args.output_dir is not None:
         if not os.path.isdir(args.output_dir):
             os.mkdir(args.output_dir)
+        args.output_dir = os.path.realpath(args.output_dir)
+        plans_dir = args.output_dir + '/plans'
+        if not os.path.isdir(plans_dir):
+            os.mkdir(plans_dir)
+        demos_dir = args.output_dir + '/demos'
+        if not os.path.isdir(demos_dir):
+            os.mkdir(demos_dir)
+        generated_dir = args.output_dir + '/generated'
+        if not os.path.isdir(generated_dir):
+            os.mkdir(generated_dir)
+        test_dir = args.output_dir + '/test'
+        if not os.path.isdir(test_dir):
+            os.mkdir(test_dir)
+        if not os.path.isfile(args.output_dir + '/results.csv'):
+            with open(args.output_dir + '/results.csv', 'w+'):
+                pass
 
     return args
 
