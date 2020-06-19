@@ -624,15 +624,6 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                 # # To .sg and soln files
                 # save_all(None, [test_graph], srp._goal_instances, plans, trial_num, output_dir)
 
-                # global_index += len(srp._goal_instances)
-                # avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
-                # print('----------------------')
-                # logger.info('avg_time: {}'.format(avg_time))
-                # logger.info('Trial: {} ({} remaining)'.format(global_index, num_trials - global_index))
-                # logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index) * avg_time)))
-                # logger.info('Percent completed: {}%'.format(100.0 * (global_index) / num_trials))
-                # print('----------------------')
-                #
     timer.stop(trials_name)
 
 
@@ -761,34 +752,14 @@ def main():
     timer = srp_md.GlobalTimer()
     timer.start('experiment')
 
-    # timer.start('load_demos')
+    timer.start('load_demos')
     demo_graphs = None
     if args.demo_graphs_dir is not None:
         demo_graphs = (
             load_demos(args.demo_graphs_dir) +
             [generate_random_demo_scene((num_objs % 10) + 2,
              filter(lambda x: x != 'table', training_classes)) for num_objs in range(100)])
-    # else:
-    #     # Simulate goal scenegraphs
-    #     # demo_num, demo_objs_nums, noise_num = 20, [6], 0
-    #     demo_graphs = generate_demo_scenes_from_list(grocery_experiment_demo_objs)
-    #     # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
-    #     # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num,
-    #     #                                    [["cracker", "gelatin", "meat", "soup", "sugar"],
-    #     #                                     ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
-    # save_graphs(demo_graphs, 'data.pickle', 'demo', 0, args.output_dir)
-    # print([evaluate_goal(sg) for sg in demo_graphs])
-    # timer.stop('load_demos')
-    # logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
-
-    # Setup SRP_MD object
-    # srp = srp_md.SrpMd(feature_space=FEATURES,
-    #                    sensor="dope_sensor",
-    #                    learner="factor_graph_learner",
-    #                    goal_generator="factor_graph_goal_generator")
-    # srp.update_learner_config(factor_learner=args.factor_learner)
-    # srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
-    #                                  use_cardinality=args.use_cardinality)
+    timer.stop('load_demos')
 
     # Pickup where you left off
     completed = []
@@ -813,98 +784,7 @@ def main():
     for thread in thread_pool:
         thread.join()
 
-    # run_one(
-    #     factor_learner=args.factor_learner,
-    #     use_consistency=args.use_consistency,
-    #     use_no_float=args.use_no_float,
-    #     use_cardinality=args.use_cardinality,
-    #     demo_graphs=demo_graphs,
-    #     num_test_scenes=args.num_test_scenes,
-    #     max_test_size=args.max_test_size,
-    #     min_test_size=args.min_test_size,
-    #     use_novel_classes=args.use_novel_classes,
-    #     training_classes=training_classes,
-    #     test_classes=test_classes,
-    #     trial_start_index=0,
-    #     goal_client='/get_goal',
-    #     num_demos=20,
-    #     min_demo_size=args.min_demo_size,
-    #     max_demo_size=args.max_demo_size,
-    #     plan=args.plan,
-    #     output_dir=args.output_dir)
-    # avg_time = 0
-    # num_trials = (args.max_test_size - args.min_test_size + 1) * args.num_test_scenes
-    # srp.set_scenes(demo_graphs, None)
-    # timer.start('learn')
-    # srp.learn()
-    # timer.stop('learn')
-    # logger.info('Learn')
-    # for trial_set, num_objs in enumerate(range(args.min_test_size, args.max_test_size + 1)):
-    #     for test_scene in range(args.num_test_scenes):
-    #         current_trial = trial_set * args.num_test_scenes + test_scene
-    #         if current_trial <= last_trial:
-    #             continue
-
-    #         # Trial timer
-    #         trial_name = 'trial_{}'.format(global_index)
-    #         start_time = time.time()
-    #         timer.start(trial_name)
-
-    #         # Simulate initial scenegraphs
-    #         init_scene_name = 'init_scene_{}'.format(global_index)
-    #         timer.start(init_scene_name)
-    #         test_graphs, num_novel = generate_init_scenes(1, [num_objs], all_classes)
-    #         timer.stop(init_scene_name)
-    #         logger.info('Generated {} initial scenes'.format(len(test_graphs)))
-
-    #         srp.set_scenes(demo_graphs, test_graphs)
-    #         logger.info('Initialized SrpMd object with {} demos'.format(len(demo_graphs)))
-
-    #         # Generate goals from learned factors
-    #         # try rospy.service.ServiceException
-    #         goal_name = 'goal_{}'.format(global_index)
-    #         timer.start(goal_name)
-    #         srp.generate_goal()
-    #         timer.stop(goal_name)
-    #         logger.info('Generated goals')
-
-    #         plan_name = 'plan_{}'.format(global_index)
-    #         timer.start(plan_name)
-    #         plans = srp.plan()
-    #         # plans = [None]
-    #         timer.stop(plan_name)
-
-    #         # Timing info
-    #         timer.stop(trial_name)
-    #         diff = time.time() - start_time
-
-    #         # Generate results.csv
-    #         with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
-    #             global_results_writer = csv.writer(global_results_file)
-    #             for index, (goal, test_graph) in enumerate(zip(srp._goal_instances, test_graphs)):
-    #                 result, reason = evaluate_goal(goal)
-    #                 logger.info('Generated goal {} {} {}'.format(index,
-    #                                                              'succeded' if result else 'failed',
-    #                                                              'because ' + reason if not result else ''))
-    #                 global_results_writer.writerow([index + global_index, len(demo_graphs), result, reason,
-    #                                                 test_graph.num_objs(), num_novel, diff, timer.diff_times[trial_name],
-    #                                                 timer.diff_times[init_scene_name], timer.diff_times[goal_name],
-    #                                                 timer.diff_times['generate_goal'],
-    #                                                 timer.diff_times['generate_goal_request'],
-    #                                                 timer.diff_times['generate_goal_response'],
-    #                                                 timer.diff_times[plan_name]])
-
-    #         save_all(None, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
-
-    #         global_index += len(srp._goal_instances)
-    #         avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
-    #         print('----------------------')
-    #         logger.info('avg_time: {}'.format(avg_time))
-    #         logger.info('Trial: {} ({} remaining)'.format(global_index, num_trials - global_index))
-    #         logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index) * avg_time)))
-    #         logger.info('Percent completed: {}%'.format(100.0 * (global_index) / num_trials))
-    #         print('----------------------')
-
+    timer.stop('experiment')
     print(timer.diff_times)
 
 
