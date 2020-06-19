@@ -249,17 +249,16 @@ def save_graphs(graphs, pickle_name, file_prefix, current_trial, dirname):
     for i, graph in enumerate(graphs):
         if graph is None:
             continue
-        graph.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i + current_trial)), draw_disjoint=False,
-                     flip_relations=True)
+        graph.to_file(os.path.join(dirname, "{}_{}".format(file_prefix, i + current_trial)))
 
 
 def save_all(demo_graphs, test_graphs, generated_graphs, plans, current_trial, dirname):
     if demo_graphs is not None:
-        save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname)
-    save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname)
-    save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname)
-    if plans is not None:
-        save_plans(plans, current_trial, dirname)
+        save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname + '/demos')
+    save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname + '/test')
+    save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname + '/generated')
+    # if plans is not None:
+    #     save_plans(plans, current_trial, dirname)
 
 
 def save_plans(plans, current_trial, dirname):
@@ -621,8 +620,8 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                                                     timer.diff_times[trial_name + '_plan']])
 
                 # Warning this takes a lot of memory
-                # # To .sg and soln files
-                # save_all(None, [test_graph], srp._goal_instances, plans, trial_num, output_dir)
+                # To .sg and soln files
+                save_all(None, [test_graph], srp._goal_instances, plans, trial_num, output_dir)
 
     timer.stop(trials_name)
 
