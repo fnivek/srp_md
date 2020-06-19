@@ -157,10 +157,6 @@ def build_tree(srp):
     table_crop_box.size.z = 4
     blackboard.set('table_crop_box', table_crop_box)
 
-    # Testing
-    blackboard.set('srp_init_scene', [srp_md.SceneGraph.random_sg(num_objs=3, feature_space=feature_space,
-                                                                  relation_value='disjoint')])
-
     tree = py_trees_ros.trees.BehaviourTree(root)
     main = py_trees.composites.Sequence('seq_main')
     main.add_children([
