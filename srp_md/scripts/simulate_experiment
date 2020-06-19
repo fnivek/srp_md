@@ -474,8 +474,8 @@ def num_trials_single(min_test_size, max_test_size, num_test_scenes, **kwargs):
     return (max_test_size - min_test_size + 1) * num_test_scenes
 
 
-def num_trials(**kwargs):
-    return None  # TODO
+def num_trials(num_train_sets, max_num_demos, min_num_demos, num_samples, **kwargs):
+    return num_train_sets * (max_num_demos - min_num_demos + 1) * num_samples * num_trials_single(**kwargs)
 
 
 def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo_graphs, num_test_scenes,
@@ -590,6 +590,7 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                                                     timer.diff_times['generate_goal_response'],
                                                     timer.diff_times[trial_name + '_plan']])
 
+                # Warning this takes a lot of memory
                 # # To .sg and soln files
                 # save_all(None, [test_graph], srp._goal_instances, plans, trial_num, output_dir)
 
@@ -741,7 +742,7 @@ def main():
         csv_reader = csv.reader(results_file)
         for row in csv_reader:
             completed.append(int(row[0]))
-    logger.info('Previously completed {} trials'.format(len(completed)))
+    logger.info('Previously completed {} of {} trials'.format(len(completed), num_trials(**args.__dict__)))
 
     # Put all trials into queue
     params_queue = multiprocessing.Queue()
