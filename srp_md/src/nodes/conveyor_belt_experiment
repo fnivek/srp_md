@@ -185,7 +185,6 @@ def build_tree(srp):
         srp_md.act.actions.GroceryBoxInitializationAct('GroceryBoxInitializationAct', grocery_box_num=3),
         srp_md.act.actions.PubOdomPose('PubOdomPose'),
         srp_md.act.actions.FetchMoveAct('FetchMoveAct', position=Point(0, 0, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        # srp_md.act.actions.FetchMoveAct('FetchMoveAct', position=Point(0,0.4,0), orientation=Quaternion(0, 0, 0.707, 0.707), frame_id='map'),
         srp_md.act.actions.SpawnRandomModelAct(name='act_add_groceries'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
@@ -211,7 +210,7 @@ def build_tree(srp):
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         srp_md.act.actions.ObjectTranslationAct(name="act_translate_objs"),
         srp_md.act.actions.GenerateInitSceneAct(name='act_gen_init_scene', init_scene_key='srp_init_scene',
-                                                max_num_objs=6, min_y=-1.25, feature_space=feature_space),
+                                                max_num_objs=6, min_y=-1.25, max_y=-0.75, feature_space=feature_space),
         srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
         srp_md.act.actions.PlanAct(name='act_plan', srp=srp),
         srp_md.act.actions.GrabBoxAct('GrabBoxAct'),

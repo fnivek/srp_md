@@ -15,6 +15,7 @@ import py_trees_ros
 import message_filters
 import time
 import threading
+import logging
 
 import random
 
@@ -67,13 +68,23 @@ to_grasp_full_tf.transform.rotation.w = 1.0
 
 to_y_grasp_full_tf = TransformStamped()
 to_y_grasp_full_tf.header.frame_id = "gripper_link"
-to_y_grasp_full_tf.transform.translation.y = (pre_grasp_offset) * 0.95 / 2
+to_y_grasp_full_tf.transform.translation.y = -(pre_grasp_offset) * 0.95 / 2
 to_y_grasp_full_tf.transform.rotation.w = 1.0
+
+to_z_grasp_full_tf = TransformStamped()
+to_z_grasp_full_tf.header.frame_id = "gripper_link"
+to_z_grasp_full_tf.transform.translation.z = - (pre_grasp_offset) * 0.95 / 2
+to_z_grasp_full_tf.transform.rotation.w = 1.0
 
 to_y_grasp_full_back_tf = TransformStamped()
 to_y_grasp_full_back_tf.header.frame_id = "gripper_link"
 to_y_grasp_full_back_tf.transform.translation.y = -(pre_grasp_offset) * 0.95
 to_y_grasp_full_back_tf.transform.rotation.w = 1.0
+
+to_z_grasp_full_back_tf = TransformStamped()
+to_z_grasp_full_back_tf.header.frame_id = "gripper_link"
+to_z_grasp_full_back_tf.transform.translation.z = (pre_grasp_offset) * 0.95 / 2
+to_z_grasp_full_back_tf.transform.rotation.w = 1.0
 
 to_place_tf = TransformStamped()
 to_place_tf.header.frame_id = "gripper_link"
@@ -112,7 +123,7 @@ to_move_away_tf_2.transform.rotation.w = 1.0
 
 to_grab_box_back_tf = TransformStamped()
 to_grab_box_back_tf.header.frame_id = "gripper_link"
-to_grab_box_back_tf.transform.translation.x = -(0.55 - 0.35 + 0.19)
+to_grab_box_back_tf.transform.translation.x = -(0.55 - 0.35 + 0.22)
 to_grab_box_back_tf.transform.rotation.w = 1.0
 
 to_small_back_tf = TransformStamped()
@@ -1081,22 +1092,21 @@ class FetchPositionCorrectionAct(py_trees.behaviour.Behaviour):
 
         # 0 for normal stabilization, 1 for tilt, 2 for flat
 class StabilizeObjectAct(py_trees.behaviour.Behaviour):
-    def __init__(self, name, obj_name=None, model_state_key="model_state", free_space_poses_key="free_space_poses", relation_key='relation'):
+    def __init__(self, name, obj_name=None, model_state_key="model_state",
+        relation_key='relation', grocery_box_size_key='grocery_box_size'):
         super(StabilizeObjectAct, self).__init__(name)
         self._model_state_key = model_state_key
         self._model_state = None
         self._set_model_state = None
         self._set_model_state_pub = None
-        self._free_space_poses_key = free_space_poses_key
-        self._free_space_poses = None
         self._obj_name = obj_name
         self._obj_index = None
-        self._relation_key = relation_key
-        self._relation = None
         self._All_object_offset_key = 'All_object_offset'
         self._All_object_name_key = 'All_object_name'
         self._All_object_size_key = 'All_object_size'
         self._object_name_compensate_num = 1
+        self._grocery_box_size_key = grocery_box_size_key
+        self._grocery_box_size = None
 
     def setup(self, timeout):
         self._set_model_state_pub = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
@@ -1106,8 +1116,7 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
         self._model_state = py_trees.blackboard.Blackboard().get(self._model_state_key)
         test_grocery_box_size = py_trees.blackboard.Blackboard().get("grocery_box_size")
 
-        self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
-        self._free_space_poses = py_trees.blackboard.Blackboard().get(self._free_space_poses_key)
+        self._grocery_box_size = py_trees.blackboard.Blackboard().get(self._grocery_box_size_key)
         if self._obj_name == 'table':
             return py_trees.Status.SUCCESS
 
@@ -1117,7 +1126,11 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                 set_box_state = ModelState()
                 set_box_state.model_name = name
                 set_box_state.twist = self._model_state.twist[box_index]
+                set_box_state.twist.linear = Vector3()
+                set_box_state.twist.angular = Vector3()
                 set_box_state.pose = self._model_state.pose[box_index]
+                print('set_box_state.model_name: ', set_box_state.model_name)
+                print('set_box_state.pose: ', set_box_state.pose)
                 dist_temp = []
                 box_position = deepcopy(set_box_state.pose.position)
                 poses_3_temp = []
@@ -1129,6 +1142,28 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                 set_box_state.pose.orientation = poses_3_temp[dist_temp.index(min(dist_temp))].orientation
                 self._set_model_state_pub.publish(set_box_state)
                 time.sleep(0.02)
+
+                if set_box_state.pose.orientation.w == 1:
+                    box_y_max = set_box_state.pose.position.y + self._grocery_box_size.y / 2
+                    box_y_min = set_box_state.pose.position.y - self._grocery_box_size.y / 2
+                    box_x_max = set_box_state.pose.position.x + self._grocery_box_size.x / 2
+                    box_x_min = set_box_state.pose.position.x - self._grocery_box_size.x / 2
+                    for i in range(len(self._model_state.name)):
+                        object_position_temp = self._model_state.pose[i].position
+                        # print('object_position_temp: ', object_position_temp)
+                        if 'test' in self._model_state.name[i] and object_position_temp.x < box_x_max\
+                        and object_position_temp.x > box_x_min and object_position_temp.y < box_y_max\
+                        and object_position_temp.y > box_y_min:
+                            set_model_state = ModelState()
+                            set_model_state.model_name = self._model_state.name[i]
+                            print('set_model_state.model_name: ', set_model_state.model_name)
+                            # set_model_state.twist = self._model_state.twist[box_index]
+                            set_model_state.pose = self._model_state.pose[i]
+                            print('set_model_state.pose: ', set_model_state.pose)
+                            set_model_state.twist.linear = Vector3()
+                            set_model_state.twist.angular = Vector3()
+                            self._set_model_state_pub.publish(set_model_state)
+                            time.sleep(0.002)
 
         if self._obj_name is None:
             return py_trees.Status.SUCCESS
@@ -1173,7 +1208,7 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
 
         current_pose = self._model_state.pose[self._obj_index]
 
-        poses_3=[]
+        poses_3 = []
         for i in range(19):
             poses_3.append(Pose())
             poses_3[i].position = current_pose.position
@@ -1329,7 +1364,7 @@ class ObjectTranslationAct(py_trees.behaviour.Behaviour):
                 relative_object_y_range.append(relative_object_pose.position.y + relative_object_size_x_y[1] / 2)
                 collision_in_x_axis = collision_in_1D(relative_object_y_range,  current_object_y_range)
                 if collision_in_x_axis:
-                    x_limit_temp = lateral_move_x_limit[moving_object_name[relative_name_index]] + relative_object_size_x_y[0] / 2 + current_object_size_x_y[0] / 2 + 0.02
+                    x_limit_temp = lateral_move_x_limit[moving_object_name[relative_name_index]] + relative_object_size_x_y[0] / 2 + current_object_size_x_y[0] / 2 + 0.04
                     if x_limit_temp > lateral_move_x_limit[moving_object_name[name_index]]:
                         lateral_move_x_limit[moving_object_name[name_index]] = x_limit_temp
             # print('--------------------')
@@ -2378,7 +2413,6 @@ class GrabBoxPlacePoseGeneration(py_trees.behaviour.Behaviour):
         blackboard.set(self._grab_pose_key, test_gripper_poses)
         # blackboard.set(self._grocery_box_index_key, self._grocery_box_index)
 
-        relative_cartesian_move_dis = 0.4
         tf_1 = R.from_quat([
                 self._fetch_pose.orientation.x,
                 self._fetch_pose.orientation.y,
@@ -4083,7 +4117,7 @@ class LinkAttachingAct(py_trees.behaviour.Behaviour):
     def update(self):
         All_name = deepcopy(py_trees.blackboard.Blackboard().get(self._All_object_name_key))
         object_move_name = None
-        if 'test' in self._object_name:
+        if 'test' in self._object_name or 'box' in self._object_name:
             object_move_name = self._object_name
         else:
             for name_index in range(len(All_name)):
@@ -4126,7 +4160,7 @@ class LinkDettachingAct(py_trees.behaviour.Behaviour):
     def update(self):
         All_name = deepcopy(py_trees.blackboard.Blackboard().get(self._All_object_name_key))
         object_move_name = None
-        if 'test' in self._object_name:
+        if 'test' in self._object_name or 'box' in self._object_name:
             object_move_name = self._object_name
         else:
             for name_index in range(len(All_name)):
@@ -4278,21 +4312,22 @@ def PushBoxAct(name):
         PushBoxPoseGeneration('PushPoseGeneration'),
         MoveToRelativePoseAct('act_{}_move_pre_grasp'.format(name), pre_grasp),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
-        # OffsetPoses('act_offset_place_poses',
-        #             offset=[-(gripper_length + pre_grasp_offset), 0, 0],
-        #             in_poses_key='push_pose',
-        #             out_poses_key='offset_place_pose', debug=True),
         OffsetPoses('act_offset_place_poses',
-                    offset=[-gripper_length, -(pre_grasp_offset), 0],
+                    offset=[-(gripper_length), 0, pre_grasp_offset],
                     in_poses_key='push_pose',
                     out_poses_key='offset_place_pose', debug=True),
+        # OffsetPoses('act_offset_place_poses',
+        #             offset=[-gripper_length, -(pre_grasp_offset), 0],
+        #             in_poses_key='push_pose',
+        #             out_poses_key='offset_place_pose', debug=True),
+        
         MoveToFirstPoseAct('act_{}_pick_grasploc'.format(name), poses_key='offset_place_pose'),
         # MoveToFirstPoseAct('act_{}_pick_grasploc'.format(name), poses_key='push_pose'),
         SleepBehavior('act_sleep_a_smidge', duration=1.5),
-        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_full_tf),
-        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_tf),
-        SleepBehavior('act_sleep_a_smidge', duration=0.5),
-        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_tf),
+        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_z_grasp_full_tf),
+        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_tf),
+        # SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_tf),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         GroceryLinkAttachingAct('GroceryLinkAttachingAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
@@ -4312,8 +4347,10 @@ def PushBoxAct(name):
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        # StabilizeObjectAct('StabilizeObjectAct'),
         GroceryLinkDettachingAct('GroceryLinkDettachingAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        StabilizeObjectAct('StabilizeObjectAct'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
@@ -4322,8 +4359,8 @@ def PushBoxAct(name):
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
-        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_back_tf),
-        
+        # RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_y_grasp_full_back_tf),
+        RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_z_grasp_full_back_tf),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
         RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
@@ -4370,6 +4407,7 @@ def GrabBoxAct(name):
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=False),
         TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
         OpenGripperAct('act_{}_open_gripper'.format(name)),
+        StabilizeObjectAct('StabilizeObjectAct'),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
@@ -4402,7 +4440,7 @@ def GrabBoxAct(name):
         RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
         # FetchMoveAct('FetchMoveAct', position=Point(-0.5,-1,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
         FetchMoveAct('FetchMoveAct', position=Point(0, 0, 0), orientation=Quaternion(0, 0, 0.707, -0.707), frame_id='map'),
-        FetchMoveAct('FetchMoveAct', position=Point(0.20, -0.78, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        FetchMoveAct('FetchMoveAct', position=Point(0.05, -0.75, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
@@ -4427,14 +4465,14 @@ def GrabBoxAct(name):
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         GrabBoxPlacePoseGeneration('GrabBoxPlacePoseGeneration'),
         OffsetPoses('act_offset_place_poses',
-                    offset=[-(gripper_length + pre_grasp_offset), 0, 0],
+                    offset=[-(gripper_length + pre_grasp_offset + 0.06), 0, 0],
                     in_poses_key='grab_pose',
                     out_poses_key='offset_place_pose', debug=True),
         RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         RelativeCartesianMoveBlackboardAct('RelativeCartesianMoveBlackboardAct'),
         # MoveToRelativePoseAct('act_{}_move_pre_grasp'.format(name), pre_grasp),
-        SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        SleepBehavior('act_sleep_a_smidge', duration=1),
         MoveToFirstPoseAct('act_{}_pick_grasploc'.format(name), poses_key='offset_place_pose'),
         SleepBehavior('act_sleep_a_smidge', duration=1),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
@@ -4462,6 +4500,20 @@ def GrabBoxAct(name):
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         TuckBehavior(name='act_{}_tuck_arm'.format(name), tuck_pose='tuck'),
+        FetchMoveAct('FetchMoveAct', position=Point(0.15, -0.80, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        FetchOrientationCorrectionAct('FetchOrientationCorrectionAct'),
+        py_trees_ros.subscribers.ToBlackboard(
+            name='act_get_groundtruth',
+            topic_name='/gazebo/model_states',
+            topic_type=ModelStates,
+            blackboard_variables={'model_state': None},
+            clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
         FetchPositionCorrectionAct('FetchPositionCorrectionAct'),
         RemoveAllCollisionBoxAct('RemoveAllCollisionBoxAct'),
     ])
@@ -4503,7 +4555,7 @@ def PickAct(name, obj):
     grasploc_grasp_seq = py_trees.composites.Sequence('grasploc_grasp_seq')
     grasploc_grasp_seq.add_children([
         SetAllowGripperCollisionAct('act_ignore_gripper_collision', allow=True),
-        SleepBehavior('act_sleep_a_smidge', duration=2.0),
+        SleepBehavior('act_sleep_a_smidge', duration=2.3),
         RelativeCartesianMoveAct('act_move_to_grasp_pose', pose_diff_msg=to_grasp_tf),
         LinkAttachingAct('LinkAttachAct', object_name=object_name, link_name='link_1'),
         CloseGripperAct('act_close_gripper'),
@@ -4912,6 +4964,7 @@ def GenerateInitSceneAct(name, init_scene_key, max_num_objs, min_y, max_y, featu
 class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
     def __init__(self, name, init_scene_key, max_num_objs, min_y, max_y, feature_space):
         super(_GenerateInitSceneAct, self).__init__(name)
+        self._logger = logging.getLogger(__name__)
         self._init_scene_key = init_scene_key
         self._feature_space = feature_space
         self._max_num_objs = max_num_objs
@@ -4923,28 +4976,19 @@ class _GenerateInitSceneAct(py_trees.behaviour.Behaviour):
         bb = py_trees.blackboard.Blackboard()
         model_states = bb.get('model_state')
         model_states = zip(model_states.name, model_states.pose)
-        # print(model_states)
         # Filter all objects not in feature space
         model_states = filter(lambda (name, pose): any([key in name for key in self._feature_space.keys()]),
                               model_states)
-        # print('before: ', model_states)
-        # print('----------------------------------')
         # Filter tables
         model_states = filter(lambda (name, pose): 'table' not in name, model_states)
-        print(model_states)
-        print('----------------------------------')
-        # Sort by y value and take only max_num_objs
-        model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
-        print(model_states)
-        print('----------------------------------')
         # Filter out objects to far from states that are to far from the robot and items already manipulated
         model_states = filter(lambda (name, pose): (pose.position.y > self._min_y) and (pose.position.y < self._max_y),
                               model_states)
-        print('after: ', model_states)
+        # Sort by y value and take only max_num_objs
+        model_states = sorted(model_states, key=lambda (name, pose): pose.position.y, reverse=True)[:self._max_num_objs]
         # Drop poses
         model_names = [name for name, pose in model_states]
-        # print(model_names)
-
+        self._logger.debug('Making an initial scene graph from {}'.format(' '.join(model_names)))
         # Construct scene graph
         # TODO(Kevin): Get feature space key from name e.g. cracker from cracker_test_1
         objs = [srp_md.Object(name='table', id_num=0, uuid=0, assignment=self._feature_space['table'])]
