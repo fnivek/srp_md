@@ -551,7 +551,10 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
 
             # Generate the goal
             timer.start(trial_name + '_goal')
-            srp.generate_goal()
+            try:
+                srp.generate_goal()
+            except Exception:
+                pass
             timer.stop(trial_name + '_goal')
 
             # Plan
@@ -574,6 +577,15 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                                                               'because ' + reason if not result else ''))
 
                 # To CSV
+                gen_goal2 = 0
+                gen_goal_req = 0
+                gen_goal_resp = 0
+                try:
+                    gen_goal2 = timer.diff_times['generate_goal']
+                    gen_goal_req = timer.diff_times['generate_goal_response']
+                    gen_goal_resp = timer.diff_times['generate_goal_response']
+                except KeyError:
+                    pass
                 with open(output_dir + '/results.csv', 'a+') as global_results_file:
                     global_results_writer = csv.writer(global_results_file)
                     global_results_writer.writerow([trial_num, len(demo_graphs), result, reason,
@@ -585,9 +597,9 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                                                     timer.diff_times[trial_name],
                                                     timer.diff_times[trial_name + '_test'],
                                                     timer.diff_times[trial_name + '_goal'],
-                                                    timer.diff_times['generate_goal'],
-                                                    timer.diff_times['generate_goal_request'],
-                                                    timer.diff_times['generate_goal_response'],
+                                                    gen_goal2,
+                                                    gen_goal_req,
+                                                    gen_goal_resp,
                                                     timer.diff_times[trial_name + '_plan']])
 
                 # Warning this takes a lot of memory
@@ -607,27 +619,51 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
 
 
 class ExperimentThread(multiprocessing.Process):
-    def __init__(self, params_queue, goal_client):
+    def __init__(self, params_queue, goal_client, num_trials, num_previous_trials=0):
         super(ExperimentThread, self).__init__()
         self._params_queue = params_queue
         self._goal_client = goal_client
+        self._num_trials = num_trials
+        self._num_previous_trials = num_previous_trials
 
     def run(self):
-        # Prepare vars
-        kwargs = None
-        more_experiments = True
-        # Loop until all experiments done
-        while more_experiments:
-            # Get the next experiment parameters
-            try:
-                kwargs = self._params_queue.get_nowait()
-            except Queue.Empty:
-                more_experiments = False
-                continue
+        try:
+            # Get the start time
+            start_time = time.time()
 
-            # Update kwargs
-            kwargs['goal_client'] = self._goal_client
-            run_one(**kwargs)
+            # Prepare vars
+            kwargs = None
+            more_experiments = True
+            # Loop until all experiments done
+            while more_experiments:
+                # Get the next experiment parameters
+                try:
+                    kwargs = self._params_queue.get_nowait()
+                except Queue.Empty:
+                    more_experiments = False
+                    continue
+
+                # Update kwargs
+                kwargs['goal_client'] = self._goal_client
+                run_one(**kwargs)
+
+                # Output timing info
+                with io_lock:
+                    num_complete = 0
+                    with open(kwargs['output_dir'] + '/results.csv', 'r') as results_file:
+                        num_complete = len(results_file.readlines())
+                    elapsed_time = time.time() - start_time
+                    avg_time = elapsed_time / (num_complete - self._num_previous_trials)
+                    remaining_time = avg_time * (self._num_trials - num_complete)
+                    percent_complete = 100.0 * num_complete / self._num_trials
+                    print('--------------------------')
+                    print('Completed {} of {} ({}%)'.format(num_complete, self._num_trials, percent_complete))
+                    print('Estimated remaining time: {}'.format(secs_to_str(remaining_time)))
+                    print('Average time per trial: {}s'.format(avg_time))
+                    print('Elapsed time: {}'.format(secs_to_str(elapsed_time)))
+                    print('--------------------------')
+        except Exception as e:
+            logger.error('Unkown error occured in run thread exiting now: {}'.format(str(e)))
 
 
 def make_rand_training_set():
@@ -752,7 +788,8 @@ def main():
     # Start worker threads
     thread_pool = []
     for thread_index in range(args.num_threads):
-        thread = ExperimentThread(params_queue, '/get_goal{}'.format(thread_index))
+        thread = ExperimentThread(params_queue, '/get_goal{}'.format(thread_index), num_trials(**args.__dict__),
+                                  len(completed))
         thread.start()
         thread_pool.append(thread)
     for thread in thread_pool:
