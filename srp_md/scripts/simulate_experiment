@@ -703,7 +703,7 @@ def experiment_generator(args, demo_graphs, completed):
         if args.rand_train_set:
             training_set = make_rand_training_set()
             # Ensure novel objects exist if needed
-            while args.use_novel_classes and all([item not in training_set for item in test_set]):
+            while args.use_novel_classes and all([item in training_set for item in test_set]):
                 training_set = make_rand_training_set()
         kwargs['training_classes'] = training_set
         for demo_index, num_demos in enumerate(range(args.min_num_demos, args.max_num_demos + 1)):
