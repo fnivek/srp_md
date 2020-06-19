@@ -523,7 +523,7 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
     for i, num_test_objs in enumerate(range(min_test_size, max_test_size + 1)):
         for j in range(num_test_scenes):
             # Generate trial number and name
-            trial_num = trial_start_index + i * num_test_scenes + j
+            trial_num = trial_min_index + i * num_test_scenes + j
             trial_name = 'trial_{}'.format(trial_num)
             if trial_num < trial_start_index:
                 continue
