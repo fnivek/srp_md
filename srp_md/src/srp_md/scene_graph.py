@@ -249,23 +249,22 @@ class SceneGraph(srp_md.FactorGraph):
         return sg
 
     @classmethod
-    def random_sg(cls, num_objs, feature_space, relation_value='random'):
+    def random_sg(cls, num_objs, object_classes, feature_space, relation_value='random'):
         """!
         @brief      Generate a random scene graph
 
         @param      cls             The class
         @param      num_objs        Number of objects to sample from possible_objs
-        @param      feature_space   The feature space
+        @param      object_classes  The object classes corresponding to keys in the feature space
+        @param      feature_space   Dictionary of class name to static attributes
         @param      relation_value  How to assign the relations, random will randomly assign otherwise all relations
-                                    will be relation
+                                    will be relation, except with table which always is either support or on
 
         @return     A random scene graph
         """
         # Pick objects randomly, based on number of demos (which is also chosen randomly from recommended list)
         objs = [srp_md.Object(name='table', id_num=0, uuid=0, assignment=feature_space['table'])]
-        possible_objs = feature_space.keys()
-        possible_objs.remove('table')
-        obj_names = [random.choice(possible_objs) for _ in range(num_objs)]
+        obj_names = [random.choice(object_classes) for _ in range(num_objs)]
         objs.extend([srp_md.Object(name=name + "_" + str(uuid+1), id_num=uuid+1, uuid=uuid+1,
                      assignment=feature_space[name]) for uuid, name in enumerate(obj_names)])
         # Build scene graph
