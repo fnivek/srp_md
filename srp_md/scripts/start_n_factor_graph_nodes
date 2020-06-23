@@ -1,4 +1,15 @@
 #!/bin/bash
+pids=()
 for i in $(seq 0 "$(expr $1 - 1)"); do
   rosrun srp_md factor_graph_node /fg_worker:="/fg_worker${i}" /get_goal:="/get_goal${i}" &> /dev/null &
+  pids+="$!"
+done
+
+# Wait for ctrl-c
+echo "ctrl-c to exit and kill fg_workers"
+read -r -d '' _ < /dev/tty
+
+# Kill all fg workers
+for pid in "${pids[@]}"; do
+  kill -15 "${pid}"
 done
