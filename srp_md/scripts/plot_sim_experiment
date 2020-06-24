@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# Python imports
+from __future__ import print_function
+import csv
+import argparse
+import os
+import srp_md
+from collections import OrderedDict
+
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Plot the results')
+
+    # Main arguments
+    parser.add_argument('in_file', help='Specify the in_file', type=str)
+    parser.add_argument('-o', '--out_dir', help='Write statistics to files named todo:<out_file>_<key>.csv, default '
+                        'director of in_file', type=str, default=None)
+    args = parser.parse_args()
+    if args.out_dir is None:
+        args.out_dir = os.path.dirname(os.path.realpath(args.in_file))
+    return args
+
+
+class Datum:
+    # How data is organized
+    COLS = OrderedDict([
+        ('trial_num', int),
+        ('num_demos', int),
+        ('result', srp_md.utils.str2bool),
+        ('reason', str),
+        ('plan_result', srp_md.utils.str2bool),
+        ('num_test_objs', int),
+        ('num_novel_objs', int),
+        ('num_training_classes', int),
+        ('training_classes', str),
+        ('num_test_classes', int),
+        ('test_classes', str),
+        ('num_objs_in_demos', int),
+        ('num_rels_in_demo', int),
+        ('num_noisy_objs', int),
+        ('num_noisy_rels', int),
+        ('demo_gen_t', float),
+        ('learn_t', float),
+        ('trial_t', float),
+        ('test_gen_t', float),
+        ('goal_gen_t', float),
+        ('goal_gen2_t', float),
+        ('goal_req_t', float),
+        ('goal_resp_t', float),
+        ('plan_t', float)])
+    COL_NAMES = COLS.keys()
+    COL_INDICES = {name: index for index, name in enumerate(COL_NAMES)}
+
+    def __init__(self, row):
+        # Bad practice but this is just a script
+        self.__dict__ = {name: type_t(row[index]) for index, name, type_t in
+                         zip(range(len(Datum.COL_NAMES)), Datum.COLS.keys(), Datum.COLS.values())}
+
+
+def main():
+    # Command line parse
+    args = parse_args()
+
+    # Get data from in file
+    data = []
+    with open(args.in_file, 'r') as results_file:
+        results = csv.reader(results_file)
+        data = [Datum(row) for row in results]
+
+    # Print basic statictics
+    num_trials = len(data)
+    print('Loaded {} trials'.format(num_trials))
+    for i, col_name in enumerate(Datum.COL_NAMES):
+        try:
+            print('Average {}: {}'.format(col_name, sum([getattr(d, col_name) for d in data]) / float(num_trials)))
+        except TypeError as e:
+            e.message[-5:]
+
+    # Calculate statictics
+    total = {}
+    success = {}
+    for datum in data:
+        try:
+            total[int(datum.num_demos)] += 1
+        except KeyError:
+            total[int(datum.num_demos)] = 1
+        if datum.result:
+            try:
+                success[int(datum.num_demos)] += 1
+            except KeyError:
+                success[int(datum.num_demos)] = 1
+
+    # percent = [success[num_demos] / total[num_demos] for num_demos in total.keys()]
+    demos_v_success = {}
+    for num_demos in sorted(total.keys()):
+        try:
+            demos_v_success[num_demos] = 100.0 * success[num_demos] / total[num_demos]
+        except KeyError as e:
+            print('Error in demos_v_success {}, {}'.format(num_demos, e))
+    with open(args.out_dir + '/demos_v_success.csv', 'w') as f:
+        demos_v_success_f = csv.writer(f)
+        for num_demos, success in demos_v_success.iteritems():
+            demos_v_success_f.writerow([num_demos, success])
+
+
+if __name__ == '__main__':
+    main()
