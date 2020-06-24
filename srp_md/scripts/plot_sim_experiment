@@ -72,12 +72,19 @@ def main():
 
     # Print basic statictics
     num_trials = len(data)
+    avgs = {}
     print('Loaded {} trials'.format(num_trials))
     for i, col_name in enumerate(Datum.COL_NAMES):
         try:
-            print('Average {}: {}'.format(col_name, sum([getattr(d, col_name) for d in data]) / float(num_trials)))
-        except TypeError as e:
-            e.message[-5:]
+            avgs[col_name] = sum([getattr(d, col_name) for d in data]) / float(num_trials)
+            print('Average {}: {}'.format(col_name, avgs[col_name]))
+        except TypeError:
+            pass
+
+    with open(args.out_dir + '/averages.csv', 'w') as f:
+        avgs_f = csv.writer(f)
+        avgs_f.writerow(['num_trials'] + avgs.keys())
+        avgs_f.writerow([num_trials, avgs.values()])
 
     # Calculate statictics
     total = {}
@@ -93,11 +100,11 @@ def main():
             except KeyError:
                 success[int(datum.num_demos)] = 1
 
-    # percent = [success[num_demos] / total[num_demos] for num_demos in total.keys()]
     demos_v_success = {}
     for num_demos in sorted(total.keys()):
         try:
             demos_v_success[num_demos] = 100.0 * success[num_demos] / total[num_demos]
+            print('# Demos {}:\t{}'.format(num_demos, demos_v_success[num_demos]))
         except KeyError as e:
             print('Error in demos_v_success {}, {}'.format(num_demos, e))
     with open(args.out_dir + '/demos_v_success.csv', 'w') as f:
