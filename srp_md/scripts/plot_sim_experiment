@@ -176,6 +176,31 @@ def test_v_time(data, out_file):
                       container in containers])
 
 
+def novel_vs_success(data, out_file):
+    # Collect data into bins
+    novel_vs_success = {}
+    novel_test_vs_success = {}
+    for datum in data:
+        try:
+            novel_test_vs_success[(datum.num_novel_objs, datum.num_test_objs)].append(datum.result)
+        except KeyError:
+            novel_test_vs_success[(datum.num_novel_objs, datum.num_test_objs)] = [datum.result]
+        try:
+            novel_vs_success[datum.num_novel_objs].append(datum.result)
+        except KeyError:
+            novel_vs_success[datum.num_novel_objs] = [datum.result]
+
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_novel_objs', 'num_test_objs' 'success_rate'])
+        for num_novel_objs, values in novel_vs_success.iteritems():
+            tee.write([num_novel_objs, 'all', sum(values) / float(len(values))])
+        for num_novel_test_objs, values in novel_test_vs_success.iteritems():
+            tee.write([num_novel_test_objs[0], num_novel_test_objs[1], sum(values) / float(len(values))])
+
+
 def main():
     # Command line parse
     args = parse_args()
@@ -191,6 +216,7 @@ def main():
     demos_v_success(data, args.out_dir + '/demos_v_success.csv')
     reasons(data, args.out_dir + '/reasons.csv')
     test_v_time(data, args.out_dir + '/num_test_objs_v_time.csv')
+    novel_vs_success(data, args.out_dir + '/novel_v_success.csv')
 
 
 if __name__ == '__main__':
