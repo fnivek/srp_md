@@ -60,17 +60,17 @@ class Datum:
                          zip(range(len(Datum.COL_NAMES)), Datum.COLS.keys(), Datum.COLS.values())}
 
 
-def main():
-    # Command line parse
-    args = parse_args()
+class Tee:
+    def __init__(self, csv_f):
+        self._csv_f = csv_f
 
-    # Get data from in file
-    data = []
-    with open(args.in_file, 'r') as results_file:
-        results = csv.reader(results_file)
-        data = [Datum(row) for row in results]
+    def write(self, row, join_str=',\t'):
+        self._csv_f.writerow(row)
+        print(join_str.join([str(d) for d in row]))
 
-    # Print basic statictics
+
+def averages(data, out_file):
+    # Average everything that can be averaged
     num_trials = len(data)
     avgs = {}
     print('Loaded {} trials'.format(num_trials))
@@ -81,15 +81,18 @@ def main():
         except TypeError:
             pass
 
-    with open(args.out_dir + '/averages.csv', 'w') as f:
+    with open(out_file, 'w') as f:
         avgs_f = csv.writer(f)
         avgs_f.writerow(['num_trials'] + avgs.keys())
         avgs_f.writerow([num_trials, avgs.values()])
 
-    # Calculate statictics
+
+def demos_v_success(data, out_file):
+    # Collect data into bins
     total = {}
     success = {}
     for datum in data:
+        # num_demos vs success
         try:
             total[int(datum.num_demos)] += 1
         except KeyError:
@@ -100,6 +103,8 @@ def main():
             except KeyError:
                 success[int(datum.num_demos)] = 1
 
+    # Process collected data bins
+    # Demos vs success
     demos_v_success = {}
     for num_demos in sorted(total.keys()):
         try:
@@ -107,10 +112,60 @@ def main():
             print('# Demos {}:\t{}'.format(num_demos, demos_v_success[num_demos]))
         except KeyError as e:
             print('Error in demos_v_success {}, {}'.format(num_demos, e))
-    with open(args.out_dir + '/demos_v_success.csv', 'w') as f:
+
+    # Write results
+    with open(out_file, 'w') as f:
         demos_v_success_f = csv.writer(f)
         for num_demos, success in demos_v_success.iteritems():
             demos_v_success_f.writerow([num_demos, success])
+
+
+def reasons(data, out_file):
+    # Collect data into bins
+    num_trials = float(len(data))
+    reasons = {}
+    demo_v_reason = {}
+    for datum in data:
+        # Reason for result
+        try:
+            reasons[datum.reason] += 1
+        except KeyError:
+            reasons[datum.reason] = 1
+        # By demo
+        try:
+            _ = demo_v_reason[datum.num_demos]
+        except KeyError:
+            demo_v_reason[datum.num_demos] = {datum.reason: 0}
+        try:
+            demo_v_reason[datum.num_demos][datum.reason] += 1
+        except KeyError:
+            demo_v_reason[datum.num_demos][datum.reason] = 1
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_demos'] + sorted(reasons.keys()))
+        tee.write(['overall'] + [reasons[key] / num_trials for key in sorted(reasons.keys())])
+        for num_demos in sorted(demo_v_reason.keys()):
+            num_trials = float(sum([num for num in demo_v_reason[num_demos].values()]))
+            tee.write([num_demos] + [demo_v_reason[num_demos][key] / num_trials if key in demo_v_reason[num_demos]
+                      else 0 for key in sorted(reasons.keys())])
+
+
+def main():
+    # Command line parse
+    args = parse_args()
+
+    # Get data from in file
+    data = []
+    with open(args.in_file, 'r') as results_file:
+        results = csv.reader(results_file)
+        data = [Datum(row) for row in results]
+
+    # Produce results
+    averages(data, args.out_dir + '/averages.csv')
+    demos_v_success(data, args.out_dir + '/demos_v_success.csv')
+    reasons(data, args.out_dir + '/reasons.csv')
 
 
 if __name__ == '__main__':
