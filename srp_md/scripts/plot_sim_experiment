@@ -94,14 +94,14 @@ def demos_v_success(data, out_file):
     for datum in data:
         # num_demos vs success
         try:
-            total[int(datum.num_demos)] += 1
+            total[datum.num_demos] += 1
         except KeyError:
-            total[int(datum.num_demos)] = 1
+            total[datum.num_demos] = 1
         if datum.result:
             try:
-                success[int(datum.num_demos)] += 1
+                success[datum.num_demos] += 1
             except KeyError:
-                success[int(datum.num_demos)] = 1
+                success[datum.num_demos] = 1
 
     # Process collected data bins
     # Demos vs success
