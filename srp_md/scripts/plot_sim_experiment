@@ -152,6 +152,30 @@ def reasons(data, out_file):
                       else 0 for key in sorted(reasons.keys())])
 
 
+def test_v_time(data, out_file):
+    # Collect data into bins
+    trial_t = {}
+    goal_gen_t = {}
+    plan_t = {}
+    times = ['trial_t', 'goal_gen_t', 'plan_t']
+    containers = [trial_t, goal_gen_t, plan_t]
+    for datum in data:
+        for attr, container in zip(times, containers):
+            try:
+                container[datum.num_test_objs].append(getattr(datum, attr))
+            except KeyError:
+                container[datum.num_test_objs] = [getattr(datum, attr)]
+
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_test_objs'] + times)
+        for num_test_objs in trial_t.keys():
+            tee.write([num_test_objs] + [sum(container[num_test_objs]) / float(len(container[num_test_objs])) for
+                      container in containers])
+
+
 def main():
     # Command line parse
     args = parse_args()
@@ -166,6 +190,7 @@ def main():
     averages(data, args.out_dir + '/averages.csv')
     demos_v_success(data, args.out_dir + '/demos_v_success.csv')
     reasons(data, args.out_dir + '/reasons.csv')
+    test_v_time(data, args.out_dir + '/num_test_objs_v_time.csv')
 
 
 if __name__ == '__main__':
