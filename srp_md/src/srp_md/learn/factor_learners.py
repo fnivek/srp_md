@@ -185,7 +185,7 @@ class SklearnFactorLearner(object):
             self._must_fit = False
             self._last_vals = None
             self._pipe.fit(self._data, self._target)
-            self.viz()
+            # self.viz()
         # Predict probability
         cur_vals = assign_obj_vals(assignment)
         if cur_vals != self._last_vals:
@@ -203,8 +203,7 @@ class SklearnFactorLearner(object):
 class DecisionTreeFactorLearner(SklearnFactorLearner):
     # TODO(Kevin): Tune the paramaters of the decision tree
     def __init__(self, category):
-        clf = tree.DecisionTreeClassifier(class_weight='balanced', max_depth=3)
-        clf = tree.DecisionTreeClassifier()
+        clf = tree.DecisionTreeClassifier(class_weight='balanced', max_depth=6, min_samples_leaf=10)
         super(DecisionTreeFactorLearner, self).__init__(clf, category)
 
 

@@ -1,0 +1,4 @@
+#!/bin/bash
+for i in $(seq 0 "$(expr $1 - 1)"); do
+  rosrun srp_md factor_graph_node /fg_worker:="/fg_worker${i}" /get_goal:="/get_goal${i}" &> /dev/null &
+done

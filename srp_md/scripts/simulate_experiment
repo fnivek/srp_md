@@ -20,8 +20,11 @@ import csv
 # from datetime import datetime
 import time
 import yaml
-# import multiprocessing
-# import Queue
+import multiprocessing
+import Queue
+
+# Global locks
+io_lock = multiprocessing.Lock()
 
 # Define file path
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -39,8 +42,10 @@ RELATIONS = ["disjoint", "proximity", "on", "support"]
 FEATURES = yaml.load(open(os.path.realpath(script_path + '/../config/feature_space.yaml'), 'r'))
 
 # Objects used in experiments
-grocery_experiment_objs = ["cracker", "meat", "mustard", "soup", "sugar", "gelatin", "apple", "chips", "coffee", "tuna"]
-novel_objs = ["apple", "chips", "coffee", "tuna"]
+training_classes = ["cracker", "meat", "mustard", "soup", "sugar", "gelatin", "apple"]
+all_classes = FEATURES.keys()
+all_classes.remove('table')
+test_classes = all_classes[:]
 size_dict = {"s_small": 1, "s_medium": 2, "s_large": 3}
 
 # Grocery experiment list
@@ -146,7 +151,7 @@ def generate_demo_scenes_from_list(objs_list):
     return scene_graphs
 
 
-def generate_random_demo_scene(num_objs, objs_list):
+def generate_random_demo_scene(num_objs, objs_list, use_noise=False, obj_noise_level=0, rel_noise_level=0):
     # Add the table
     table = srp_md.Object(name='table', id_num=0, uuid=0, assignment=FEATURES["table"])
     objs = [table]
@@ -195,7 +200,26 @@ def generate_random_demo_scene(num_objs, objs_list):
                 rel.value = random.choice(['proximity', 'disjoint'])
             # else:
             #     print('{} - {} - {}'.format(complex_obj.name, obj.name, rel.value))
-    return sg
+    # Add noise
+    num_noisy_objs = 0
+    num_noisy_rels = 0
+    if use_noise:
+        for obj in sg.objs:
+            if random.random() < obj_noise_level:
+                num_noisy_objs += 1
+                new_class = obj.assignment['class']
+                while new_class == obj.assignment['class']:
+                    new_class = random.choice(all_classes)
+                obj.assignment = FEATURES[new_class]
+                obj.name = 'noise_{}_{}'.format(new_class, obj.uuid)
+        for rel in sg.relations:
+            if random.random() < rel_noise_level:
+                num_noisy_rels += 1
+                new_rel = rel.value
+                while new_rel == rel.value:
+                    new_rel = random.choice(srp_md.scene_graph.Relation.RELATION_STRS)
+                rel.value = new_rel
+    return sg, num_noisy_objs, num_noisy_rels
 
 
 # TODO(Kevin): Use the new random scene graph generator from scene_graph.py
@@ -218,7 +242,7 @@ def generate_init_scenes(num_test_scenes, num_objs, obj_list=None):
             uuid = 1
             for _ in range(random.choice(num_objs)):
                 name = random.choice(obj_list)
-                if name in novel_objs:
+                if name in test_classes:
                     num_novel += 1
                 objs.append(srp_md.Object(name=name + "_" + str(uuid), id_num=uuid, uuid=uuid, assignment=FEATURES[name]))
                 uuid += 1
@@ -244,17 +268,16 @@ def save_graphs(graphs, pickle_name, file_prefix, current_trial, dirname):
     for i, graph in enumerate(graphs):
         if graph is None:
             continue
-        graph.to_all(os.path.join(dirname, "{}_{}".format(file_prefix, i + current_trial)), draw_disjoint=False,
-                     flip_relations=True)
+        graph.to_file(os.path.join(dirname, "{}_{}".format(file_prefix, i + current_trial)))
 
 
 def save_all(demo_graphs, test_graphs, generated_graphs, plans, current_trial, dirname):
     if demo_graphs is not None:
-        save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname)
-    save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname)
-    save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname)
-    if plans is not None:
-        save_plans(plans, current_trial, dirname)
+        save_graphs(demo_graphs, 'data.pickle', 'demo', current_trial, dirname + '/demos')
+    save_graphs(test_graphs, 'test.pickle', 'test', current_trial, dirname + '/test')
+    save_graphs(generated_graphs, 'generated.pickle', 'generated', current_trial, dirname + '/generated')
+    # if plans is not None:
+    #     save_plans(plans, current_trial, dirname)
 
 
 def save_plans(plans, current_trial, dirname):
@@ -418,17 +441,33 @@ def parse_args():
     parser.add_argument('--use_cardinality', help='Choose to use learned cardinality', default=True,
                         type=srp_md.str2bool)
     parser.add_argument('--demo_graphs_dir', type=str, help='Folder with all .sg files'
-                        ' if not provided then demos will be manually typed in on command prompt')
+                        ' if not provided then demos will be randomly generated')
     parser.add_argument('--test_graphs_dir', type=str, help='Folder of test scenes as .sg files'
                         ' if not provided then random initial scenes will be generated')
     parser.add_argument('--num_test_scenes', type=int, default=10, help='Number of test scenes to use for every set'
                         ' of demonstrations')
     parser.add_argument('--num_samples', type=int, default=20, help='Number of random samples to to take from each '
                         'possible cardinality of demonstrations')
-    parser.add_argument('--max_num_test_objs', type=int, default=4, help='Maximum number of objects in test '
-                        'scene')
-    parser.add_argument('--min_num_test_objs', type=int, default=3, help='Minimum number of objects in test '
-                        'scene')
+    parser.add_argument('--max_num_demos', type=int, default=20, help='Max number of demonstrations to learn from')
+    parser.add_argument('--min_num_demos', type=int, default=1, help='Min number of demonstrations to learn from')
+    parser.add_argument('--max_demo_size', type=int, default=10, help='Maximum number of objects in a randomly '
+                        'generated demo scene')
+    parser.add_argument('--min_demo_size', type=int, default=3, help='Minimum number of objects in a randomly '
+                        'generated demo scene')
+    parser.add_argument('--max_test_size', type=int, default=4, help='Maximum number of objects in test scene')
+    parser.add_argument('--min_test_size', type=int, default=3, help='Minimum number of objects in test scene')
+    parser.add_argument('--use_novel_classes', type=srp_md.str2bool, default=False, help='Use novel objects')
+    parser.add_argument('--rand_train_set', type=srp_md.str2bool, default=False, help='Randomize the training set')
+    parser.add_argument('--num_train_sets', type=int, default=20, help='When using rand_train_set use this '
+                        'many random sets')
+    parser.add_argument('--plan', type=srp_md.str2bool, default=True, help='True plan, false don\'t plan')
+    parser.add_argument('--num_threads', type=int, default=4, help='Number of threads to use')
+    parser.add_argument('--use_noise', type=srp_md.str2bool, default=False, help='If true apply noise in object and '
+                        'relation detection')
+    parser.add_argument('--obj_noise_level', type=float, default=0.0, help='Percentage chance of detecting object '
+                        'as noise')
+    parser.add_argument('--rel_noise_level', type=float, default=0.0, help='Percentage chance of false relation '
+                        'detection')
     parser.add_argument('output_dir', type=str,
                         help='To write the demo, test, and generated .sg files and results.csv',
                         default='{}/graphs'.format(data_folder))
@@ -439,6 +478,9 @@ def parse_args():
 
     args, others = parser.parse_known_args()
 
+    if not args.rand_train_set:
+        args.num_train_sets = 1
+
     # Handle input file dirs
     for path in [args.demo_graphs_dir, args.test_graphs_dir]:
         if path is not None:
@@ -448,8 +490,291 @@ def parse_args():
     if args.output_dir is not None:
         if not os.path.isdir(args.output_dir):
             os.mkdir(args.output_dir)
+        args.output_dir = os.path.realpath(args.output_dir)
+        plans_dir = args.output_dir + '/plans'
+        if not os.path.isdir(plans_dir):
+            os.mkdir(plans_dir)
+        demos_dir = args.output_dir + '/demos'
+        if not os.path.isdir(demos_dir):
+            os.mkdir(demos_dir)
+        generated_dir = args.output_dir + '/generated'
+        if not os.path.isdir(generated_dir):
+            os.mkdir(generated_dir)
+        test_dir = args.output_dir + '/test'
+        if not os.path.isdir(test_dir):
+            os.mkdir(test_dir)
+        if not os.path.isfile(args.output_dir + '/results.csv'):
+            with open(args.output_dir + '/results.csv', 'w+'):
+                pass
 
     return args
+
+
+def num_trials_single(min_test_size, max_test_size, num_test_scenes, **kwargs):
+    return (max_test_size - min_test_size + 1) * num_test_scenes
+
+
+def num_trials(num_train_sets, max_num_demos, min_num_demos, num_samples, **kwargs):
+    return num_train_sets * (max_num_demos - min_num_demos + 1) * num_samples * num_trials_single(**kwargs)
+
+
+def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo_graphs, num_test_scenes,
+            max_test_size, min_test_size, use_novel_classes, training_classes, test_classes, trial_min_index,
+            trial_start_index, goal_client, num_demos, min_demo_size, max_demo_size, plan, use_noise, obj_noise_level,
+            rel_noise_level, output_dir):
+    # Name trials
+    trials_name = 'trials_{}-{}'.format(
+        trial_min_index,
+        trial_min_index + num_trials_single(min_test_size, max_test_size, num_test_scenes) - 1)
+
+    # Log experment parameters
+    with io_lock:
+        logger.info('Run trials {} with: {}'.format(trials_name, locals()))
+
+    # Make a timer
+    timer = srp_md.GlobalTimer()
+    timer.start(trials_name)
+
+    # Setup SRP_MD object
+    srp = srp_md.SrpMd(feature_space=FEATURES,
+                       sensor="dope_sensor",
+                       learner="factor_graph_learner",
+                       goal_generator="factor_graph_goal_generator")
+    srp.update_learner_config(factor_learner=factor_learner)
+    srp.update_goal_generator_config(use_consistency=use_consistency, use_no_float=use_no_float,
+                                     use_cardinality=use_cardinality, goal_client=goal_client)
+
+    # Use provided or generate demos
+    timer.start(trials_name + '_demos')
+    num_noisy_objs = 0
+    num_noisy_rels = 0
+    if demo_graphs is None:
+        # Generate
+        demo_graphs = []
+        for _ in range(num_demos):
+            num_objs = random.randint(min_demo_size, max_demo_size)
+            sg, noisy_objs, noisy_rels = generate_random_demo_scene(
+                num_objs, training_classes, use_noise, obj_noise_level, rel_noise_level)
+            num_noisy_objs += noisy_objs
+            num_noisy_rels += noisy_rels
+            demo_graphs.append(sg)
+    srp.set_demo_graphs(demo_graphs)
+    timer.stop(trials_name + '_demos')
+    num_objs_in_demo = sum([len(sg.objs) for sg in demo_graphs])
+    num_rels_in_demo = sum([len(sg.relations) for sg in demo_graphs])
+
+    # Learn
+    timer.start(trials_name + '_learn')
+    srp.learn()
+    timer.stop(trials_name + '_learn')
+
+    # Perform tests
+    for i, num_test_objs in enumerate(range(min_test_size, max_test_size + 1)):
+        for j in range(num_test_scenes):
+            # Generate trial number and name
+            trial_num = trial_min_index + i * num_test_scenes + j
+            trial_name = 'trial_{}'.format(trial_num)
+            if trial_num < trial_start_index:
+                continue
+
+            # Start trial timer
+            timer.start(trial_name)
+
+            # Generate test scene
+            timer.start(trial_name + '_test')
+
+            def gen_test():
+                obj_classes = training_classes[:]
+                if use_novel_classes:
+                    obj_classes = test_classes[:]
+                test_graph = srp_md.SceneGraph.random_sg(num_test_objs, obj_classes, FEATURES, 'disjoint')
+                num_novel = len(filter(lambda obj: obj.assignment['class'] != 'table' and
+                                       obj.assignment['class'] not in training_classes, test_graph.objs))
+                return test_graph, num_novel
+
+            test_graph, num_novel = gen_test()
+            while use_novel_classes and num_novel == 0:
+                test_graph, num_novel = gen_test()
+            srp.set_init_graphs([test_graph])
+            timer.stop(trial_name + '_test')
+
+            # Generate the goal
+            timer.start(trial_name + '_goal')
+            try:
+                srp.generate_goal()
+            except Exception:
+                pass
+            timer.stop(trial_name + '_goal')
+
+            # Plan
+            timer.start(trial_name + '_plan')
+            plans = None
+            if plan:
+                plans = srp.plan(problem_file=output_dir + '/plans/prob_{}.pddl'.format(trial_num),
+                                 soln_file=output_dir + '/plans/prob_{}.soln'.format(trial_num))
+            timer.stop(trial_name + '_plan')
+
+            # End trial timer
+            timer.stop(trial_name)
+
+            # Evaluate
+            result, reason = evaluate_goal(srp._goal_instances[0])
+
+            # Write results
+            with io_lock:
+                # To cli
+                logger.info('{} goal generation {} {}'.format(trial_name, 'succeded' if result else 'failed',
+                                                              'because ' + reason if not result else ''))
+
+                # To CSV
+                gen_goal2 = 0
+                gen_goal_req = 0
+                gen_goal_resp = 0
+                try:
+                    gen_goal2 = timer.diff_times['generate_goal']
+                    gen_goal_req = timer.diff_times['generate_goal_response']
+                    gen_goal_resp = timer.diff_times['generate_goal_response']
+                except KeyError:
+                    pass
+                plan_success = (plans is not None) and None not in plans
+                with open(output_dir + '/results.csv', 'a+') as global_results_file:
+                    global_results_writer = csv.writer(global_results_file)
+                    global_results_writer.writerow([trial_num, len(demo_graphs), result, reason, plan_success,
+                                                    test_graph.num_objs(), num_novel,
+                                                    len(training_classes), '-'.join(sorted(training_classes)),
+                                                    len(test_classes), '-'.join(sorted(test_classes)),
+                                                    num_objs_in_demo, num_rels_in_demo,
+                                                    num_noisy_objs, num_noisy_rels,
+                                                    timer.diff_times[trials_name + '_demos'],
+                                                    timer.diff_times[trials_name + '_learn'],
+                                                    timer.diff_times[trial_name],
+                                                    timer.diff_times[trial_name + '_test'],
+                                                    timer.diff_times[trial_name + '_goal'],
+                                                    gen_goal2,
+                                                    gen_goal_req,
+                                                    gen_goal_resp,
+                                                    timer.diff_times[trial_name + '_plan']])
+
+                # Warning this takes a lot of memory
+                # To .sg and soln files
+                save_all(None, [test_graph], srp._goal_instances, plans, trial_num, output_dir)
+
+    timer.stop(trials_name)
+
+
+class ExperimentThread(multiprocessing.Process):
+    def __init__(self, params_queue, goal_client, num_trials, num_previous_trials=0):
+        super(ExperimentThread, self).__init__()
+        self._params_queue = params_queue
+        self._goal_client = goal_client
+        self._num_trials = num_trials
+        self._num_previous_trials = num_previous_trials
+
+    def run(self):
+        try:
+            # Get the start time
+            start_time = time.time()
+
+            # Prepare vars
+            kwargs = None
+            more_experiments = True
+            # Loop until all experiments done
+            while more_experiments:
+                # Get the next experiment parameters
+                try:
+                    kwargs = self._params_queue.get_nowait()
+                except Queue.Empty:
+                    more_experiments = False
+                    continue
+
+                # Update kwargs
+                kwargs['goal_client'] = self._goal_client
+                run_one(**kwargs)
+
+                # Output timing info
+                with io_lock:
+                    num_complete = 0
+                    with open(kwargs['output_dir'] + '/results.csv', 'r') as results_file:
+                        num_complete = len(results_file.readlines())
+                    elapsed_time = time.time() - start_time
+                    avg_time = elapsed_time / (num_complete - self._num_previous_trials)
+                    remaining_time = avg_time * (self._num_trials - num_complete)
+                    percent_complete = 100.0 * num_complete / self._num_trials
+                    print('--------------------------')
+                    print('Completed {} of {} ({}%)'.format(num_complete, self._num_trials, percent_complete))
+                    print('Estimated remaining time: {}'.format(secs_to_str(remaining_time)))
+                    print('Average time per trial: {}s'.format(avg_time))
+                    print('Elapsed time: {}'.format(secs_to_str(elapsed_time)))
+                    print('--------------------------')
+        except Exception as e:
+            logger.error('Unkown error occured in run thread exiting now: {}'.format(str(e)))
+
+
+def make_rand_training_set():
+    return random.sample(all_classes, random.randint(4, len(all_classes)))
+
+
+def experiment_generator(args, demo_graphs, completed):
+    # Default kwargs
+    training_set = training_classes[:]
+    test_set = test_classes[:]
+    kwargs = {
+        'factor_learner': args.factor_learner,
+        'use_consistency': args.use_consistency,
+        'use_no_float': args.use_no_float,
+        'use_cardinality': args.use_cardinality,
+        'demo_graphs': demo_graphs,
+        'num_test_scenes': args.num_test_scenes,
+        'max_test_size': args.max_test_size,
+        'min_test_size': args.min_test_size,
+        'use_novel_classes': args.use_novel_classes,
+        'training_classes': training_set,
+        'test_classes': test_set,
+        'trial_min_index': 0,
+        'trial_start_index': 0,
+        'num_demos': 20,
+        'min_demo_size': args.min_demo_size,
+        'max_demo_size': args.max_demo_size,
+        'plan': args.plan,
+        'use_noise': args.use_noise,
+        'obj_noise_level': args.obj_noise_level,
+        'rel_noise_level': args.obj_noise_level,
+        'output_dir': args.output_dir
+    }
+
+    # Get number of trials in a single run
+    num_in_single = num_trials_single(**args.__dict__)
+    demo_index_offset = (args.max_num_demos - args.min_num_demos + 1)
+    # Handle random training sets
+    for training_set_index in range(args.num_train_sets):
+        if args.rand_train_set:
+            training_set = make_rand_training_set()
+            # Ensure novel objects exist if needed
+            while args.use_novel_classes and all([item in training_set for item in test_set]):
+                training_set = make_rand_training_set()
+        kwargs['training_classes'] = training_set
+        for demo_index, num_demos in enumerate(range(args.min_num_demos, args.max_num_demos + 1)):
+            # Set number of demos to use
+            kwargs['num_demos'] = num_demos
+            for sample_index in range(args.num_samples):
+                # Determine trial numbers
+                min_trial = (training_set_index * (demo_index_offset * args.num_samples * num_in_single) +
+                             demo_index * (args.num_samples * num_in_single) +
+                             sample_index * num_in_single)
+                max_trial = min_trial + num_in_single - 1
+                # Reset trial start
+                kwargs['trial_min_index'] = min_trial
+                kwargs['trial_start_index'] = min_trial
+                if min_trial not in completed:
+                    # Hasn't been started yet
+                    yield dict(kwargs)
+                elif max_trial not in completed:
+                    # Stoped in the middle find where to start
+                    for trial_index in range(min_trial, max_trial + 1):
+                        if trial_index not in completed:
+                            kwargs['trial_start_index'] = trial_index
+                            yield dict(kwargs)
+                            break
 
 
 def main():
@@ -466,114 +791,38 @@ def main():
     timer.start('experiment')
 
     timer.start('load_demos')
+    demo_graphs = None
     if args.demo_graphs_dir is not None:
         demo_graphs = (
-            load_demos(args.demo_graphs_dir) +
-            [generate_random_demo_scene((num_objs % 10) + 2,
-             filter(lambda x: x != 'table', FEATURES.keys())) for num_objs in range(0)])
-    else:
-        # Simulate goal scenegraphs
-        # demo_num, demo_objs_nums, noise_num = 20, [6], 0
-        demo_graphs = generate_demo_scenes_from_list(grocery_experiment_demo_objs)
-        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num)
-        # demo_graphs = generate_demo_scenes(demo_num, demo_objs_nums, noise_num,
-        #                                    [["cracker", "gelatin", "meat", "soup", "sugar"],
-        #                                     ["cracker", "gelatin", "gelatin", "mustard", "bleach"]])
-    save_graphs(demo_graphs, 'data.pickle', 'demo', 0, args.output_dir)
+            load_demos(args.demo_graphs_dir))  # +
+        #    [generate_random_demo_scene((num_objs % 10) + 2,
+        #     filter(lambda x: x != 'table', training_classes)) for num_objs in range(100)])
     timer.stop('load_demos')
-    logger.info('Generated {} demo graphs with {} noises'.format(len(demo_graphs), 0))
-
-    # Setup SRP_MD object
-    srp = srp_md.SrpMd(feature_space=FEATURES,
-                       sensor="dope_sensor",
-                       learner="factor_graph_learner",
-                       goal_generator="factor_graph_goal_generator")
-    srp.update_learner_config(factor_learner=args.factor_learner)
-    srp.update_goal_generator_config(use_consistency=args.use_consistency, use_no_float=args.use_no_float,
-                                     use_cardinality=args.use_cardinality)
 
     # Pickup where you left off
-    last_trial = -1
+    completed = []
     with open(args.output_dir + '/results.csv', 'r') as results_file:
         csv_reader = csv.reader(results_file)
         for row in csv_reader:
-            last_trial = int(row[0])
+            completed.append(int(row[0]))
+    logger.info('Previously completed {} of {} trials'.format(len(completed), num_trials(**args.__dict__)))
 
-    global_index = last_trial + 1
-    logger.info('Previously completed {} trials, resuming at {}'.format(last_trial, global_index))
-    avg_time = 0
-    num_trials = (args.max_num_test_objs - args.min_num_test_objs + 1) * args.num_test_scenes
-    srp.set_scenes(demo_graphs, None)
-    timer.start('learn')
-    srp.learn()
-    timer.stop('learn')
-    logger.info('Learn')
-    for trial_set, num_objs in enumerate(range(args.min_num_test_objs, args.max_num_test_objs + 1)):
-        for test_scene in range(args.num_test_scenes):
-            current_trial = trial_set * args.num_test_scenes + test_scene
-            if current_trial <= last_trial:
-                continue
+    # Put all trials into queue
+    params_queue = multiprocessing.Queue()
+    for kwargs in experiment_generator(args, demo_graphs, completed):
+        params_queue.put(kwargs)
 
-            # Trial timer
-            trial_name = 'trial_{}'.format(global_index)
-            start_time = time.time()
-            timer.start(trial_name)
+    # Start worker threads
+    thread_pool = []
+    for thread_index in range(args.num_threads):
+        thread = ExperimentThread(params_queue, '/get_goal{}'.format(thread_index), num_trials(**args.__dict__),
+                                  len(completed))
+        thread.start()
+        thread_pool.append(thread)
+    for thread in thread_pool:
+        thread.join()
 
-            # Simulate initial scenegraphs
-            init_scene_name = 'init_scene_{}'.format(global_index)
-            timer.start(init_scene_name)
-            test_graphs, num_novel = generate_init_scenes(1, [num_objs], grocery_experiment_objs)
-            timer.stop(init_scene_name)
-            logger.info('Generated {} initial scenes'.format(len(test_graphs)))
-
-            srp.set_scenes(demo_graphs, test_graphs)
-            logger.info('Initialized SrpMd object with {} demos'.format(len(demo_graphs)))
-
-            # Generate goals from learned factors
-            # try rospy.service.ServiceException
-            goal_name = 'goal_{}'.format(global_index)
-            timer.start(goal_name)
-            srp.generate_goal()
-            timer.stop(goal_name)
-            logger.info('Generated goals')
-
-            plan_name = 'plan_{}'.format(global_index)
-            timer.start(plan_name)
-            plans = srp.plan()
-            # plans = [None]
-            timer.stop(plan_name)
-
-            # Timing info
-            timer.stop(trial_name)
-            diff = time.time() - start_time
-
-            # Generate results.csv
-            with open(args.output_dir + '/results.csv', 'a+') as global_results_file:
-                global_results_writer = csv.writer(global_results_file)
-                for index, (goal, test_graph) in enumerate(zip(srp._goal_instances, test_graphs)):
-                    result, reason = evaluate_goal(goal)
-                    logger.info('Generated goal {} {} {}'.format(index,
-                                                                 'succeded' if result else 'failed',
-                                                                 'because ' + reason if not result else ''))
-                    global_results_writer.writerow([index + global_index, len(demo_graphs), result, reason,
-                                                    test_graph.num_objs(), num_novel, diff, timer.diff_times[trial_name],
-                                                    timer.diff_times[init_scene_name], timer.diff_times[goal_name],
-                                                    timer.diff_times['generate_goal'],
-                                                    timer.diff_times['generate_goal_request'],
-                                                    timer.diff_times['generate_goal_response'],
-                                                    timer.diff_times[plan_name]])
-
-            save_all(None, test_graphs, srp._goal_instances, plans, current_trial, args.output_dir)
-
-            global_index += len(srp._goal_instances)
-            avg_time = (diff + (global_index - last_trial) * avg_time) / (global_index - last_trial + 1)
-            print('----------------------')
-            logger.info('avg_time: {}'.format(avg_time))
-            logger.info('Trial: {} ({} remaining)'.format(global_index, num_trials - global_index))
-            logger.info('Estimated time remaining: {}'.format(secs_to_str((num_trials - global_index) * avg_time)))
-            logger.info('Percent completed: {}%'.format(100.0 * (global_index) / num_trials))
-            print('----------------------')
-
+    timer.stop('experiment')
     print(timer.diff_times)
 
 
