@@ -160,7 +160,26 @@ def build_tree(srp):
     # Testing
     blackboard.set('srp_init_scene', [srp_md.SceneGraph.random_sg(num_objs=3, feature_space=feature_space,
                                                                   relation_value='disjoint')])
-
+    # Parallel_root = py_trees.composites.Parallel(
+    #     name='Parallel_root',
+    #     policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL,
+    #     synchronize=True,
+    #     allow_failure=False)
+    model_state_root = py_trees.composites.Sequence(name='model_state_root')
+    model_spawn_root = py_trees.composites.Sequence(name='model_spawn_root')
+    model_translation_root = py_trees.composites.Sequence(name='model_translation_root')
+    model_state_root.add_children([
+        srp_md.act.actions.ModelStateSubAct('ModelStateSubAct'),
+        ])
+    model_spawn_root.add_children([
+        srp_md.act.actions.SetValueToBlackBoardAct('SetValueToBlackBoardAct'),
+        srp_md.act.actions.GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
+        srp_md.act.actions.SpawnRandomModelParallelAct('SpawnRandomModelParallelAct'),
+        ])
+    model_translation_root.add_children([
+        srp_md.act.actions.SetValueToBlackBoardAct('SetValueToBlackBoardAct'),
+        srp_md.act.actions.ObjectTranslationParallelAct('ObjectTranslationParallelAct'),
+        ])
     tree = py_trees_ros.trees.BehaviourTree(root)
     main = py_trees.composites.Sequence('seq_main')
     main.add_children([
@@ -185,14 +204,15 @@ def build_tree(srp):
         srp_md.act.actions.GroceryBoxInitializationAct('GroceryBoxInitializationAct', grocery_box_num=3),
         srp_md.act.actions.PubOdomPose('PubOdomPose'),
         srp_md.act.actions.FetchMoveAct('FetchMoveAct', position=Point(0, 0, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        srp_md.act.actions.SpawnRandomModelAct(name='act_add_groceries'),
+        # srp_md.act.actions.SpawnRandomModelAct(name='act_add_groceries'),
+        srp_md.act.actions.SetSpawnSignalToBoard(name='SetSpawnSignalToBoard'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
             topic_type=ModelStates,
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        srp_md.act.actions.ObjectTranslationAct(name="act_translate_objs"),
+        # srp_md.act.actions.ObjectTranslationAct(name="act_translate_objs"),
         srp_md.act.actions.GenerateInitSceneAct(name='act_gen_init_scene', init_scene_key='srp_init_scene',
                                                 max_num_objs=6, min_y=-1.25, max_y=-0.75, feature_space=feature_space),
         srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
@@ -201,7 +221,7 @@ def build_tree(srp):
         # srp_md.act.actions.FetchMoveAct('FetchMoveAct', position=Point(0.27, -0.75, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
         srp_md.act.actions.ExecutePlanAct(name='act_execute_plan', tree=tree),
         srp_md.act.actions.PushBoxAct('PushBoxAct'),
-        srp_md.act.actions.SpawnRandomModelAct(name='act_add_groceries'),
+        # srp_md.act.actions.SpawnRandomModelAct(name='act_add_groceries'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
@@ -218,6 +238,9 @@ def build_tree(srp):
     ])
     root.add_children([
         main,
+        model_state_root,
+        model_spawn_root,
+        model_translation_root,
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',

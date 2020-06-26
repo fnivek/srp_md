@@ -1,0 +1,128 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="around_belt">
+    <static>true</static>
+    <link name="link">
+      <collision name="surface_0">
+        <pose>0.251 0 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 5.0 0.08</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual0">
+        <pose>0.251 0 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 5.0 0.08</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Wood</name>
+          </script>
+        </material>
+      </visual>
+      <collision name="surface_1">
+        <pose>-0.251 0 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 5.0 0.08</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual1">
+        <pose>-0.251 0 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 5.0 0.08</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Wood</name>
+          </script>
+        </material>
+      </visual>
+      <collision name="surface_2">
+        <pose>0 2.5 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.5 0.005 0.08</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual2">
+        <pose>0 2.5 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.5 0.005 0.08</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Wood</name>
+          </script>
+        </material>
+      </visual>
+      <collision name="surface_3">
+        <pose>0 -2.505 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.5 0.005 0.08</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual3">
+        <pose>0 -2.505 0.04 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.5 0.005 0.08</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Wood</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

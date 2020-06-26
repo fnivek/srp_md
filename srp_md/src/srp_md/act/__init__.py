@@ -62,3 +62,9 @@ from .actions import RelativeCartesianMoveBlackboardAct
 from .actions import FetchOrientationCorrectionAct
 from .actions import FetchPositionCorrectionAct
 from .actions import PubOdomPose
+from .actions import SpawnRandomModelParallelAct
+from .actions import ModelStateSubAct
+from .actions import ModelStatetestAct
+from .actions import ObjectTranslationParallelAct
+from .actions import SetMoveSignalToBoard
+from .actions import SetSpawnSignalToBoard
