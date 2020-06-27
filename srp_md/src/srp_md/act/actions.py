@@ -247,6 +247,8 @@ class SetValueToBlackBoardAct(py_trees.behaviour.Behaviour):
         All_Table_size.append(Vector3(0.75, 0.4, 0.35))
         py_trees.blackboard.Blackboard().set('All_Table_size', All_Table_size)
 
+        gripper_untouch_offset = 0.12
+        py_trees.blackboard.Blackboard().set('gripper_untouch_offset', gripper_untouch_offset)
         return py_trees.Status.SUCCESS
 
 
@@ -1041,7 +1043,8 @@ class FetchOrientationCorrectionAct(py_trees.behaviour.Behaviour):
             self._set_model_state.twist.linear = Vector3()
             self._set_model_state.twist.angular = Vector3()
             self._set_model_state_pub.publish(self._set_model_state)
-            time.sleep(0.025)
+            # time.sleep(0.025)
+            rospy.sleep(0.025)
 
         return py_trees.Status.SUCCESS
 
@@ -1096,7 +1099,8 @@ class FetchPositionCorrectionAct(py_trees.behaviour.Behaviour):
             self._set_model_state.twist.linear = Vector3()
             self._set_model_state.twist.angular = Vector3()
             self._set_model_state_pub.publish(self._set_model_state)
-            time.sleep(0.025)
+            # time.sleep(0.025)
+            rospy.sleep(0.025)
 
         # initial_position = R.from_quat([fetch_initial_orientation.x, fetch_initial_orientation.y, fetch_initial_orientation.z, fetch_initial_orientation.w])
         # goal_position = R.from_quat([goal_fetch_orientation.x, goal_fetch_orientation.y, goal_fetch_orientation.z, goal_fetch_orientation.w])
@@ -1121,7 +1125,8 @@ class FetchPositionCorrectionAct(py_trees.behaviour.Behaviour):
             self._set_model_state.twist.linear = Vector3()
             self._set_model_state.twist.angular = Vector3()
             self._set_model_state_pub.publish(self._set_model_state)
-            time.sleep(0.025)
+            # time.sleep(0.025)
+            rospy.sleep(0.025)
 
         # goal_euler_z = goal_orientation.as_euler('zyx', degrees=True)[0]
         # error = goal_euler_z - to_goal_position_angle
@@ -1226,8 +1231,8 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                 set_box_state.twist.linear = Vector3()
                 set_box_state.twist.angular = Vector3()
                 set_box_state.pose = self._model_state.pose[box_index]
-                print('set_box_state.model_name: ', set_box_state.model_name)
-                print('set_box_state.pose: ', set_box_state.pose)
+                # print('set_box_state.model_name: ', set_box_state.model_name)
+                # print('set_box_state.pose: ', set_box_state.pose)
                 dist_temp = []
                 box_position = deepcopy(set_box_state.pose.position)
                 poses_3_temp = []
@@ -1238,7 +1243,8 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                     dist_temp.append(srp_md.pose_difference(poses_3_temp[i], set_box_state.pose))
                 set_box_state.pose.orientation = poses_3_temp[dist_temp.index(min(dist_temp))].orientation
                 self._set_model_state_pub.publish(set_box_state)
-                time.sleep(0.02)
+                # time.sleep(0.02)
+                rospy.sleep(0.025)
 
                 if set_box_state.pose.orientation.w == 1:
                     box_y_max = set_box_state.pose.position.y + self._grocery_box_size.y / 2
@@ -1253,14 +1259,15 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                         and object_position_temp.y > box_y_min:
                             set_model_state = ModelState()
                             set_model_state.model_name = self._model_state.name[i]
-                            print('set_model_state.model_name: ', set_model_state.model_name)
+                            # print('set_model_state.model_name: ', set_model_state.model_name)
                             # set_model_state.twist = self._model_state.twist[box_index]
                             set_model_state.pose = self._model_state.pose[i]
-                            print('set_model_state.pose: ', set_model_state.pose)
+                            # print('set_model_state.pose: ', set_model_state.pose)
                             set_model_state.twist.linear = Vector3()
                             set_model_state.twist.angular = Vector3()
                             self._set_model_state_pub.publish(set_model_state)
-                            time.sleep(0.002)
+                            # time.sleep(0.002)
+                            rospy.sleep(0.0025)
 
         if self._obj_name is None:
             return py_trees.Status.SUCCESS
@@ -1277,7 +1284,7 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
                     if All_name[name_index] + '_0' == self._obj_name:
                         object_move_name = All_name[name_index] + '_test'
                     else:
-                        print('self._obj_name[len(All_name[name_index]) + self._object_name_compensate_num:]: ', self._obj_name[len(All_name[name_index]) + self._object_name_compensate_num:])
+                        # print('self._obj_name[len(All_name[name_index]) + self._object_name_compensate_num:]: ', self._obj_name[len(All_name[name_index]) + self._object_name_compensate_num:])
                         object_move_name = All_name[name_index] + '_test_' + str(int(self._obj_name[len(All_name[name_index]) + self._object_name_compensate_num:]) - 1)
 
         self._obj_index = self._model_state.name.index(object_move_name)
@@ -1335,11 +1342,12 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
         for i in range(len(poses_3)):
             dist.append(srp_md.pose_difference(poses_3[i], current_pose))
         self._set_model_state.pose.orientation = poses_3[dist.index(min(dist))].orientation
-
+        print('self._set_model_state.pose: ', self._set_model_state.pose)
         self._set_model_state.twist.linear = Vector3()
         self._set_model_state.twist.angular = Vector3()
         self._set_model_state_pub.publish(self._set_model_state)
-        time.sleep(0.05)
+        # time.sleep(0.05)
+        rospy.sleep(0.05)
 
         return py_trees.Status.SUCCESS
 
@@ -2458,6 +2466,7 @@ class GrabBoxPlacePoseGeneration(py_trees.behaviour.Behaviour):
         self._grocery_bbox_names = None
         self._grocery_bbox_pose = None
         self._link_states = None
+
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
         self._grocery_bboxes = deepcopy(blackboard.get(self._grocery_bboxes_key))
@@ -2466,6 +2475,7 @@ class GrabBoxPlacePoseGeneration(py_trees.behaviour.Behaviour):
         self._link_states = deepcopy(blackboard.get('link_states'))
         self._table_size = deepcopy(blackboard.get(self._table_size_key))
         self._fetch_pose =self._model_state.pose[self._model_state.name.index('fetch')]
+        print('self._fetch_pose: ', self._fetch_pose)
         self._table_bbox = deepcopy(blackboard.get(self._table_bbox_key))
         test_gripper_poses = []
 
@@ -2540,11 +2550,14 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
         self._x_axis_key = x_axis_key
         self._grocery_bboxes_key = grocery_bboxes_key
         self._grocery_bboxes = None
+        self._gripper_untouch_offset_key = 'gripper_untouch_offset'
+        self._gripper_untouch_offset = None
 
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
         self._test_bbox = blackboard.get(self._object_bbox_key)
         self._grocery_bboxes = blackboard.get(self._grocery_bboxes_key)
+        self._gripper_untouch_offset = blackboard.get(self._gripper_untouch_offset_key)
         object_bbox = self._test_bbox
         object_pose = object_bbox.center
         test_pose = Pose(object_pose.position, object_pose.orientation)
@@ -2604,7 +2617,7 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
 
             gripper_pose.position.x = object_pose.position.x + offset[0]
             gripper_pose.position.y = object_pose.position.y + offset[1]
-            gripper_pose.position.z = object_pose.position.z + offset[2]
+            gripper_pose.position.z = object_pose.position.z + offset[2] + self._gripper_untouch_offset
             test_gripper_poses.append(gripper_pose)
 
         for i in range(len(gripper_ori_relative)):
@@ -2740,6 +2753,8 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         self._relation_key = relation_key
         self._relation = None
         self._object_dim = None
+        self._gripper_untouch_offset_key = 'gripper_untouch_offset'
+        self._gripper_untouch_offset = None
 
     def initialise(self):
         self._relative_object_bbox = py_trees.blackboard.Blackboard().get(self._relative_bbox_key)
@@ -2750,6 +2765,7 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         self.action_goal.dim = py_trees.blackboard.Blackboard().get(self._obj_dim_key)
         self._object_dim = self.action_goal.dim
         self._relation = py_trees.blackboard.Blackboard().get(self._relation_key)
+        self._gripper_untouch_offset = py_trees.blackboard.Blackboard().get(self._gripper_untouch_offset_key)
 
     def update(self):
         grasp_poses = deepcopy(py_trees.blackboard.Blackboard().get('filtered_grasploc'))
@@ -2773,7 +2789,8 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         if result:
             result.pose.orientation = grasp_poses[pose_index_parformed].orientation
             result.pose.position.y = result.pose.position.y
-            result.pose.position.z = result.pose.position.z + self.action_goal.dim.y / 3.5
+            result.pose.position.z = result.pose.position.z + self.action_goal.dim.y / 3.5 + self._gripper_untouch_offset
+
             # result.pose.position.z = result.pose.position.z + self.action_goal.dim.y
             upper_poses = []
             upper_poses.append(result.pose)
@@ -2821,6 +2838,8 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         self._plane_size_z = 0.01
         self._pose_index_parformed_key = pose_index_parformed_key
         self._pose_index_parformed = None
+        self._gripper_untouch_offset_key = 'gripper_untouch_offset'
+        self._gripper_untouch_offset = None
 
     def initialise(self):
         self.action_goal.points = deepcopy(py_trees.blackboard.Blackboard().get('depth_downsampled'))
@@ -2835,6 +2854,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
         self._relation = deepcopy(py_trees.blackboard.Blackboard().get(self._relation_key))
         self._grocery_box_size = deepcopy(py_trees.blackboard.Blackboard().get(self._grocery_box_size_key))
         self._pose_index_parformed = deepcopy(py_trees.blackboard.Blackboard().get(self._pose_index_parformed_key))
+        self._gripper_untouch_offset = deepcopy(py_trees.blackboard.Blackboard().get(self._gripper_untouch_offset_key))
         self._grasp_pose = grasp_poses[self._pose_index_parformed]
         if self._obj_bbox is None:
             self.action_goal.obj_bbox = BoundingBox3D()
@@ -2925,6 +2945,7 @@ class FreeSpaceFinderAct(py_trees_ros.actions.ActionClient):
                 pose.position.z = self._grasp_pose.position.z
                 if pose.position.z - self.action_goal.plane_bbox.center.position.z > self._obj_bbox.size.y * 1.5:
                     pose.position.z = self.action_goal.plane_bbox.center.position.z + self._obj_bbox.size.y * 1.1
+                pose.position.z = pose.position.z + self._gripper_untouch_offset
                 # poses.append(pose)
                 poses_temp.append(pose)
 
@@ -4021,9 +4042,14 @@ class ObjectTranslationParallelAct(py_trees.behaviour.Behaviour):
 
     def translation(self):
         self._model_state = ModelStates()
-        while not self._start_spawn_signal is True:
-            self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+        
         while True:
+            self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+            while not self._start_spawn_signal is True:
+                rospy.sleep(0.5)
+                self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+                
+            rospy.sleep(0.5)
             for sleep_index in range(self._sleep_num):
                 # self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
                 time.sleep(self._sleep_time_state)
@@ -4089,7 +4115,7 @@ class ObjectTranslationParallelAct(py_trees.behaviour.Behaviour):
                         y_initial_value.append(deepcopy(obj_position.y))
 
             # specialized for all objects on convoyer belt have identity orientation
-            print('moving_object_name: ', moving_object_name)
+            # print('moving_object_name: ', moving_object_name)
             if len(moving_object_name) == 0:
                 continue
 
@@ -4150,7 +4176,7 @@ class ModelStatetestAct(py_trees.behaviour.Behaviour):
         while True:
             self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
             print('self._model_state', self._model_state)
-            time.sleep(1)
+            rospy.sleep(0.1)
         return py_trees.common.Status.SUCCESS
 
 
@@ -4181,10 +4207,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         return True
 
     def initialise(self):
-        self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
-        self._conveyor_belt_pose = self._model_state.pose[self._model_state.name.index('conveyor_belt')]
-        self._model_state_pose = deepcopy(self._model_state.pose)
-        self._model_state_name = deepcopy(self._model_state.name)
+        
         if self._thread is None:
             self._thread = threading.Thread(target=self.spawn_model)
             self._thread.start()
@@ -4198,6 +4221,13 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         return py_trees.common.Status.SUCCESS
 
     def spawn_model(self):
+        while not self._start_spawn_signal is True:
+            self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+            rospy.sleep(0.5)
+        self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
+        self._conveyor_belt_pose = self._model_state.pose[self._model_state.name.index('conveyor_belt')]
+        self._model_state_pose = deepcopy(self._model_state.pose)
+        self._model_state_name = deepcopy(self._model_state.name)
         conveyor_belt_size = deepcopy(py_trees.blackboard.Blackboard().get(self._conveyor_belt_size_key))
         All_object_name = ['cracker', 'gelatin', 'meat', 'mustard', 'soup', 'sugar']
 
@@ -4227,8 +4257,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         dis_to_edge_y = {'cracker': 0.207, 'gelatin': 0.097,'meat': 0.05,'mustard': 0.06,'soup': 0.034, 'sugar': 0.174}
         object_radius = {'cracker': 0.2644 / 2, 'gelatin': 0.135 - 0.013, 'meat': 0.108 + 0.15, 'mustard': 0.2147 / 2 + 0.005,'soup': 0.113 + 0.02, 'sugar': 0.204 / 2}
         conveyor_belt_position = self._conveyor_belt_pose.position
-        while not self._start_spawn_signal is True:
-            self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+        
 
         req = SpawnModelRequest()
         req.model_name = 'cracker_test'
@@ -4241,7 +4270,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0.5, -0.5, 0.5, 0.5)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'sugar_test'
@@ -4254,7 +4283,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0.5, -0.5, 0.5, 0.5)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'mustard_test'
@@ -4267,7 +4296,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'mustard_test_0'
@@ -4280,7 +4309,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'meat_test'
@@ -4293,7 +4322,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'gelatin_test'
@@ -4306,7 +4335,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'cracker_test_0'
@@ -4319,7 +4348,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0.5, -0.5, 0.5, 0.5)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'cracker_test_1'
@@ -4332,7 +4361,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0.5, -0.5, 0.5, 0.5)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'mustard_test_1'
@@ -4345,7 +4374,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'soup_test'
@@ -4358,7 +4387,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'meat_test_0'
@@ -4371,7 +4400,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
+        rospy.sleep(0.5)
 
         req = SpawnModelRequest()
         req.model_name = 'gelatin_test_0'
@@ -4384,19 +4413,24 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
         self._spawn_model_client.call(req)
-        time.sleep(0.5)
-
+        rospy.sleep(0.5)
+        rospy.sleep(120)
         while True:
             # time.sleep(0.5)
+            self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+            while not self._start_spawn_signal is True:
+                rospy.sleep(0.5)
+                self._start_spawn_signal = deepcopy(py_trees.blackboard.Blackboard().get(self._start_spawn_signal_key))
+
+            rospy.sleep(5)
             for sleep_index in range(self._sleep_num):
                 # self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
                 self._model_state_pose = deepcopy(self._model_state.pose)
                 time.sleep(self._sleep_time)
             self._model_state = deepcopy(py_trees.blackboard.Blackboard().get(self._model_state_key))
             self._model_state_pose = deepcopy(self._model_state.pose)
-            print('self._model_state_pose: ', len(self._model_state_pose))
-            # print('self._model_state', self._model_state)
-            object_index = random.randint(0,5)
+            self._model_state_name = deepcopy(self._model_state.name)
+            object_index = random.randint(0, 5)
             if object_index == -1:
                 object_index = 0
 
@@ -4577,17 +4611,85 @@ class SetMoveSignalToBoard(py_trees.behaviour.Behaviour):
         return py_trees.Status.SUCCESS
 
 
-class SetSpawnSignalToBoard(py_trees.behaviour.Behaviour):
-    def __init__(self, name, start_spawn_signal_key='start_spawn_signal'):
-        super(SetSpawnSignalToBoard, self).__init__(name)
+class SetSpawnOrPauseSignalToBoard(py_trees.behaviour.Behaviour):
+    def __init__(self, name, start_spawn_signal_key='start_spawn_signal', start_or_pause=True):
+        super(SetSpawnOrPauseSignalToBoard, self).__init__(name)
         self._start_spawn_signal_key = start_spawn_signal_key
-        self._start_spawn_signal = True
+        self._start_spawn_signal = start_or_pause
 
     def initialise(self):
         pass
 
     def update(self):
         self._model_state = py_trees.blackboard.Blackboard().set(self._start_spawn_signal_key, self._start_spawn_signal)
+        return py_trees.Status.SUCCESS
+
+
+class DeleteTwoStaticModelAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name, model_state_key='model_state'):
+        super(DeleteTwoStaticModelAct, self).__init__(name)
+        self._model_state_key = model_state_key
+        self._model_state = None
+        self._delete_model_client = None
+
+    def setup(self, timeout):
+        rospy.wait_for_service('/gazebo/delete_model', timeout=timeout)
+        self._delete_model_client = rospy.ServiceProxy("/gazebo/delete_model", DeleteModel)
+        return True
+
+    def update(self):
+        req = DeleteModelRequest()
+        req.model_name = 'static_thing'
+        self._delete_model_client.call(req)
+
+        req = DeleteModelRequest()
+        req.model_name = 'around_belt'
+        self._delete_model_client.call(req)
+
+        return py_trees.Status.SUCCESS
+
+
+class SpawnTwoStaticModelAct(py_trees.behaviour.Behaviour):
+    def __init__(self, name):
+        super(SpawnTwoStaticModelAct, self).__init__(name)
+        self._spawn_model_client = None
+
+    def setup(self, timeout):
+        rospy.wait_for_service('/gazebo/spawn_sdf_model', timeout=timeout)
+        self._spawn_model_client = rospy.ServiceProxy("/gazebo/spawn_sdf_model", SpawnModel)
+
+        return True
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        req = SpawnModelRequest()
+        req.model_name = 'static_thing'
+        f = open(srp_md_path + '/model/grocery_models/static_thing/model.sdf', 'r')
+        req.model_xml = f.read()
+        # 0.5735764, 0.819152
+        req.initial_pose.orientation.w = 0.819152
+        req.initial_pose.orientation.z = -0.5735764
+        req.initial_pose.position.x = 0.975
+        req.initial_pose.position.y = -1.0934
+        req.initial_pose.position.z = 0.535
+        req.reference_frame = 'world'
+
+        self._spawn_model_client.call(req)
+
+        req = SpawnModelRequest()
+        req.model_name = 'around_belt'
+        f = open(srp_md_path + '/model/grocery_models/around_belt/model.sdf', 'r')
+        req.model_xml = f.read()
+        # 0.5735764, 0.819152
+        req.initial_pose.orientation.w = 1
+        req.initial_pose.position.x = 0.85
+        req.initial_pose.position.y = -3.25
+        req.initial_pose.position.z = 0.55
+        req.reference_frame = 'world'
+
+        self._spawn_model_client.call(req)
         return py_trees.Status.SUCCESS
 
 
@@ -4712,6 +4814,20 @@ class SpawnStaticModelAct(py_trees.behaviour.Behaviour):
         req.initial_pose.orientation.z = -0.707
         req.initial_pose.position.x = -0.5
         req.initial_pose.position.y = -6.6
+        req.reference_frame = 'world'
+
+        self._spawn_model_client.call(req)
+
+        req = SpawnModelRequest()
+        req.model_name = 'static_thing_no_collision'
+        f = open(srp_md_path + '/model/grocery_models/static_thing_no_collision/model.sdf', 'r')
+        req.model_xml = f.read()
+        # 0.5735764, 0.819152
+        req.initial_pose.orientation.w = 0.819152
+        req.initial_pose.orientation.z = -0.5735764
+        req.initial_pose.position.x = 0.975
+        req.initial_pose.position.y = -1.0934
+        req.initial_pose.position.z = 0.535
         req.reference_frame = 'world'
 
         self._spawn_model_client.call(req)
@@ -5190,7 +5306,7 @@ def GrabBoxAct(name):
             topic_type=ModelStates,
             blackboard_variables={'link_states': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        SleepBehavior('act_sleep_a_smidge', duration=0.5),
+        SleepBehavior('act_sleep_a_smidge', duration=1),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         GrabBoxPlacePoseGeneration('GrabBoxPlacePoseGeneration'),
         OffsetPoses('act_offset_place_poses',
@@ -5273,7 +5389,7 @@ def PickAct(name, obj):
             topic_type=ModelStates,
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
-        StabilizeObjectAct('StabilizeObjectAct', obj_name=object_name),
+        StabilizeObjectAct('StabilizeObjectAct'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         AttachObjectAct('act_attach_object', object_name='inhand_collision_object', to_attach=True),
         RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf),
@@ -5289,7 +5405,7 @@ def PickAct(name, obj):
     root.add_children([
         SetValueToBlackBoardAct('SetValueToBlackBoardAct'),
         HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
-        ObjectTranslationAct(name="act_translate_objs"),
+        # ObjectTranslationAct(name="act_translate_objs"),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_pc',
@@ -5316,6 +5432,7 @@ def PickAct(name, obj):
         AttachObjectAct('act_dettach_object', object_name='inhand_collision_object', to_attach=False),
 
         # GetDopeSnapshotAct('act_get_dope_snapshot', object_name=object_index),
+        SetSpawnOrPauseSignalToBoard('SetSpawnOrPauseSignalToBoard', start_or_pause=False),
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         RemoveCollisionBoxAct('act_remove_inhand_collision_object', box_name='inhand_collision_object'),
         # GetTableAct('act_get_table'),
@@ -5331,6 +5448,7 @@ def PickAct(name, obj):
                     out_poses_key='offset_grasploc', debug=True), # The gripper origin is in the wrist so move out along x
         # GetTableAct('act_get_table'),
         MoveToStartAct('act_grasploc_pick', 'offset_grasploc'),
+        DeleteTwoStaticModelAct('DeleteTwoStaticModelAct'),
         grasploc_grasp_fall,
     ])
     return root
@@ -5411,6 +5529,7 @@ def PlaceAct(name, obj, surface, relation='None'):
             topic_type=ModelStates,
             blackboard_variables={'model_state': None},
             clearing_policy=py_trees.common.ClearingPolicy.ON_INITIALISE),
+        SleepBehavior('act_sleep_a_smidge', duration=0.5),
         StabilizeObjectAct('StabilizeObjectAct', obj_name=object_name),
 
         # TeleportObjectAct('TeleportObject', obj_name=object_name),
@@ -5423,12 +5542,14 @@ def PlaceAct(name, obj, surface, relation='None'):
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
         RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
-
+        SpawnTwoStaticModelAct(name='SpawnTwoStaticModelAct'),
         # StabilizeObjectAct('StabilizeObjectAct', obj_name=obj),
         place_act_fall,
         SleepBehavior('act_sleep_a_smidge', duration=1),
         RemoveAllCollisionBoxAct('act_Remove_All_Object_CollisionBox'),
         SetMoveSignalToBoard('SetMoveSignalToBoard'),
+        
+        SetSpawnOrPauseSignalToBoard('SetSpawnOrPauseSignalToBoard'),
     ])
 
     place_act_fall.add_children([

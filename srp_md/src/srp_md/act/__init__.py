@@ -67,4 +67,6 @@ from .actions import ModelStateSubAct
 from .actions import ModelStatetestAct
 from .actions import ObjectTranslationParallelAct
 from .actions import SetMoveSignalToBoard
-from .actions import SetSpawnSignalToBoard
+from .actions import SetSpawnOrPauseSignalToBoard
+from .actions import DeleteTwoStaticModelAct
+from .actions import SpawnTwoStaticModelAct
