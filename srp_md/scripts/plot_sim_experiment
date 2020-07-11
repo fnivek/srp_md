@@ -1,0 +1,223 @@
+#!/usr/bin/env python
+# Python imports
+from __future__ import print_function
+import csv
+import argparse
+import os
+import srp_md
+from collections import OrderedDict
+
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Plot the results')
+
+    # Main arguments
+    parser.add_argument('in_file', help='Specify the in_file', type=str)
+    parser.add_argument('-o', '--out_dir', help='Write statistics to files named todo:<out_file>_<key>.csv, default '
+                        'director of in_file', type=str, default=None)
+    args = parser.parse_args()
+    if args.out_dir is None:
+        args.out_dir = os.path.dirname(os.path.realpath(args.in_file))
+    return args
+
+
+class Datum:
+    # How data is organized
+    COLS = OrderedDict([
+        ('trial_num', int),
+        ('num_demos', int),
+        ('result', srp_md.utils.str2bool),
+        ('reason', str),
+        ('plan_result', srp_md.utils.str2bool),
+        ('num_test_objs', int),
+        ('num_novel_objs', int),
+        ('num_training_classes', int),
+        ('training_classes', str),
+        ('num_test_classes', int),
+        ('test_classes', str),
+        ('num_objs_in_demos', int),
+        ('num_rels_in_demo', int),
+        ('num_noisy_objs', int),
+        ('num_noisy_rels', int),
+        ('demo_gen_t', float),
+        ('learn_t', float),
+        ('trial_t', float),
+        ('test_gen_t', float),
+        ('goal_gen_t', float),
+        ('goal_gen2_t', float),
+        ('goal_req_t', float),
+        ('goal_resp_t', float),
+        ('plan_t', float)])
+    COL_NAMES = COLS.keys()
+    COL_INDICES = {name: index for index, name in enumerate(COL_NAMES)}
+
+    def __init__(self, row):
+        # Bad practice but this is just a script
+        self.__dict__ = {name: type_t(row[index]) for index, name, type_t in
+                         zip(range(len(Datum.COL_NAMES)), Datum.COLS.keys(), Datum.COLS.values())}
+
+
+class Tee:
+    def __init__(self, csv_f):
+        self._csv_f = csv_f
+
+    def write(self, row, join_str=',\t'):
+        self._csv_f.writerow(row)
+        print(join_str.join([str(d) for d in row]))
+
+
+def averages(data, out_file):
+    # Average everything that can be averaged
+    num_trials = len(data)
+    avgs = {}
+    print('Loaded {} trials'.format(num_trials))
+    for i, col_name in enumerate(Datum.COL_NAMES):
+        try:
+            avgs[col_name] = sum([getattr(d, col_name) for d in data]) / float(num_trials)
+            print('Average {}: {}'.format(col_name, avgs[col_name]))
+        except TypeError:
+            pass
+
+    with open(out_file, 'w') as f:
+        avgs_f = csv.writer(f)
+        avgs_f.writerow(['num_trials'] + avgs.keys())
+        avgs_f.writerow([num_trials, avgs.values()])
+
+
+def demos_v_success(data, out_file):
+    # Collect data into bins
+    total = {}
+    success = {}
+    for datum in data:
+        # num_demos vs success
+        try:
+            total[datum.num_demos] += 1
+        except KeyError:
+            total[datum.num_demos] = 1
+        if datum.result:
+            try:
+                success[datum.num_demos] += 1
+            except KeyError:
+                success[datum.num_demos] = 1
+
+    # Process collected data bins
+    # Demos vs success
+    demos_v_success = {}
+    for num_demos in sorted(total.keys()):
+        try:
+            demos_v_success[num_demos] = 100.0 * success[num_demos] / total[num_demos]
+            print('# Demos {}:\t{}'.format(num_demos, demos_v_success[num_demos]))
+        except KeyError as e:
+            print('Error in demos_v_success {}, {}'.format(num_demos, e))
+
+    # Write results
+    with open(out_file, 'w') as f:
+        demos_v_success_f = csv.writer(f)
+        for num_demos, success in demos_v_success.iteritems():
+            demos_v_success_f.writerow([num_demos, success])
+
+
+def reasons(data, out_file):
+    # Collect data into bins
+    num_trials = float(len(data))
+    reasons = {}
+    demo_v_reason = {}
+    for datum in data:
+        # Reason for result
+        try:
+            reasons[datum.reason] += 1
+        except KeyError:
+            reasons[datum.reason] = 1
+        # By demo
+        try:
+            _ = demo_v_reason[datum.num_demos]
+        except KeyError:
+            demo_v_reason[datum.num_demos] = {datum.reason: 0}
+        try:
+            demo_v_reason[datum.num_demos][datum.reason] += 1
+        except KeyError:
+            demo_v_reason[datum.num_demos][datum.reason] = 1
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_demos'] + sorted(reasons.keys()))
+        tee.write(['overall'] + [reasons[key] / num_trials for key in sorted(reasons.keys())])
+        for num_demos in sorted(demo_v_reason.keys()):
+            num_trials = float(sum([num for num in demo_v_reason[num_demos].values()]))
+            tee.write([num_demos] + [demo_v_reason[num_demos][key] / num_trials if key in demo_v_reason[num_demos]
+                      else 0 for key in sorted(reasons.keys())])
+
+
+def test_v_time(data, out_file):
+    # Collect data into bins
+    trial_t = {}
+    goal_gen_t = {}
+    plan_t = {}
+    times = ['trial_t', 'goal_gen_t', 'plan_t']
+    containers = [trial_t, goal_gen_t, plan_t]
+    for datum in data:
+        for attr, container in zip(times, containers):
+            try:
+                container[datum.num_test_objs].append(getattr(datum, attr))
+            except KeyError:
+                container[datum.num_test_objs] = [getattr(datum, attr)]
+
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_test_objs'] + times)
+        for num_test_objs in trial_t.keys():
+            tee.write([num_test_objs] + [sum(container[num_test_objs]) / float(len(container[num_test_objs])) for
+                      container in containers])
+
+
+def novel_vs_success(data, out_file):
+    # Collect data into bins
+    novel_vs_success = {}
+    novel_test_vs_success = {}
+    for datum in data:
+        try:
+            novel_test_vs_success[(datum.num_novel_objs, datum.num_test_objs)].append(datum.result)
+        except KeyError:
+            novel_test_vs_success[(datum.num_novel_objs, datum.num_test_objs)] = [datum.result]
+        try:
+            novel_vs_success[datum.num_novel_objs].append(datum.result)
+        except KeyError:
+            novel_vs_success[datum.num_novel_objs] = [datum.result]
+
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_novel_objs', 'num_test_objs' 'success_rate'])
+        for num_novel_objs, values in novel_vs_success.iteritems():
+            tee.write([num_novel_objs, 'all', sum(values) / float(len(values))])
+        for num_novel_test_objs, values in novel_test_vs_success.iteritems():
+            tee.write([num_novel_test_objs[0], num_novel_test_objs[1], sum(values) / float(len(values))])
+
+
+def main():
+    # Command line parse
+    args = parse_args()
+
+    # Get data from in file
+    data = []
+    with open(args.in_file, 'r') as results_file:
+        results = csv.reader(results_file)
+        data = [Datum(row) for row in results]
+
+    # Produce results
+    averages(data, args.out_dir + '/averages.csv')
+    demos_v_success(data, args.out_dir + '/demos_v_success.csv')
+    reasons(data, args.out_dir + '/reasons.csv')
+    test_v_time(data, args.out_dir + '/num_test_objs_v_time.csv')
+    novel_vs_success(data, args.out_dir + '/novel_v_success.csv')
+
+
+if __name__ == '__main__':
+    main()

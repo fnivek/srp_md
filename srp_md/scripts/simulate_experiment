@@ -632,7 +632,7 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
                 gen_goal_resp = 0
                 try:
                     gen_goal2 = timer.diff_times['generate_goal']
-                    gen_goal_req = timer.diff_times['generate_goal_response']
+                    gen_goal_req = timer.diff_times['generate_goal_request']
                     gen_goal_resp = timer.diff_times['generate_goal_response']
                 except KeyError:
                     pass
