@@ -70,3 +70,7 @@ from .actions import SetMoveSignalToBoard
 from .actions import SetSpawnOrPauseSignalToBoard
 from .actions import DeleteTwoStaticModelAct
 from .actions import SpawnTwoStaticModelAct
+from .actions import FetchMoveWithCorrection
+from .actions import LinkStateWriteToFileAct
+from .actions import LinkStateTest
+from .actions import SetStabilizeSignalToBoard

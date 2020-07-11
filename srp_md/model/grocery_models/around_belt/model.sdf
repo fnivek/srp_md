@@ -7,7 +7,7 @@
         <pose>0.251 0 0.04 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.005 5.0 0.08</size>
+            <size>0.005 2.7 0.08</size>
           </box>
         </geometry>
         <surface>
@@ -23,7 +23,7 @@
         <pose>0.251 0 0.04 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.005 5.0 0.08</size>
+            <size>0.005 2.7 0.08</size>
           </box>
         </geometry>
         <material>
@@ -37,7 +37,7 @@
         <pose>-0.251 0 0.04 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.005 5.0 0.08</size>
+            <size>0.005 2.7 0.08</size>
           </box>
         </geometry>
         <surface>
@@ -53,7 +53,7 @@
         <pose>-0.251 0 0.04 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.005 5.0 0.08</size>
+            <size>0.005 2.7 0.08</size>
           </box>
         </geometry>
         <material>
@@ -64,7 +64,7 @@
         </material>
       </visual>
       <collision name="surface_2">
-        <pose>0 2.5 0.04 0 0 0</pose>
+        <pose>0 1.35 0.04 0 0 0</pose>
         <geometry>
           <box>
             <size>0.5 0.005 0.08</size>
@@ -80,7 +80,7 @@
         </surface>
       </collision>
       <visual name="visual2">
-        <pose>0 2.5 0.04 0 0 0</pose>
+        <pose>0 1.35 0.04 0 0 0</pose>
         <geometry>
           <box>
             <size>0.5 0.005 0.08</size>
@@ -94,7 +94,7 @@
         </material>
       </visual>
       <collision name="surface_3">
-        <pose>0 -2.505 0.04 0 0 0</pose>
+        <pose>0 -1.355 0.04 0 0 0</pose>
         <geometry>
           <box>
             <size>0.5 0.005 0.08</size>
@@ -110,7 +110,7 @@
         </surface>
       </collision>
       <visual name="visual3">
-        <pose>0 -2.505 0.04 0 0 0</pose>
+        <pose>0 -1.355 0.04 0 0 0</pose>
         <geometry>
           <box>
             <size>0.5 0.005 0.08</size>
