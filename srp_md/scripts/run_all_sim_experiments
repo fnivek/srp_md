@@ -1,0 +1,356 @@
+#!/bin/bash
+# This script generates all of the data needed for the graphs in the paper
+
+# Usage
+usage ()
+{
+  echo "run_all_experiments <num_threads> <output_folder>"
+  exit 0
+}
+
+# Ensure only 2 args
+if [[ "$#" -ne 2 ]]; then
+  usage
+fi
+
+# Get num threads and output folder from cmd line
+num_threads="$1"
+out_folder="$(realpath $2)"
+
+# Arrays for experiment folders and commands
+exp_folders=()
+cmds=()
+common_args="--log_level 30 --use_no_float false --factor_learner decision_tree"
+
+# Set up performance vs number of demonstrations experiments
+exp1_root="${out_folder}/performance_v_num_demos"
+
+exp_folders+=("${exp1_root}/cardinality")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality true"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/cardinality_noise")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality true"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise true"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/cardinality_noise_novel")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality true"
+  "--use_novel_classes true"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise true"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/cardinality_novel")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality true"
+  "--use_novel_classes true"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/noise")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise true"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/noise_novel")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality false"
+  "--use_novel_classes true"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise true"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/novel")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality false"
+  "--use_novel_classes true"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp1_root}/std")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 1"
+  "--max_num_demos 30"
+  "--max_test_size 6"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+
+# Setup novel numbers of objects experiments
+exp2_root="${out_folder}/novel_numbers"
+exp_folders+=("${exp2_root}/4")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_demo_size 4"
+  "--min_demo_size 4"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 7"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp2_root}/4_5")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_demo_size 5"
+  "--min_demo_size 4"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 7"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp2_root}/4_6")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_demo_size 6"
+  "--min_demo_size 4"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 7"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp2_root}/4_10")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_demo_size 10"
+  "--min_demo_size 4"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 7"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp2_root}/10")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_demo_size 10"
+  "--min_demo_size 10"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 7"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp2_root}/9_10")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_demo_size 10"
+  "--min_demo_size 9"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes false"
+  "--rand_train_set true"
+  "--num_train_sets 7"
+  "--plan false"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+
+# Setup experiment 3 novel objects
+# Experiment 3 is the same as exp_folders+=("${exp1_root}/novel") so no need to redo it
+# exp3_root="${out_folder}/novel_objects"
+# exp_folders+=("${exp3_root}/9_10")
+# args=(
+#   "--num_test_scenes 10"
+#   "--num_samples 10"
+#   "--min_num_demos 1"
+#   "--max_num_demos 30"
+#   "--max_test_size 8"
+#   "--use_cardinality false"
+#   "--use_novel_classes true"
+#   "--rand_train_set true"
+#   "--num_train_sets 7"
+#   "--plan false"
+#   "--use_noise false"
+# )
+# cmd=${args[@]}
+# cmds+=("${cmd}")
+
+
+# # Perform timing tests
+exp4_root="${out_folder}/timing"
+
+exp_folders+=("${exp4_root}/with_cardinality")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_test_size 6"
+  "--use_cardinality true"
+  "--use_novel_classes true"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan true"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+exp_folders+=("${exp4_root}/without_cardinality")
+args=(
+  "--num_test_scenes 10"
+  "--num_samples 10"
+  "--min_num_demos 20"
+  "--max_num_demos 20"
+  "--max_test_size 14"
+  "--use_cardinality false"
+  "--use_novel_classes true"
+  "--rand_train_set true"
+  "--num_train_sets 5"
+  "--plan true"
+  "--use_noise false"
+)
+cmd=${args[@]}
+cmds+=("${cmd}")
+
+# Tell the user
+echo "Running with ${num_threads} threads"
+echo "Writing to ${out_folder}"
+
+# Run experiments
+for i in ${!cmds[@]}; do
+  # Tell user where at
+  printf "\033[0;32m"  # Green
+  printf "\n\n\n===========================================================\n"
+  printf "            Starting experiment ${i} ($(basename ${exp_folders[${i}]}))\n"
+  printf "===========================================================\n\n\n"
+  printf "\033[0m"  # End green
+  # Set up directories
+  mkdir -p "${exp_folders[${i}]}"
+  # Run the experiment
+  rosrun srp_md simulate_experiment ${common_args} ${cmds[$i]} --num_threads "${num_threads}" "${exp_folders[${i}]}"
+done
