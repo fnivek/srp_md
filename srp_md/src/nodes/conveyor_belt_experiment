@@ -138,6 +138,15 @@ def build_tree(srp):
     bot_wall_pose.position.z = 0.45
     bot_wall_pose.orientation.w = 1.0
 
+    new_gripper_pose = Pose()
+    new_gripper_pose.position.x = 0.025
+    new_gripper_pose.position.y = -0.16
+    new_gripper_pose.position.z = 1.15
+    new_gripper_pose.orientation.x = -0.5
+    new_gripper_pose.orientation.y = 0.5
+    new_gripper_pose.orientation.z = -0.5
+    new_gripper_pose.orientation.w = -0.5
+
     table = Pose()
     table.position.x = 0.70
     table.position.y = 0.0
@@ -189,6 +198,9 @@ def build_tree(srp):
     main.add_children([
         srp_md.act.actions.FullyExtendTorso('act_please_extend_torso'),
         srp_md.act.actions.TuckBehavior(name='act_tuck_arm', tuck_pose='tuck'),
+        srp_md.act.actions.AddCollisionBoxAct('add_new_gripper_box', box_name='new_gripper',
+                           box_pose=new_gripper_pose, box_size=[0.20, 0.10, 0.05]),
+        srp_md.act.actions.AttachObjectAct('act_attach_object', object_name='new_gripper', to_attach=True),
         srp_md.act.actions.HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
         srp_md.act.actions.SetValueToBlackBoardAct(name='act_set_blackboard'),
         srp_md.act.actions.SpawnStaticModelAct(name='act_spawn_static_objects'),
@@ -226,7 +238,6 @@ def build_tree(srp):
         srp_md.act.actions.GenerateGoalAct(name='act_generate_goal', srp=srp, init_scene_key='srp_init_scene'),
         srp_md.act.actions.PlanAct(name='act_plan', srp=srp),
         srp_md.act.actions.FetchMoveWithCorrection('FetchMoveWithCorrection', position=Point(0.235, -1.118, 0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        # srp_md.act.actions.GrabBoxAct('GrabBoxAct'),
         srp_md.act.actions.ExecutePlanAct(name='act_execute_plan', tree=tree),
         srp_md.act.actions.PushBoxAct('PushBoxAct'),
         # srp_md.act.actions.SleepBehavior('act_sleep_a_smidge', duration=50),

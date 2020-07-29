@@ -51,19 +51,19 @@ from behavior_manager.interfaces.sleep_behavior import *
 rospack = rospkg.RosPack()
 srp_md_path = rospack.get_path('srp_md')
 
-gripper_length = 0.15
+gripper_length = 0.17
 # gripper_length = 0.22
 pre_grasp_offset = 0.17
 # pre_grasp_offset = 0.07
 
 to_grasp_tf = TransformStamped()
 to_grasp_tf.header.frame_id = "gripper_link"
-to_grasp_tf.transform.translation.x = pre_grasp_offset * 0.8
+to_grasp_tf.transform.translation.x = pre_grasp_offset * 0.4
 to_grasp_tf.transform.rotation.w = 1.0
 
 to_grasp_full_tf = TransformStamped()
 to_grasp_full_tf.header.frame_id = "gripper_link"
-to_grasp_full_tf.transform.translation.x = pre_grasp_offset * 0.95
+to_grasp_full_tf.transform.translation.x = pre_grasp_offset * 0.9
 to_grasp_full_tf.transform.rotation.w = 1.0
 
 to_y_grasp_full_tf = TransformStamped()
@@ -73,7 +73,7 @@ to_y_grasp_full_tf.transform.rotation.w = 1.0
 
 to_z_grasp_full_tf = TransformStamped()
 to_z_grasp_full_tf.header.frame_id = "gripper_link"
-to_z_grasp_full_tf.transform.translation.z = - (pre_grasp_offset) * 0.95
+to_z_grasp_full_tf.transform.translation.z = - (pre_grasp_offset) * 1
 to_z_grasp_full_tf.transform.rotation.w = 1.0
 
 to_y_grasp_full_back_tf = TransformStamped()
@@ -88,7 +88,7 @@ to_z_grasp_full_back_tf.transform.rotation.w = 1.0
 
 to_place_tf = TransformStamped()
 to_place_tf.header.frame_id = "gripper_link"
-to_place_tf.transform.translation.x = pre_grasp_offset * 0.8
+to_place_tf.transform.translation.x = pre_grasp_offset * 0.7
 to_place_tf.transform.rotation.w = 1.0
 
 to_push_tf = TransformStamped()
@@ -139,7 +139,7 @@ to_back_tf.transform.rotation.w = 1.0
 up_tf_after_place = TransformStamped()
 # up_tf_after_place.header.frame_id = "gripper_link"
 up_tf_after_place.header.frame_id = "base_link"
-up_tf_after_place.transform.translation.z = pre_grasp_offset * 1.2
+up_tf_after_place.transform.translation.z = pre_grasp_offset * 0.7
 # up_tf_after_place.transform.translation.x = -0.15
 up_tf_after_place.transform.rotation.w = 1
 
@@ -202,10 +202,10 @@ class SetValueToBlackBoardAct(py_trees.behaviour.Behaviour):
         grocery_box_size = Vector3()
         grocery_box_size.x = 0.27432
         grocery_box_size.y = 0.4838
-        grocery_box_size.z = 0.1524
+        grocery_box_size.z = 0.1524 + 0.06
         py_trees.blackboard.Blackboard().set('grocery_box_size', grocery_box_size)
 
-        conveyor_belt_size = Vector3(0.5, 2.5, 0.3)
+        conveyor_belt_size = Vector3(0.5, 2.7, 0.3)
         py_trees.blackboard.Blackboard().set('conveyor_belt_size', conveyor_belt_size)
 
         grocery_collision_box_name = []
@@ -248,6 +248,7 @@ class SetValueToBlackBoardAct(py_trees.behaviour.Behaviour):
         py_trees.blackboard.Blackboard().set('All_Table_size', All_Table_size)
 
         gripper_untouch_offset = 0.12
+        # gripper_untouch_offset = 0.0001
         py_trees.blackboard.Blackboard().set('gripper_untouch_offset', gripper_untouch_offset)
         return py_trees.Status.SUCCESS
 
@@ -1343,7 +1344,7 @@ class StabilizeObjectAct(py_trees.behaviour.Behaviour):
         for i in range(len(poses_3)):
             dist.append(srp_md.pose_difference(poses_3[i], current_pose))
         self._set_model_state.pose.orientation = poses_3[dist.index(min(dist))].orientation
-        print('self._set_model_state.pose: ', self._set_model_state.pose)
+        # print('self._set_model_state.pose: ', self._set_model_state.pose)
         self._set_model_state.twist.linear = Vector3()
         self._set_model_state.twist.angular = Vector3()
         self._set_model_state_pub.publish(self._set_model_state)
@@ -2018,7 +2019,7 @@ class OffsetPoses(py_trees.behaviour.Behaviour):
             new.poses = offset_poses
             self._orig_pub.publish(orig)
             self._new_pub.publish(new)
-
+        # print('offset_poses: ', offset_poses)
         blackboard.set(self._out_poses_key, offset_poses)
         return py_trees.Status.SUCCESS
 
@@ -2369,7 +2370,7 @@ class PushBoxPoseGeneration(py_trees.behaviour.Behaviour):
         # gripper_ori_relative = R.from_quat([0, 0.707, 0, 0.707])
         # gripper_ori_relative = R.from_quat([0.5, 0.5, -0.5, 0.5])
         gripper_ori_relative = R.from_quat([0, 0, 0, 1])
-        offset = tf.apply([- self._grocery_bbox.size.x / 2 - gripper_length - 0.05,  self._grocery_bbox.size.y / 2 - 0.12, 0])
+        offset = tf.apply([- self._grocery_bbox.size.x / 2 - gripper_length - 0.15,  self._grocery_bbox.size.y / 2 - 0.135, 0])
         # offset = tf.apply([self._grocery_bbox.size.x / 2, self._grocery_bbox.size.y / 2 - 0.05, 0])
         gripper_ori = (tf * gripper_ori_relative).as_quat()
 
@@ -2381,7 +2382,7 @@ class PushBoxPoseGeneration(py_trees.behaviour.Behaviour):
         # gripper_pose.position.y = self._grocery_bbox.center.position.y - self._grocery_bbox.size.y / 2
         gripper_pose.position.x = self._grocery_bbox.center.position.x + offset[0]
         gripper_pose.position.y = self._grocery_bbox.center.position.y + offset[1]
-        gripper_pose.position.z = self._grocery_bbox.center.position.z + self._grocery_bbox.size.z / 2 - 0.02
+        gripper_pose.position.z = self._grocery_bbox.center.position.z + self._grocery_bbox.size.z / 2 - 0.10
         test_gripper_poses.append(gripper_pose)
 
         blackboard.set(self._push_pose_key, test_gripper_poses)
@@ -2445,7 +2446,7 @@ class GrabBoxPoseGeneration(py_trees.behaviour.Behaviour):
         # gripper_pose.position.y = self._grocery_bbox.center.position.y - self._grocery_bbox.size.y / 2
         gripper_pose.position.x = self._grocery_bbox.center.position.x + offset[0]
         gripper_pose.position.y = self._grocery_bbox.center.position.y + offset[1]
-        gripper_pose.position.z = self._grocery_bbox.center.position.z + self._grocery_bbox.size.z / 2 - 0.02
+        gripper_pose.position.z = self._grocery_bbox.center.position.z + self._grocery_bbox.size.z / 2 - 0.02 + 0.05
         test_gripper_poses.append(gripper_pose)
 
         blackboard.set(self._grab_pose_key, test_gripper_poses)
@@ -2591,50 +2592,64 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
 
     def update(self):
         blackboard = py_trees.blackboard.Blackboard()
-        self._test_bbox = blackboard.get(self._object_bbox_key)
+        self._test_bbox = deepcopy(blackboard.get(self._object_bbox_key))
         self._grocery_bboxes = blackboard.get(self._grocery_bboxes_key)
         self._gripper_untouch_offset = blackboard.get(self._gripper_untouch_offset_key)
         object_bbox = self._test_bbox
         object_pose = object_bbox.center
-        test_pose = Pose(object_pose.position, object_pose.orientation)
-
-        orientation_offset = []
-        orientation_offset.append(R.from_quat([0,0.258819,0,0.9659258]))
-        orientation_offset.append(R.from_quat([0,-0.258819,0,0.9659258]))
-
-        gripper_ori_relative = []
-        gripper_ori_relative.append(R.from_quat([0.7071068,0,0,0.7071068]))
-        gripper_ori_relative.append(R.from_quat([-0.7071068,0,0,0.7071068]))
-
-        gripper_ori_relative.append(R.from_quat([0, 0.7071068, 0,0.7071068]))
-        gripper_ori_relative.append(R.from_quat([0, -0.7071068,0,0.7071068]))
-
-        gripper_ori_relative.append(R.from_quat([0.5,0.5,0.5,0.5]))
-        gripper_ori_relative.append(R.from_quat([0.5,-0.5,-0.5,0.5]))
-        gripper_ori_relative.append(R.from_quat([-0.5,0.5,-0.5,0.5]))
-        gripper_ori_relative.append(R.from_quat([-0.5,-0.5,0.5,0.5]))
-
-        # gripper_ori_relative.append(R.from_quat([0,0.7071068,-0.7071068,0]))
-        # gripper_ori_relative.append(R.from_quat([0,0.7071068,0.7071068,0]))
-
-        gripper_grasp_length = min(0.017, object_bbox.size.y / 4)
-        gripper_offset = []
-        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        # gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-        # gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
-
+        print('object_pose: ', object_pose)
+        object_size = [object_bbox.size.x, object_bbox.size.y, object_bbox.size.z]
         crack_ori = R.from_quat([
                 object_pose.orientation.x,
                 object_pose.orientation.y,
                 object_pose.orientation.z,
                 object_pose.orientation.w])
+        pose_rotated = R.from_quat([0.5, 0.5, 0.5, 0.5])
+        pose_real = crack_ori * pose_rotated
+
+        object_size_rotated = pose_real.apply(object_size)
+        object_bbox.size.x = np.abs(object_size_rotated[0])
+        object_bbox.size.y = np.abs(object_size_rotated[1])
+        object_bbox.size.z = np.abs(object_size_rotated[2])
+        # print('object_size_rotated: ', object_size_rotated)
+        orientation_offset = []
+        orientation_offset.append(R.from_quat([0, 0.258819, 0, 0.9659258]))
+        orientation_offset.append(R.from_quat([0, -0.258819, 0, 0.9659258]))
+
+        gripper_ori_relative = []
+        gripper_ori_relative.append(R.from_quat([0.7071068, 0, 0, 0.7071068])) #
+        gripper_ori_relative.append(R.from_quat([-0.7071068, 0, 0, 0.7071068]))
+
+        gripper_ori_relative.append(R.from_quat([0,0.7071068,-0.7071068,0]))  #
+        gripper_ori_relative.append(R.from_quat([0,0.7071068,0.7071068,0]))
+
+        gripper_ori_relative.append(R.from_quat([0, 0.7071068, 0, 0.7071068])) #
+        gripper_ori_relative.append(R.from_quat([0, -0.7071068, 0, 0.7071068]))
+
+        gripper_ori_relative.append(R.from_quat([0.5, -0.5, -0.5, 0.5]))  #
+        gripper_ori_relative.append(R.from_quat([-0.5, 0.5, -0.5, 0.5]))
+        
+        gripper_ori_relative.append(R.from_quat([0.5, 0.5, 0.5, 0.5]))
+        gripper_ori_relative.append(R.from_quat([-0.5, -0.5, 0.5, 0.5]))
+
+        
+        # gripper_grasp_length = min(0.017, object_bbox.size.y / 4)
+        gripper_grasp_length = 0.00
+        gripper_offset = []
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0]) #
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.y / 2 + gripper_grasp_length, 0, 0])
+
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0]) #
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0]) #
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0]) #
+
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
+        gripper_offset.append([-object_bbox.size.x / 2 + gripper_grasp_length, 0, 0])
 
         test_gripper_poses = []
         x_axises = []
@@ -2648,12 +2663,12 @@ class GraspPoseGeneration(py_trees.behaviour.Behaviour):
             gripper_pose.orientation.z = crack_ori_quat[2]
             gripper_pose.orientation.w = crack_ori_quat[3]
 
-            x_axis = rotated_gripper.apply([1,0,0])
+            x_axis = rotated_gripper.apply([1, 0, 0])
             x_axises.append(x_axis)
-
+            print()
             gripper_pose.position.x = object_pose.position.x + offset[0]
             gripper_pose.position.y = object_pose.position.y + offset[1]
-            gripper_pose.position.z = object_pose.position.z + offset[2] + self._gripper_untouch_offset
+            gripper_pose.position.z = object_pose.position.z + offset[2] + 0.08 #+ self._gripper_untouch_offset
             test_gripper_poses.append(gripper_pose)
 
         for i in range(len(gripper_ori_relative)):
@@ -2719,6 +2734,7 @@ class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
 
         poses_z_value = []
         test_gripper_poses_filtered = []
+        # print('len(test_gripper_poses): ', len(test_gripper_poses))
         for i in range(len(test_gripper_poses)):
             norm = np.array([x_axises[i][0], x_axises[i][1], x_axises[i][2]])
             norm = norm / np.linalg.norm(norm)
@@ -2727,11 +2743,12 @@ class FilterGrasplocPoints(py_trees.behaviour.Behaviour):
                 poses_z_value.append(test_gripper_poses[i].position.z)
             else:
                 pass
-
+        # print('test_gripper_poses_filtered: ', test_gripper_poses_filtered)
         if len(test_gripper_poses_filtered) == 0:
             return py_trees.Status.FAILURE
         test_gripper_poses_filtered.sort(key=lambda x:x.position.z, reverse = True)
         # TODO(Kevin): Get which object to grab from the plan
+        # print('test_gripper_poses_filtered: ', test_gripper_poses_filtered)
         blackboard.set(self._filtered_grasp_points_key, test_gripper_poses_filtered)
         return py_trees.Status.SUCCESS
 
@@ -2825,8 +2842,8 @@ class GetStackPoseAct(py_trees_ros.actions.ActionClient):
         if result:
             result.pose.orientation = grasp_poses[pose_index_parformed].orientation
             result.pose.position.y = result.pose.position.y
-            result.pose.position.z = result.pose.position.z + self.action_goal.dim.y / 3.5 + self._gripper_untouch_offset - 0.02
-
+            # result.pose.position.z = result.pose.position.z + self.action_goal.dim.y / 3.5 + self._gripper_untouch_offset - 0.02
+            result.pose.position.z = result.pose.position.z + 0.095
             # result.pose.position.z = result.pose.position.z + self.action_goal.dim.y
             upper_poses = []
             upper_poses.append(result.pose)
@@ -3525,7 +3542,7 @@ class AddAllObjectCollisionBoxAct(py_trees.behaviour.Behaviour):
             self._box_pose = deepcopy(bbox.center)
             box_size = deepcopy(plane_size)
             box_size.z = plane_position.z
-            self._box_size = [box_size.x + 0.01, box_size.y + 0.01, box_size.z + 0.01]
+            self._box_size = [box_size.x + 0.17, box_size.y + 0.01, box_size.z + 0.07]
             self._box_pose.position.z = self._box_pose.position.z / 2
             box = SolidPrimitive()
             box.type = SolidPrimitive.BOX
@@ -4351,91 +4368,12 @@ class LinkStateWriteToFileAct(py_trees.behaviour.Behaviour):
         # self._
 
     def callback(self, data):
-        # print(data)
-        # time.sleep(0.2)
-        # print('data: ', data.pose)
-        # rospy.sleep(2)
-        # last_data = LinkStates()
-        # last_data.name = ['test', 'test_1']
-        # pose_1 = Pose()
-        # pose_1.orientation = Quaternion(0,0,0,1)
-        # pose_1.position = Point(0,0,0)
-        # pose_2 = Pose()
-        # pose_2.orientation = Quaternion(0,0,0,1)
-        # pose_2.position = Point(0,0,0)
-        # last_data.pose.append(deepcopy(pose_1))
-        # last_data.pose.append(deepcopy(pose_2))
-        # current_data = LinkStates()
-        # current_data.name = ['test', 'test_2', 'test_1', 'test_3', 'test_4', 'test_5', 'test_6', 'test_7', 'test_8',
-        # 'test_9', 'test_10', 'test_11', 'test_12', 'test_13', 'test_14', 'test_15', 'test_16', 'test_17']
-        # pose_1 = Pose()
-        # pose_1.orientation = Quaternion(0,0,1,0)
-        # pose_1.position = Point(2,2,2)
-        # pose_2 = Pose()
-        # pose_2.orientation = Quaternion(0,0,0,1)
-        # pose_2.position = Point(2,2,2)
-        # pose_3 = Pose()
-        # pose_3.orientation = Quaternion(0,0,0,1)
-        # pose_3.position = Point(2,2,2)
-        # # current_data.pose = [Pose_1, pose_2]
-        # current_data.pose.append(deepcopy(pose_1))
-        # current_data.pose.append(deepcopy(pose_2))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_1))
-        # current_data.pose.append(deepcopy(pose_2))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # current_data.pose.append(deepcopy(pose_3))
-        # print('before: ', rospy.get_time())
-        # # print(ApproximateFrameValueTest(last_data, 0, current_data, 0.83, 0.001))
-        # ApproximateFrameValueTest(last_data, 0, current_data, 8.3 / 20, 0.001)
-        # print('after: ', rospy.get_time())
-        # rospy.sleep(20)
-        # print('-------------------------------------------------------')
-        # if self._last_data is None:
-        #     self._last_data = deepcopy(data)
-        #     self._start_time = rospy.get_time()
-        #     self._frame_data_list.append(deepcopy(data))
-        #     self._frame_num = 1
-        #     self._last_frame_time = rospy.get_time()
-        #     self._last_data_time = rospy.get_time()
-        #     # print('first self._last_frame_time: ', self._last_frame_time)
-        # else:
-        #     # print('self._last_data_time: ', self._last_data_time)
-        #     current_time = rospy.get_time()
-        #     # print('current_time: ', current_time)
-        #     # print('self._last_frame_time: ', self._last_frame_time)
-        #     self._frame_data_list = ApproximateFrameValueTest(self._last_data, self._last_data_time, data, current_time, self._last_frame_time)
-        #     # print("self._frame_data_list: ", len(self._frame_data_list))
-        #     if len(self._frame_data_list) == 0:
-        #         return
-        #     else:
-        #         self._last_data = data
-        #         self._last_data_time = current_time
-        #         self._frame_num += len(self._frame_data_list)
-        #         self._last_frame_time += 1.0 / 24 * len(self._frame_data_list)
-        # # print("self._frame_data_list: ", self._frame_data_list)
-        # for frame_data in self._frame_data_list:
-
         link_pose_dict = {}
         # for i in range(len(frame_data.name)):
         for i in range(len(data.name)):
             name_temp = deepcopy(data.name[i])
             position_temp = deepcopy(data.pose[i].position)
             orientation_quat = deepcopy(data.pose[i].orientation)
-            # name_temp = deepcopy(frame_data.name[i])
-            # position_temp = deepcopy(frame_data.pose[i].position)
-            # orientation_quat = deepcopy(frame_data.pose[i].orientation)
             orientation_R = R.from_quat([
                     orientation_quat.x,
                     orientation_quat.y,
@@ -4494,10 +4432,6 @@ class LinkStateWriteToFileAct(py_trees.behaviour.Behaviour):
         gripper_moved_dis = np.sqrt((link_pose_dict['Gripper Link'][0] - link_pose_dict['L Gripper Finger Link'][0]) ** 2 +\
                             (link_pose_dict['Gripper Link'][1] - link_pose_dict['L Gripper Finger Link'][1]) ** 2 +\
                             (link_pose_dict['Gripper Link'][2] - link_pose_dict['L Gripper Finger Link'][2]) ** 2) - self._gripper_max_dis - 0.0045
-        # dis_gripper_moved_squared = (link_pose_dict['L Gripper Finger Link'].position.x - link_pose_dict['R Gripper Finger Link'].position.x) ** 2 +\
-        #                     (link_pose_dict['L Gripper Finger Link'].position.y - link_pose_dict['R Gripper Finger Link'].position.y) ** 2 +\
-        #                     (link_pose_dict['L Gripper Finger Link'].position.z - link_pose_dict['R Gripper Finger Link'].position.z) ** 2
-        # print('gripper_moved_dis: ', gripper_moved_dis)
         if np.abs(gripper_moved_dis) > 0.002:
             gripper_ori_position_plus = []
             gripper_ori_position_minus = []
@@ -4537,17 +4471,11 @@ class LinkStateWriteToFileAct(py_trees.behaviour.Behaviour):
         # print('time_stamp: ', rospy.get_time())
         self._total_time = rospy.get_time() - self._start_time
         self._total_num += 1
-        # print('self._total_time: ', self._total_time)
-        # print('self._total_num: ', self._total_num)
-        # self._file_write.write('time_stamp: ')
-        # self._file_write.write(str(rospy.get_time()))
         self._file_write.write((str(link_pose_dict)))
-        # print('link_pose_dict: ', len(link_pose_dict))
 
         self._file_write.write('split')
         rospy.sleep(0.001)    
-        # self._frame_data_list = []
-        # rospy.sleep(3)
+
 
     def initialise(self):
         # time.sleep(20)
@@ -4734,7 +4662,7 @@ class SpawnRandomModelParallelAct(py_trees.behaviour.Behaviour):
         req.model_xml = f.read()
         req.initial_pose.orientation.w = 1
         req.initial_pose.position.x = 0.9738
-        req.initial_pose.position.y = -2.9 + 0.45
+        req.initial_pose.position.y = -2.9 + 0.35
         req.initial_pose.position.z = 0.65
         req.reference_frame = 'world'
         req.initial_pose.orientation = Quaternion(0, 0, 0, 1)
@@ -5568,7 +5496,7 @@ def PushBoxAct(name):
         ChooseGroceryBoxPush('ChooseGroceryBoxPush'),
 
         FetchMoveAct('FetchMoveAct', position=Point(0,0,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
-        FetchMoveWithCorrection('FetchMoveWithCorrection', position=Point(0.19,-0.3786,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
+        FetchMoveWithCorrection('FetchMoveWithCorrection', position=Point(0.12,-0.3786,0), orientation=Quaternion(0, 0, 0, 1), frame_id='map'),
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_groundtruth',
             topic_name='/gazebo/model_states',
@@ -5816,9 +5744,12 @@ def PickAct(name, obj):
 
     root.add_children([
         SetValueToBlackBoardAct('SetValueToBlackBoardAct'),
-        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
+        
         # ObjectTranslationAct(name="act_translate_objs"),
+        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.1),
+        HeadMoveBehavior('head_behavior', x=1, y=0, z=0.05),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
+
         py_trees_ros.subscribers.ToBlackboard(
             name='act_get_pc',
             topic_name='/head_camera/depth_registered/points',
@@ -5953,7 +5884,7 @@ def PlaceAct(name, obj, surface, relation='None'):
         GetFakeDopeSnapshotAct('act_get_dope_snapshot'),
         AddAllObjectCollisionBoxAct('act_add_all_object_collision_box'),
         SleepBehavior('act_sleep_a_smidge', duration=0.5),
-        # RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
+        RelativeCartesianMoveAct('act_move_up', pose_diff_msg=up_tf_after_place),
         SpawnTwoStaticModelAct(name='SpawnTwoStaticModelAct'),
         # StabilizeObjectAct('StabilizeObjectAct', obj_name=obj),
         place_act_fall,
