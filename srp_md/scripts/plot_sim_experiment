@@ -6,7 +6,7 @@ import argparse
 import os
 import srp_md
 from collections import OrderedDict
-
+import numpy as np
 
 def parse_args():
     """
@@ -91,6 +91,7 @@ def demos_v_success(data, out_file):
     # Collect data into bins
     total = {}
     success = {}
+    std = []
     for datum in data:
         # num_demos vs success
         try:
@@ -109,6 +110,23 @@ def demos_v_success(data, out_file):
     for num_demos in sorted(total.keys()):
         try:
             demos_v_success[num_demos] = 100.0 * success[num_demos] / total[num_demos]
+            std_temp = 0
+            for i in range(total[num_demos]):
+                if i <= success[num_demos]:
+                    std_temp += (demos_v_success[num_demos] / 100 - 1) ** 2
+                else:
+                    std_temp += (demos_v_success[num_demos] / 100 - 0) ** 2
+            rate = demos_v_success[num_demos] / 100
+            std_temp =  rate * total[num_demos] * ((1 - rate) ** 2) +\
+                        (1 - rate) * total[num_demos] * (rate ** 2)
+            print('std_temp: ', std_temp)
+            std_temp /= total[num_demos]
+            # print('std_temp: ', std_temp)
+            std_temp = np.sqrt(std_temp)
+            std.append(std_temp)
+            print('success[num_demos]: ', success[num_demos])
+            print('total: ', total[num_demos])
+            print('std_temp: ', std_temp)
             print('# Demos {}:\t{}'.format(num_demos, demos_v_success[num_demos]))
         except KeyError as e:
             print('Error in demos_v_success {}, {}'.format(num_demos, e))
@@ -118,6 +136,7 @@ def demos_v_success(data, out_file):
         demos_v_success_f = csv.writer(f)
         for num_demos, success in demos_v_success.iteritems():
             demos_v_success_f.writerow([num_demos, success])
+        demos_v_success_f.writerow(std)
 
 
 def reasons(data, out_file):
@@ -127,6 +146,7 @@ def reasons(data, out_file):
     demo_v_reason = {}
     for datum in data:
         # Reason for result
+        print('datum', datum)
         try:
             reasons[datum.reason] += 1
         except KeyError:
@@ -149,6 +169,38 @@ def reasons(data, out_file):
         for num_demos in sorted(demo_v_reason.keys()):
             num_trials = float(sum([num for num in demo_v_reason[num_demos].values()]))
             tee.write([num_demos] + [demo_v_reason[num_demos][key] / num_trials if key in demo_v_reason[num_demos]
+                      else 0 for key in sorted(reasons.keys())])
+
+
+def reasons_by_test_objects(data, out_file):
+    num_trials = float(len(data))
+    reasons = {}
+    demo_v_reason = {}
+    for datum in data:
+        # Reason for result
+        try:
+            reasons[datum.reason] += 1
+        except KeyError:
+            reasons[datum.reason] = 1
+        # By demo
+        try:
+            _ = demo_v_reason[datum.num_test_objs]
+            # datum.num_test_objects
+        except KeyError:
+            demo_v_reason[datum.num_test_objs] = {datum.reason: 0}
+        try:
+            demo_v_reason[datum.num_test_objs][datum.reason] += 1
+        except KeyError:
+            demo_v_reason[datum.num_test_objs][datum.reason] = 1
+    # Write results
+    with open(out_file, 'w') as f:
+        csv_f = csv.writer(f)
+        tee = Tee(csv_f)
+        tee.write(['num_test_objs'] + sorted(reasons.keys()))
+        tee.write(['overall'] + [reasons[key] / num_trials for key in sorted(reasons.keys())])
+        for num_test_objs in sorted(demo_v_reason.keys()):
+            num_trials = float(sum([num for num in demo_v_reason[num_test_objs].values()]))
+            tee.write([num_test_objs] + [demo_v_reason[num_test_objs][key] / num_trials if key in demo_v_reason[num_test_objs]
                       else 0 for key in sorted(reasons.keys())])
 
 
@@ -214,10 +266,12 @@ def main():
     # Produce results
     averages(data, args.out_dir + '/averages.csv')
     demos_v_success(data, args.out_dir + '/demos_v_success.csv')
-    reasons(data, args.out_dir + '/reasons.csv')
+    reasons(data, args.out_dir + '/reasons_by_demos.csv')
+    reasons_by_test_objects(data, args.out_dir + '/reasons_by_test_objects.csv')
     test_v_time(data, args.out_dir + '/num_test_objs_v_time.csv')
     novel_vs_success(data, args.out_dir + '/novel_v_success.csv')
 
 
 if __name__ == '__main__':
     main()
+
