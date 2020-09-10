@@ -70,3 +70,69 @@ tuna:
   color: blue
   size: s_small
   weight: w_medium
+cheerios:
+  class: cheerios
+  shape: box
+  color: yellow
+  size: s_large
+  weight: w_light
+beans:
+  class: beans
+  shape: cylinder
+  color: blue
+  size: s_medium
+  weight: w_medium
+tide_pods:
+  class: tide_pods
+  shape: complex
+  color: orange
+  size: s_medium
+  weight: w_heavy
+spice_box:
+  class: spice_box
+  shape: box
+  color: green
+  size: s_small
+  weight: w_light
+pear:
+  class: pear
+  shape: complex
+  color: green
+  size: s_small
+  weight: w_light
+eggos:
+  class: eggos
+  shape: box
+  color: yellow
+  size: s_medium
+  weight: w_light
+canned_veggies:
+  class: canned_veggies
+  shape: cylinder
+  color: green
+  size: s_medium
+  weight: w_medium
+canned_fruit:
+  class: canned_fruit
+  shape: cylinder
+  color: red
+  size: s_medium
+  weight: w_medium
+flour:
+  class: flour
+  shape: box
+  color: white
+  size: s_large
+  weight: w_heavy
+milk:
+  class: milk
+  shape: complex
+  color: white
+  size: s_large
+  weight: w_heavy
+dumplings:
+  class: dumplings
+  shape: box
+  color: red
+  size: s_large
+  weight: w_medium
