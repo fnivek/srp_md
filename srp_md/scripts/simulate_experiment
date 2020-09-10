@@ -586,15 +586,33 @@ def run_one(factor_learner, use_consistency, use_no_float, use_cardinality, demo
             def gen_test():
                 obj_classes = training_classes[:]
                 if use_novel_classes:
-                    obj_classes = test_classes[:]
+                    # Ensure novel objects do not contain never before seen features
+                    features = {}
+                    for key, value in FEATURES[training_classes[0]].iteritems():
+                        if key == 'class':
+                            continue
+                        features[key] = [value]
+                    for training_class in training_classes[1:]:
+                        for key, value in FEATURES[training_class].iteritems():
+                            if key == 'class':
+                                continue
+                            features[key].append(value)
+                    obj_classes = list()
+                    for obj_class in test_classes:
+                        class_features = FEATURES[obj_class]
+                        if all([class_features[key] in features[key] for key in features.keys()]):
+                            # print('{} has only features from the training_set;\n{}'.format(obj_class, class_features))
+                            obj_classes.append(obj_class)
                 test_graph = srp_md.SceneGraph.random_sg(num_test_objs, obj_classes, FEATURES, 'disjoint')
                 num_novel = len(filter(lambda obj: obj.assignment['class'] != 'table' and
                                        obj.assignment['class'] not in training_classes, test_graph.objs))
                 return test_graph, num_novel
 
             test_graph, num_novel = gen_test()
-            while use_novel_classes and num_novel == 0:
+            tries = 0
+            while use_novel_classes and num_novel == 0 and tries < 10:
                 test_graph, num_novel = gen_test()
+                tries += 1
             srp.set_init_graphs([test_graph])
             timer.stop(trial_name + '_test')
 
