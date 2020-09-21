@@ -55,6 +55,8 @@ args=(
   "--num_train_sets 5"
   "--plan false"
   "--use_noise true"
+  "--obj_noise_level 0.1"
+  "--rel_noise_level 0.1"
 )
 cmd=${args[@]}
 cmds+=("${cmd}")
@@ -72,6 +74,8 @@ args=(
   "--num_train_sets 5"
   "--plan false"
   "--use_noise true"
+  "--obj_noise_level 0.1"
+  "--rel_noise_level 0.1"
 )
 cmd=${args[@]}
 cmds+=("${cmd}")
@@ -106,6 +110,8 @@ args=(
   "--num_train_sets 5"
   "--plan false"
   "--use_noise true"
+  "--obj_noise_level 0.1"
+  "--rel_noise_level 0.1"
 )
 cmd=${args[@]}
 cmds+=("${cmd}")
@@ -123,6 +129,8 @@ args=(
   "--num_train_sets 5"
   "--plan false"
   "--use_noise true"
+  "--obj_noise_level 0.1"
+  "--rel_noise_level 0.1"
 )
 cmd=${args[@]}
 cmds+=("${cmd}")
